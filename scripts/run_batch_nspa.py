@@ -17,7 +17,13 @@ design_classes = [
     "eu_cdn",
     "eu_cdl",
     "eu_cdm",
-    "eu_cdh"
+    "eu_cdh",
+    "tr_pre75",
+    "tr_7599",
+    "tr_0018_dcm",
+    "tr_0018_dch",
+    "tr_post18_dcm",
+    "tr_post18_dch"
 ]
 
 # Make directory for all outputs

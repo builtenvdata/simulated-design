@@ -19,7 +19,6 @@ de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 TODO
 ----
 Discuss the default constants.
-See specific lines with TODOs.
 Add specific reference pages for design equations.
 """
 
@@ -206,9 +205,9 @@ class Beam(BeamBase):
         3. Required reinforcement is computed at different sections:
         start, mid, end.
 
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
+        References
+        ----------
+        https://mathalino.com/reviewer/reinforced-concrete-design/design-steel-reinforcement-concrete-beams-wsd-method
         """
         # Design strength of materials
         if self.ag > 0.05:
@@ -221,7 +220,7 @@ class Beam(BeamBase):
         # tension reinforcement.
         d = 0.9 * self.h
         d_prime = 0.1 * self.h
-        # TODO: Alternatively, this can be directly computed.
+        # Alternatively, this can be directly computed.
         n = MODULAR_RATIO  # Modular ratio
         # Design forces
         moment_pos = np.array([self.envelope_forces.M1_pos,
@@ -309,23 +308,20 @@ class Beam(BeamBase):
         shear = np.array([self.envelope_forces.V1,
                           self.envelope_forces.V5,
                           self.envelope_forces.V9])
-        # TODO: Originally the solution was using Asl_req from design.
-        # I changed this to the available long. reinforcement.
-        # Asl_top = self.Asl_top_req
-        # Asl_bot = self.Asl_bot_req
+        # Changed this to the available long. reinforcement.
         Asl_top = self.rhol_top * self.Ag
         Asl_bot = self.rhol_bot * self.Ag
-        # Calculate the shear reinforcement
+        # Calculate the minimum shear reinforcement
         sbh = 0.5  # stirrup spacing
         dbh = 0.006  # stirrup diameter
         nlegs = 2  # number of legs
         Ash_sbh_min = nlegs * (np.pi * 0.25 * dbh**2) / sbh
-        # TODO: Check this expression because it can result in negative reinf.
-        # TODO: Added minimum reinforcement to avoid negative reinf. situation.
-        Vrd = tau_c * self.b * d
-        mask = z*fsyd*np.maximum(Asl_top, Asl_bot) < Vrd*d
+        # Check this expression because it can result in negative reinf.
+        # Added minimum reinforcement to avoid negative reinf. situation.
+        Vcd = tau_c * self.b * d
+        mask = z*fsyd*np.maximum(Asl_top, Asl_bot) < shear*d  # Article 35
         Ash_sbh = shear / (fsyd * d)
-        Ash_sbh[~mask] = (shear[~mask] - Vrd) / (fsyd * d)
+        Ash_sbh[~mask] = (shear[~mask] - Vcd) / (fsyd * d)
         Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
         # Save the required transverse reinforcement area to spacing
         self.Ash_sbh_req = Ash_sbh

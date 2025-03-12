@@ -104,10 +104,6 @@ class Column(ColumnBase):
         It is overwritten for eu_cdn design class with following changes:
         - In case of the rectangular sections, the longer dimension no
         longer needs to be twice of the shorter one.
-
-        TODO
-        ----
-        Axial load ratio restriction?
         """
         if self.section == 1:  # Square section
             # Make both dimensions equal to their maximum
@@ -118,10 +114,6 @@ class Column(ColumnBase):
 
     def verify_section_adequacy(self) -> None:
         """Verifies the adequacy of section dimensions for design forces.
-
-        TODO
-        ----
-        Axial load ratio restriction?
         """
         # Only adequacy check is maximum dimensions
         if self.bx > self.max_b:
@@ -162,10 +154,6 @@ class Column(ColumnBase):
 
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces.
-
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
         """
         # NOTE: If the minimum based on the values from rebars.json is greater,
         # it will be considered instead. Thus, could be left as 0.0

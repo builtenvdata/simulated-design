@@ -17,7 +17,6 @@ de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 TODO
 ----
 Discuss the default constants.
-See specific lines with TODOs.
 Add specific reference pages for design equations.
 """
 
@@ -37,13 +36,15 @@ from ....utils.units import MPa, m
 
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
+MAX_NIU = 1.0
+"""Maximum allowed value of axial load ratio."""
 TAU_C_VECT = np.array(
     [0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15]) * MPa
 """Vector of allowable shear stresses that carried by the concrete or
 vector of the design shear strength values of concrete."""
 TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]) * MPa
 """Vector of allowable shear stresses that can be carried by
-the beam section."""
+the column section."""
 FCK_VECT = np.array([12, 16, 20, 25, 30, 35, 40, 45, 50]) * MPa
 """Vector of characteristic concrete compressive strength values."""
 MODULAR_RATIO = 15
@@ -72,7 +73,7 @@ class Column(ColumnBase):
 
         References
         ----------
-        Article 121.2 REBAP 1983
+        Article 90.2 REBAP 1983
         """
         return 0.04
 
@@ -116,14 +117,24 @@ class Column(ColumnBase):
     def verify_section_adequacy(self) -> None:
         """Verifies the adequacy of section dimensions for design forces.
 
+        Notes
+        -----
+        The original code does not enforce checks for axial load ratio.
+
         TODO
         ----
-        The original code does not enforce checks for axial load ratio.
-        Is this correct? Maybe, we should add it.
+        Add specific reference pages and equation numbers.
         """
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = 0.9 * self.bx
         dy = 0.9 * self.by
+        # Maximum axial load ratio
+        max_niu = max(
+            self.envelope_forces.N1_pos,
+            self.envelope_forces.N9_pos,
+            abs(self.envelope_forces.N1_neg),
+            abs(self.envelope_forces.N9_neg),
+        ) / (self.Ag * self.fcd)
         # Max. normalised moment
         max_mu_x = max(
             self.envelope_forces.Mx1_pos,
@@ -160,6 +171,10 @@ class Column(ColumnBase):
             self.ok_y = False
         else:
             self.ok_y = True
+        if max_niu > MAX_NIU and self.ok_x and self.ok_y:
+            # May increase both dimensions or random one?
+            self.ok_x = False
+            self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
         """Computes the required longitudinal reinforcement for design forces.
@@ -178,14 +193,14 @@ class Column(ColumnBase):
             # Determine the required longitudinal reinforcement ratio
             beta1 = np.interp(niu_1, NIU_VECTOR, BETA_FC_VECTOR)
             beta9 = np.interp(niu_9, NIU_VECTOR, BETA_FC_VECTOR)
-            # TODO: Should we use cover here or assume ratio as 0.1?
+            # Should we use cover here or assume ratio as 0.1?
             lambda_x = 0.5 - self.cover / self.bx
             lambda_y = 0.5 - self.cover / self.by
             niuc_1 = niu_1 - 0.85
             niuc_9 = niu_9 - 0.85
             # Start section
             if niu_1 < 0.0:  # Axial force is tensile
-                # REBAP (1983), pp. 48, eqn. 22 (HMA)
+                # REBAP (1983), pp. 48, eqn. 22
                 omega_x1 = mu_x1 / (lambda_y*beta1) - niu_1
                 omega_y1 = mu_y1 / (lambda_x*beta1) - niu_1
             elif niu_1 <= 0.85:
@@ -196,7 +211,7 @@ class Column(ColumnBase):
                 omega_y1 = mu_y1 / (lambda_x*beta1) + niuc_1
             # End section
             if niu_9 < 0.0:  # Axial force is tensile
-                # REBAP (1983), pp. 48, eqn. 22 (HMA)
+                # REBAP (1983), pp. 48, eqn. 22
                 omega_x9 = mu_x9 / (lambda_y*beta9) - niu_9
                 omega_y9 = mu_y9 / (lambda_x*beta9) - niu_9
             elif niu_9 <= 0.85:
@@ -242,7 +257,7 @@ class Column(ColumnBase):
             ecc_y1 = force.Mx1 / force.N1
             ecc_y9 = force.Mx9 / force.N9
             # TO define big and small ecc. section for tensile force and
-            # to discard concrete contribution for small eccentricity. (HMA)
+            # to discard concrete contribution for small eccentricity.
             et_x1 = ecc_x1 / dx
             et_x9 = ecc_x9 / dx
             et_y1 = ecc_y1 / dy
@@ -251,8 +266,8 @@ class Column(ColumnBase):
             Vcd_x = tau_c * self.by * dx  # REBAP-83, 53.3, 53.2 c)
             Vcd_y = tau_c * self.bx * dy  # REBAP-83, 53.3, 53.2 c)
             # Start section -X direction
-            if force.N1 > 0 and abs(et_x1) < 0.5:
-                # Tensile force with small ecc. (cracked concrete) (HMA)
+            if force.N1 > 0 and abs(et_x1) < 0.5:  # REBAP-83, 53.3
+                # Tensile force with small ecc. (cracked concrete)
                 Ash_sh_x1 = Vx1 / (zx * self.fsyd)
             elif Vx1 > Vcd_x:
                 Ash_sh_x1 = (Vx1 - Vcd_x) / (zx * self.fsyd)
@@ -260,7 +275,7 @@ class Column(ColumnBase):
                 Ash_sh_x1 = 0.0
             # Start section -Y direction
             if force.N1 > 0 and abs(et_y1) < 0.5:
-                # Tensile force with small ecc. (cracked concrete) (HMA)
+                # Tensile force with small ecc. (cracked concrete)
                 Ash_sh_y1 = Vy1 / (zy * self.fsyd)
             elif Vy1 > Vcd_y:
                 Ash_sh_y1 = (Vy1 - Vcd_y) / (zy * self.fsyd)
@@ -268,7 +283,7 @@ class Column(ColumnBase):
                 Ash_sh_y1 = 0.0
             # End section -X direction
             if force.N9 > 0 and abs(et_x9) < 0.5:
-                # Tensile force with small ecc. (cracked concrete) (HMA)
+                # Tensile force with small ecc. (cracked concrete)
                 Ash_sh_x9 = Vx9 / (zx * self.fsyd)
             elif Vx9 > Vcd_x:
                 Ash_sh_x9 = (Vx9 - Vcd_x) / (zx * self.fsyd)
@@ -276,12 +291,16 @@ class Column(ColumnBase):
                 Ash_sh_x9 = 0.0
             # End section -Y direction
             if force.N9 > 0 and abs(et_y9) < 0.5:
-                # Tensile force with small ecc. (cracked concrete) (HMA)
+                # Tensile force with small ecc. (cracked concrete)
                 Ash_sh_y9 = Vy9 / (zy * self.fsyd)
             elif Vy9 > Vcd_y:
                 Ash_sh_y9 = (Vy9 - Vcd_y) / (zy * self.fsyd)
             else:
                 Ash_sh_y9 = 0.0
+            Ash_sh_x1 = Vx1 / (zx * self.fsyd)
+            Ash_sh_y1 = Vy1 / (zy * self.fsyd)
+            Ash_sh_x9 = Vx9 / (zx * self.fsyd)
+            Ash_sh_y9 = Vy9 / (zy * self.fsyd)
             # Update the required reinforcement
             Ashx_sh_req = max(Ashx_sh_req, Ash_sh_x1, Ash_sh_x9)
             Ashy_sh_req = max(Ashy_sh_req, Ash_sh_y1, Ash_sh_y9)

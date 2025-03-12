@@ -17,7 +17,6 @@ de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 TODO
 ----
 Discuss the default constants.
-See specific lines with TODOs.
 Add specific reference pages for design equations.
 """
 
@@ -78,6 +77,20 @@ class Beam(BeamBase):
             return 0.15 / 100
         else:
             return 0.25 / 100
+
+    @property
+    def rhol_max_tens(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Maximum longitudinal reinforcement ratio in tens. and comp. zones
+
+        References
+        ----------
+        Article 90.2 REBAP 1983
+        """
+        return 0.04
 
     @property
     def rhoh_min(self) -> float:
@@ -294,10 +307,11 @@ class Beam(BeamBase):
         shear = np.array([self.envelope_forces.V1,
                           self.envelope_forces.V5,
                           self.envelope_forces.V9])
-        # REBAP 53.1 V < Vcd + Vwd
-        Vcd = tau_c * self.b * d  # REBAP 53.2
-        Ash_sbh = (shear - Vcd) / (z * self.fsyd)  # REBAP 53.3
-        Ash_sbh_min = self.rhoh_min * self.b  # REBAP 94.2
+        # Calculate the minimum shear reinforcement
+        Ash_sbh_min = self.rhoh_min * self.b  # REBAP 1967 - Article 94.2
+        # REBAP 1967 - Article 53.1 V < Vcd + Vwd
+        Vcd = tau_c * self.b * d  # Article 53.2
+        Ash_sbh = (shear - Vcd) / (z * self.fsyd)  # Article 53.3
         Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
         # Save required transverse reinforcement area to spacing ratio
         self.Ash_sbh_req = Ash_sbh

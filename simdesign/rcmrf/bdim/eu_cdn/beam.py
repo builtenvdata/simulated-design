@@ -16,7 +16,6 @@ de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 TODO
 ----
 Discuss the default constants.
-See specific lines with TODOs.
 Add specific reference pages for design equations.
 """
 
@@ -158,15 +157,15 @@ class Beam(BeamBase):
         3. Required reinforcement is computed at different sections:
         start, mid, end.
 
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
+        References
+        ----------
+        https://mathalino.com/reviewer/reinforced-concrete-design/design-steel-reinforcement-concrete-beams-wsd-method
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h
         d_prime = 0.1 * self.h
-        # TODO: Alternatively, this can be directly computed.
+        # Alternatively, this can be directly computed.
         n = MODULAR_RATIO  # Modular ratio
         # Design forces
         moment_pos = np.array([self.envelope_forces.M1_pos,
@@ -252,5 +251,6 @@ class Beam(BeamBase):
         Vrd = TAU_C * self.b * d
         mask = shear > Vrd
         Ash_sbh = np.ones_like(shear) * Ash_sbh_min
-        Ash_sbh[mask] = np.maximum(shear[mask] / (self.fsyd*d), Ash_sbh[mask])
+        Ash_sbh[mask] = np.maximum((shear[mask] - Vrd) / (self.fsyd*d),
+                                   Ash_sbh[mask])
         self.Ash_sbh_req = Ash_sbh  # Save

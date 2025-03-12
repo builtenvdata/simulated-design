@@ -4,7 +4,6 @@ Specific routines for defining and designing eu_cdl columns.
 TODO
 ----
 Discuss the default constants.
-See specific lines with TODOs.
 Add specific reference pages for design equations.
 
 Notes
@@ -42,12 +41,14 @@ from ....utils.units import MPa
 # CONSTANTS
 ECONOMIC_MU = 0.25
 """Maximum mu value considered for the economic column design."""
+MAX_NIU = 1.0
+"""Maximum allowed value of axial load ratio."""
 TAU_C_VECT = np.array([0.4, 0.45, 0.50, 0.55, 0.60]) * MPa
 """Vector of allowable shear stresses that carried by the concrete or
 vector of the design shear strength values of concrete."""
 TAU_MAX_VECT = np.array([2.4, 2.7, 3.0, 3.3, 3.6]) * MPa
 """Vector of allowable shear stresses that can be carried by
-the beam section."""
+the column section."""
 FCK_CUBE_VECT = np.array([180, 225, 300, 350, 400])
 """Vector of cubic concrete compressive strength values (kg/cm2)."""
 MODULAR_RATIO = 15
@@ -210,10 +211,6 @@ class Column(ColumnBase):
         - It retrieves design concrete strength from concrete attributes.
         - In case of the rectangular sections, the longer dimension does no
         longer need to be twice of shorter one.
-
-        TODO
-        ----
-        Axial load ratio restriction?
         """
         # Initial guess for column concrete area
         min_area = self.pre_Nd / self.fcd
@@ -254,12 +251,9 @@ class Column(ColumnBase):
     def verify_section_adequacy(self) -> None:
         """Verifies the adequacy of section dimensions for design forces.
 
-        TODO
-        ----
+        Notes
+        -----
         The original code does not enforce checks for axial load ratio.
-        Moreover, although it is not checked the given code snippet
-        use axial load ratio for tension only.
-        Is this correct?
         """
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = 0.9 * self.bx
@@ -310,10 +304,10 @@ class Column(ColumnBase):
             self.ok_y = False
         else:
             self.ok_y = True
-        # if max_niu > 0.5 and self.ok_x and self.ok_y:
-        #     # May increase both dimensions or random one?
-        #     self.ok_x = False
-        #     self.ok_y = False
+        if max_niu > MAX_NIU and self.ok_x and self.ok_y:
+            # May increase both dimensions or random one?
+            self.ok_x = False
+            self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
         """Computes the required longitudinal reinforcement for design forces.
@@ -354,9 +348,7 @@ class Column(ColumnBase):
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces.
         """
-        # fc to use for calculations
-        fc_map = {'gravity': self.fcd,
-                  'seismic': self.fcd_eq}
+        # fsy to use for calculations
         fsy_map = {'gravity': self.fsyd,
                    'seismic': self.fsyd_eq}
         # Allowable shear stress that can be carried by the beam
@@ -366,28 +358,11 @@ class Column(ColumnBase):
         Ashy_sh_req = 0.0  # along Y
         for force in self.design_forces:
             # Design strength values considered for this combo
-            fc = fc_map.get(force.case)
             fsy = fsy_map.get(force.case)
-            # Dimensionless design force quantities
-            niu_1 = (-1*force.N1) / (self.Ag * fc)
-            niu_9 = (-1*force.N9) / (self.Ag * fc)
-            mu_x1 = abs(force.Mx1) / ((self.bx * self.by**2) * fc)
-            mu_y1 = abs(force.My1) / ((self.by * self.bx**2) * fc)
-            mu_x9 = abs(force.Mx9) / ((self.bx * self.by**2) * fc)
-            mu_y9 = abs(force.My9) / ((self.by * self.bx**2) * fc)
-            # Determine the required longitudinal reinforcement ratio
-            rhol_x1, rhol_y1 = get_rhol(niu_1, mu_x1, mu_y1, fc, fsy)
-            rhol_x9, rhol_y9 = get_rhol(niu_9, mu_x9, mu_y9, fc, fsy)
-            rhol_x = max(rhol_x1, rhol_x9)
-            rhol_y = max(rhol_y1, rhol_y9)
-            Aslx = 0.5*rhol_x*self.Ag
-            Asly = 0.5*rhol_y*self.Ag
-            # TODO: Does this makes sense? Shouldn't we use the finalised long.
-            # reinf. for the calculation of shear reinforcement?
-            # Abl_cor = (np.pi * self.dbl_int**2) / 4
-            # Abl_int = (np.pi * self.dbl_int**2) / 4
-            # Aslx = self.nblx_int * Abl_int + 2 * Abl_cor
-            # Asly = self.nbly_int * Abl_int + 2 * Abl_cor
+            Abl_cor = (np.pi * self.dbl_int**2) / 4
+            Abl_int = (np.pi * self.dbl_int**2) / 4
+            Aslx = self.nblx_int * Abl_int + 2 * Abl_cor
+            Asly = self.nbly_int * Abl_int + 2 * Abl_cor
             # Distance of long. bars in tens. to extreme conc. fibers in compr.
             dx = 0.9 * self.bx
             dy = 0.9 * self.by
@@ -399,25 +374,12 @@ class Column(ColumnBase):
             Vx1 = abs(force.Vx1)
             Vy9 = abs(force.Vy9)
             Vx9 = abs(force.Vx9)
-            # Determine loading eccentricty
-            ecc_x1 = force.My1 / force.N1
-            ecc_x9 = force.My9 / force.N9
-            ecc_y1 = force.Mx1 / force.N1
-            ecc_y9 = force.Mx9 / force.N9
-            # To define big and small ecc. section for tensile force and
-            # to discard concrete contribution for small eccentricity. (HMA)
-            et_x1 = ecc_x1 / dx
-            et_x9 = ecc_x9 / dx
-            et_y1 = ecc_y1 / dy
-            et_y9 = ecc_y9 / dy
             # Allowable shear force in concrete (tauc*b*0.9h)
             Vcd_x = tau_c * self.by * dx
             Vcd_y = tau_c * self.bx * dy
-            # TODO: Calculations in the following should be checked
             # Start section -X direction
-            if (
-                Aslx * self.fsyd * zx < Vcd_x * dx or
-                (force.N1 > 0 and abs(et_x1) < 0.5)
+            if (  # REBAP-1967 Article 35
+                Aslx * self.fsyd * zx < Vx1 * dx and force.N1 > 0
             ):
                 Ash_sh_x1 = Vx1 / (zx * fsy)
             elif Vx1 > Vcd_x:
@@ -426,8 +388,7 @@ class Column(ColumnBase):
                 Ash_sh_x1 = 0
             # Start section -Y direction
             if (
-                Asly * self.fsyd * zy < Vcd_y * dy or
-                (force.N1 > 0 and abs(et_y1) < 0.5)
+                Asly * self.fsyd * zy < Vy1 * dy and force.N1 > 0
             ):
                 Ash_sh_y1 = Vy1 / (zy * fsy)
             elif Vy1 > Vcd_y:
@@ -436,8 +397,7 @@ class Column(ColumnBase):
                 Ash_sh_y1 = 0
             # End section -X direction
             if (
-                Aslx * self.fsyd * zx < Vcd_x * dx or
-                (force.N9 > 0 and abs(et_x9) < 0.5)
+                Aslx * self.fsyd * zx < Vx9 * dx and force.N9 > 0
             ):
                 Ash_sh_x9 = Vx9 / (zx * fsy)
             elif Vx9 > Vcd_x:
@@ -446,8 +406,7 @@ class Column(ColumnBase):
                 Ash_sh_x9 = 0
             # End section -Y direction
             if (
-                Asly * self.fsyd * zy < Vcd_y * dy or
-                (force.N9 > 0 and abs(et_y9) < 0.5)
+                Asly * self.fsyd * zy < Vy9 * dy and force.N9 > 0
             ):
                 Ash_sh_y9 = Vy9 / (zy * fsy)
             elif Vy9 > Vcd_y:

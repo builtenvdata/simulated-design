@@ -155,11 +155,6 @@ class Beam(BeamBase):
         # Allowable shear stress that can be carried by the beam
         tau_max = np.interp(self.concrete.fck_cube,
                             FCK_CUBE_VECT, TAU_MAX_VECT)
-        # Concrete design strength
-        if self.ag > 0.05:
-            fcd = self.fcd_eq  # seismic loading is significant
-        else:
-            fcd = self.fcd  # seismic loading is not significant
         # Economic mu values (dimensionless)
         if self.typology == 1:
             mu_economic = ECONOMIC_MU_WB
@@ -183,7 +178,7 @@ class Beam(BeamBase):
             )
         # Verify the adequacy of the section dimensions
         tau = max_shear / (self.b * z)  # for max. shear force
-        mu = max_moment / (fcd * self.b * d**2)  # for max. bending moment
+        mu = max_moment / (self.fcd * self.b * d**2)  # for max. bending moment
         if mu < mu_economic and tau < tau_max:
             self.ok = True  # Ok
         else:
@@ -210,12 +205,8 @@ class Beam(BeamBase):
         https://mathalino.com/reviewer/reinforced-concrete-design/design-steel-reinforcement-concrete-beams-wsd-method
         """
         # Design strength of materials
-        if self.ag > 0.05:
-            fcd = self.fcd_eq
-            fsyd = self.fsyd_eq
-        else:
-            fcd = self.fcd
-            fsyd = self.fsyd_eq
+        fcd = self.fcd
+        fsyd = self.fsyd
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h
@@ -292,10 +283,7 @@ class Beam(BeamBase):
         start, mid, end.
         """
         # Design strength of materials
-        if self.ag > 0.05:
-            fsyd = self.fsyd_eq
-        else:
-            fsyd = self.fsyd_eq
+        fsyd = self.fsyd
         # Allowable shear stress that can be carried by the beam
         tau_c = np.interp(self.concrete.fck_cube,
                           FCK_CUBE_VECT, TAU_C_VECT)

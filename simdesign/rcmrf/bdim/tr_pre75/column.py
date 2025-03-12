@@ -267,18 +267,14 @@ class Column(ColumnBase):
         max_mu_y = 0.0
         max_tau_x = 0.0
         max_tau_y = 0.0
-        # fc to use for calculations
-        fc_map = {'gravity': self.fcd,
-                  'seismic': self.fcd_eq}
         for force in self.design_forces:
             # Other force related quantities (normalized)
-            fc = fc_map.get(force.case)
-            niu_1 = abs(force.N1 / (self.Ag * fc))
-            niu_9 = abs(force.N9 / (self.Ag * fc))
-            mu_x1 = abs(force.Mx1 / ((self.bx * self.by**2) * fc))
-            mu_y1 = abs(force.My1 / ((self.by * self.bx**2) * fc))
-            mu_x9 = abs(force.Mx9 / ((self.bx * self.by**2) * fc))
-            mu_y9 = abs(force.My9 / ((self.by * self.bx**2) * fc))
+            niu_1 = abs(force.N1 / (self.Ag * self.fcd))
+            niu_9 = abs(force.N9 / (self.Ag * self.fcd))
+            mu_x1 = abs(force.Mx1 / ((self.bx * self.by**2) * self.fcd))
+            mu_y1 = abs(force.My1 / ((self.by * self.bx**2) * self.fcd))
+            mu_x9 = abs(force.Mx9 / ((self.bx * self.by**2) * self.fcd))
+            mu_y9 = abs(force.My9 / ((self.by * self.bx**2) * self.fcd))
             tau_x1 = abs(force.Vx1 / (self.by * zx))
             tau_y1 = abs(force.Vy1 / (self.bx * zy))
             tau_x9 = abs(force.Vx9 / (self.by * zx))
@@ -312,28 +308,23 @@ class Column(ColumnBase):
     def compute_required_longitudinal_reinforcement(self) -> None:
         """Computes the required longitudinal reinforcement for design forces.
         """
-        # fc and fsy to use for calculations
-        fc_map = {'gravity': self.fcd,
-                  'seismic': self.fcd_eq}
-        fsy_map = {'gravity': self.fsyd,
-                   'seismic': self.fsyd_eq}
+        # Design strength of materials
+        fcd = self.fcd
+        fsyd = self.fsyd
         # Initial longitudinal reinforcement area
         Aslx_req = 0.0
         Asly_req = 0.0
         for force in self.design_forces:
-            # Design strength values considered for this combo
-            fc = fc_map.get(force.case)
-            fsy = fsy_map.get(force.case)
             # Dimensionless design force quantities
-            niu_1 = (-1*force.N1) / (self.Ag * fc)
-            niu_9 = (-1*force.N9) / (self.Ag * fc)
-            mu_x1 = abs(force.Mx1) / ((self.bx * self.by**2) * fc)
-            mu_y1 = abs(force.My1) / ((self.by * self.bx**2) * fc)
-            mu_x9 = abs(force.Mx9) / ((self.bx * self.by**2) * fc)
-            mu_y9 = abs(force.My9) / ((self.by * self.bx**2) * fc)
+            niu_1 = (-1*force.N1) / (self.Ag * fcd)
+            niu_9 = (-1*force.N9) / (self.Ag * fcd)
+            mu_x1 = abs(force.Mx1) / ((self.bx * self.by**2) * fcd)
+            mu_y1 = abs(force.My1) / ((self.by * self.bx**2) * fcd)
+            mu_x9 = abs(force.Mx9) / ((self.bx * self.by**2) * fcd)
+            mu_y9 = abs(force.My9) / ((self.by * self.bx**2) * fcd)
             # Determine the required longitudinal reinforcement ratio
-            rhol_x1, rhol_y1 = get_rhol(niu_1, mu_x1, mu_y1, fc, fsy)
-            rhol_x9, rhol_y9 = get_rhol(niu_9, mu_x9, mu_y9, fc, fsy)
+            rhol_x1, rhol_y1 = get_rhol(niu_1, mu_x1, mu_y1, fcd, fsyd)
+            rhol_x9, rhol_y9 = get_rhol(niu_9, mu_x9, mu_y9, fcd, fsyd)
             rhol_x = max(rhol_x1, rhol_x9)
             rhol_y = max(rhol_y1, rhol_y9)
             Aslx = 0.5*rhol_x*self.Ag
@@ -348,17 +339,15 @@ class Column(ColumnBase):
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces.
         """
-        # fsy to use for calculations
-        fsy_map = {'gravity': self.fsyd,
-                   'seismic': self.fsyd_eq}
+        # Design yield strength
+        fsyd = self.fsyd
         # Allowable shear stress that can be carried by the beam
         tau_c = np.interp(self.concrete.fck_cube, FCK_CUBE_VECT, TAU_C_VECT)
         # Initial transverse reinforcement area to spacing ratio
         Ashx_sh_req = 0.0  # along X
         Ashy_sh_req = 0.0  # along Y
         for force in self.design_forces:
-            # Design strength values considered for this combo
-            fsy = fsy_map.get(force.case)
+            # Available longitudinal reinforcement
             Abl_cor = (np.pi * self.dbl_int**2) / 4
             Abl_int = (np.pi * self.dbl_int**2) / 4
             Aslx = self.nblx_int * Abl_int + 2 * Abl_cor
@@ -381,36 +370,36 @@ class Column(ColumnBase):
             if (  # REBAP-1967 Article 35
                 Aslx * self.fsyd * zx < Vx1 * dx and force.N1 > 0
             ):
-                Ash_sh_x1 = Vx1 / (zx * fsy)
+                Ash_sh_x1 = Vx1 / (zx * fsyd)
             elif Vx1 > Vcd_x:
-                Ash_sh_x1 = (Vx1 - Vcd_x) / (zx * fsy)
+                Ash_sh_x1 = (Vx1 - Vcd_x) / (zx * fsyd)
             else:
                 Ash_sh_x1 = 0
             # Start section -Y direction
             if (
                 Asly * self.fsyd * zy < Vy1 * dy and force.N1 > 0
             ):
-                Ash_sh_y1 = Vy1 / (zy * fsy)
+                Ash_sh_y1 = Vy1 / (zy * fsyd)
             elif Vy1 > Vcd_y:
-                Ash_sh_y1 = (Vy1 - Vcd_y) / (zy * fsy)
+                Ash_sh_y1 = (Vy1 - Vcd_y) / (zy * fsyd)
             else:
                 Ash_sh_y1 = 0
             # End section -X direction
             if (
                 Aslx * self.fsyd * zx < Vx9 * dx and force.N9 > 0
             ):
-                Ash_sh_x9 = Vx9 / (zx * fsy)
+                Ash_sh_x9 = Vx9 / (zx * fsyd)
             elif Vx9 > Vcd_x:
-                Ash_sh_x9 = (Vx9 - Vcd_x) / (zx * fsy)
+                Ash_sh_x9 = (Vx9 - Vcd_x) / (zx * fsyd)
             else:
                 Ash_sh_x9 = 0
             # End section -Y direction
             if (
                 Asly * self.fsyd * zy < Vy9 * dy and force.N9 > 0
             ):
-                Ash_sh_y9 = Vy9 / (zy * fsy)
+                Ash_sh_y9 = Vy9 / (zy * fsyd)
             elif Vy9 > Vcd_y:
-                Ash_sh_y9 = (Vy9 - Vcd_y) / (zy * fsy)
+                Ash_sh_y9 = (Vy9 - Vcd_y) / (zy * fsyd)
             else:
                 Ash_sh_y9 = 0
             # Update the required transverse reinforcement based on maximum

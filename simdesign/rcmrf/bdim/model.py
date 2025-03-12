@@ -3,6 +3,12 @@ from .eu_cdn.building import Building as EUCDN
 from .eu_cdl.building import Building as EuCDL
 from .eu_cdm.building import Building as EuCDM
 from .eu_cdh.building import Building as EuCDH
+from .tr_pre75.building import Building as TrPre75
+from .tr_7599.building import Building as Tr7599
+from .tr_0018_dch.building import Building as Tr0018DCH
+from .tr_0018_dcm.building import Building as Tr0018DCM
+from .tr_post18_dch.building import Building as TrPost18DCH
+from .tr_post18_dcm.building import Building as TrPost18DCM
 
 
 class BDIM:
@@ -15,7 +21,13 @@ class BDIM:
         "eu_cdn": EUCDN,
         "eu_cdl": EuCDL,
         "eu_cdm": EuCDM,
-        "eu_cdh": EuCDH
+        "eu_cdh": EuCDH,
+        "tr_pre75": TrPre75,
+        "tr_7599": Tr7599,
+        "tr_0018_dch": Tr0018DCH,
+        "tr_0018_dcm": Tr0018DCM,
+        "tr_post18_dch": TrPost18DCH,
+        "tr_post18_dcm": TrPost18DCM,
     }
     """Design class mapper."""
 

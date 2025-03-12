@@ -95,6 +95,9 @@ class LoadsDataBase(BaseModel, ABC):
         Object representing permanent (dead) loads.
     combinations : List[CombinationBase]
         List of load combination objects.
+    eccentricity : float
+        Accidental eccentricity [in %] needs to be considered in the
+        earthquake loading direction, by default 0.
     """
     variable: VariableBase
     """Object representing variable (live) loads."""
@@ -102,6 +105,9 @@ class LoadsDataBase(BaseModel, ABC):
     """Object representing permanent (dead) loads."""
     combinations: List[CombinationBase]
     """List of load combination objects."""
+    eccentricity: float = 0.0
+    """Accidental eccentricity [in %] needs to be considered in the
+    earthquake loading direction."""
 
 
 class LoadsBase(ABC):
@@ -115,6 +121,9 @@ class LoadsBase(ABC):
         Object representing permanent (dead) loads.
     combinations : List[CombinationBase]
         List of load combinations.
+    eccentricity : float
+        Accidental eccentricity [in %] needs to be considered in the
+        earthquake loading direction.
     _data_path : Path
         Path to the file containing loads data.
     _data_model : LoadsDataBase
@@ -126,6 +135,9 @@ class LoadsBase(ABC):
     """Object representing permanent (dead) loads."""
     combinations: List[CombinationBase]
     """List of load combination objects."""
+    eccentricity: float
+    """Accidental eccentricity [in %] needs to be considered in the
+    earthquake loading direction."""
     _data_path: Path | str
     """Path to the file containing loads data."""
     _data_model: Type[LoadsDataBase]
@@ -142,6 +154,7 @@ class LoadsBase(ABC):
         self.permanent = loads_data.permanent
         self.variable = loads_data.variable
         self.combinations = loads_data.combinations
+        self.eccentricity = loads_data.eccentricity
         # Check for mass sources
         self._set_mass_sources()
 

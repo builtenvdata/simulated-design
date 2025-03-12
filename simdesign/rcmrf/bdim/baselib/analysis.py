@@ -3,6 +3,7 @@ from abc import ABC
 from typing import List, Literal, Tuple
 import openseespy.opensees as ops
 import numpy as np
+from itertools import product
 
 # Imports from bdim base library
 from .beam import BeamBase, BeamForces
@@ -262,19 +263,81 @@ class ElasticModelBase(ABC):
         for node in self.geometry.ground_level_points:
             ops.fix(node.tag, 1, 1, 1, 1, 1, 1)
 
-    def _add_ops_mp_constraints(self) -> None:
+    def _add_ops_mp_constraints(self, masses: np.ndarray = None) -> None:
         """Define multi-point (MP) constraints.
 
-        TODO
+        Notes
         -----
-        Maybe change the retained nodes to floor centre of mass.
-        This will require definition of mass factors! Meaning that
-        it will depend on the load combination. Maybe discuss!
+        - Floor centre of mass may differ depending on the masses
+        considered in seismic loading. If nodal masses are not specified,
+        the centre of mass is computed based on 1.0G + 1.0Q
+        - To define rigid diapragms, also retained nodes and corresponding
+        single-point constraints are added.
+
+        Returns
+        -------
+        List[int]
+            List of floor retained node tags
+        np.ndarray
+            List of total floor weights
+        np.ndarray
+            List of floor heights
+        np.ndarray
+            Diaphragm length along -X
+        np.ndarray
+            Diaphragm length along -Y
         """
         perp_dirn = 3
-        for nodes in self.geometry.floor_level_points:
-            tags = [node.tag for node in nodes]
-            ops.rigidDiaphragm(perp_dirn, *tags)
+        if masses is None:  # Set the masses for finding the center of mass
+            masses_g, masses_q = np.array(self._get_nodal_masses())
+            masses = masses_g + masses_q
+
+        rnodes = []
+        floor_weights = []
+        floor_heights = []
+        floor_lx = []
+        floor_ly = []
+        for i, nodes in enumerate(self.geometry.floor_level_points):
+            sum_mass = 0  # summation of the masses
+            sum_mass_moment = 0  # summation of the mass moments
+            cnodes = []
+            all_coords = []
+            for node in nodes:
+                cnodes.append(node.tag)
+                idx = self.geometry.point_tags.index(node.tag)
+                mass = np.array([masses[idx]] * 3)
+                coords = np.array(node.coordinates)
+                all_coords.append(coords)
+                sum_mass += mass
+                sum_mass_moment += mass*coords
+            # Find centre of (CM)
+            cm = np.round(sum_mass_moment / sum_mass, 2)
+            # Floor retained node tag
+            rnode = int(90000 + 1000*i)
+            # Rigid diaphragm node tags
+            floor_nodes = [rnode] + cnodes
+            # Recreate the retained nodes with new CM
+            if rnode in ops.getNodeTags():
+                ops.remove('node', rnode)
+                ops.node(rnode, *cm.tolist())
+            else:
+                # Create floor retained node
+                ops.node(rnode, *cm.tolist())
+                # Add single-point restraints for the retained node
+                ops.fix(rnode, 0, 0, 1, 1, 1, 0)
+                # Create the rigid diaphragm
+                ops.rigidDiaphragm(perp_dirn, *floor_nodes)
+            # Rigid diaphragm dimensions
+            rnodes.append(rnode)
+            all_coords = np.array(all_coords)
+            lx, ly, _ = all_coords.max(axis=0) - all_coords.min(axis=0)
+            floor_lx.append(lx)
+            floor_ly.append(ly)
+            floor_weights.append(sum_mass[0]*grav_acc)
+            floor_heights.append(cm[2])
+
+        return (rnodes, np.array(floor_weights), np.array(floor_heights),
+                np.array(floor_lx), np.array(floor_ly))
 
     def _add_ops_gravity_loads(self, load_case: Literal['G', 'Q'],
                                alpha: bool = False) -> None:
@@ -325,9 +388,28 @@ class ElasticModelBase(ABC):
 
     def _add_ops_seismic_loads(
         self, nodal_forces: List[float],
-        load_case: Literal["E+X", "E-X", "E+Y", "E-Y"]
+        load_case: Literal["E+X", "E-X", "E+Y", "E-Y"],
+        rnodes: List[int],
+        ecc_mom: List[float]
     ) -> None:
-        """Adds seismic loads to opensees model for given load situation."""
+        """Adds seismic loads to the OpenSees model for a given load case.
+
+        Parameters
+        ----------
+        nodal_forces : List[float]
+            List of equivalent seismic lateral forces to be applied at each
+            retained floor node. The order should correspond to
+            `self.geometry.point_tags`.
+        load_case : Literal["E+X", "E-X", "E+Y", "E-Y"]
+            Seismic load case indicating excitation direction.
+        rnodes : List[int]
+            List of node tags for retained floor nodes where torsional
+            moments resulting from accidental eccentricity are applied.
+        ecc_mom : List[float]
+            List of torsional moments applied at ach retained floor node
+            due to accidental eccentricity from the center of mass.
+            Must be in the same order as `rnodes`.
+        """
         # Reset the model to initial state for gravity loading
         p_tag = 2
         ts_tag = 2
@@ -337,8 +419,8 @@ class ElasticModelBase(ABC):
         # Plain load pattern added to the domain
         ops.pattern('Plain', ts_tag, p_tag)
         # Loop through all nodes and add horizontal loads
-        for i, node in enumerate(self.geometry.point_tags):
-            force = nodal_forces[i]
+        for i, force in enumerate(nodal_forces):
+            node = self.geometry.point_tags[i]
             if load_case == 'E+X':  # in plus x direction
                 ops.load(node, force, 0.0, 0.0, 0.0, 0.0, 0.0)
             elif load_case == 'E-X':  # in negative x direction
@@ -347,6 +429,9 @@ class ElasticModelBase(ABC):
                 ops.load(node, 0.0, force, 0.0, 0.0, 0.0, 0.0)
             elif load_case == 'E-Y':  # in negative y direction
                 ops.load(node, 0.0, -force, 0.0, 0.0, 0.0, 0.0)
+        # Loop through retained floor nodes to add torsion due to ecc.
+        for i, node in enumerate(rnodes):
+            ops.load(node, 0.0, 0.0, 0.0, 0.0, 0.0, ecc_mom[i])
 
     def _build_ops_model_gravity(self) -> None:
         """Builds the model for load cases of gravity load combos.
@@ -424,6 +509,12 @@ class ElasticModelBase(ABC):
     def _run_seismic_load_cases(self) -> None:
         """Saves the results from seismic load cases.
         """
+        # Accidental eccentricity
+        if self.loads.eccentricity != 0:
+            ecc = self.loads.eccentricity
+            ecc_factors = [ecc / 100, -ecc / 100]
+        else:
+            ecc_factors = []
         mass_factors = self._get_mass_factors()
         masses_g, masses_q = np.array(self._get_nodal_masses())
         heights = np.array(self._get_nodal_heights())
@@ -433,12 +524,33 @@ class ElasticModelBase(ABC):
             for gfact, qfact in mass_factors:
                 masses = gfact * masses_g + qfact * masses_q
                 weights = grav_acc * masses
+                # Redefine the rigid diaphragms with load-specific location
+                rnodes, floor_weights, floor_heights, lx, ly = \
+                    self._add_ops_mp_constraints(masses)
                 _, nodal_forces = self.loads.get_seismic_loads(
                     beta=self.beta, weights=weights, heights=heights)
-                self._add_ops_seismic_loads(nodal_forces.tolist(), load_case)
+                self._add_ops_seismic_loads(
+                    nodal_forces.tolist(), load_case, [], 0.0)
                 self._do_linear_static_analysis()
                 load_tag = f"{load_case}/{gfact}G/{qfact}Q"
                 self._get_element_forces(load_case=load_tag)
+
+                # Find forces resulting from accidental eccentricty
+                _, floor_forces = self.loads.get_seismic_loads(
+                    beta=self.beta, weights=floor_weights,
+                    heights=floor_heights)
+                # Loop through each eccentricity case
+                for ecc_fact in ecc_factors:
+                    if 'X' in load_case:
+                        ecc = ly * ecc_fact
+                    elif 'Y' in load_case:
+                        ecc = lx * ecc_fact
+                    ecc_mom = floor_forces * ecc
+                    self._add_ops_seismic_loads(
+                        [], load_case, rnodes, ecc_mom)
+                    self._do_linear_static_analysis()
+                    load_tag = f"{load_case}/{gfact}G/{qfact}Q/{ecc_fact}ecc"
+                    self._get_element_forces(load_case=load_tag)
 
     def _get_element_forces(self, load_case: str) -> None:
         """Gets the element forces and saves with specified tag.
@@ -503,7 +615,9 @@ class ElasticModelBase(ABC):
         self._run_gravity_load_cases()
         if any(seismic_combos):
             self._run_seismic_load_cases()
-
+        # Accidental eccentricity
+        ecc = self.loads.eccentricity
+        ecc_factors = [ecc / 100, 0.0, -ecc / 100] if ecc != 0 else [0.0]
         # Start combining forces for BEAMS
         for beam in self.beams:
             # Restart combo forces
@@ -531,15 +645,39 @@ class ElasticModelBase(ABC):
                         forces += qfactor * beam.forces["Q/gravity/alpha"]
                     if combo_type == 'seismic':
                         forces += qfactor * beam.forces["Q/seismic/alpha"]
+                if combo_type == 'gravity':
+                    # Set the loading case (type)
+                    forces.case = combo_type
+                    # Append the combined forces
+                    beam.design_forces.append(forces)
                 # Add the forces from seismic loading
-                if combo_type == 'seismic':
+                elif combo_type == 'seismic':
+                    # Add the forces from seismic loading
+                    ecc_forces = []  # forces due to eccentric loading
+                    gfactor = combo.masses['G']  # permanent loads factor
+                    qfactor = combo.masses['Q']  # variable loads factor
                     for load_case in seismic_load_cases:
                         if load_case in combo.loads:
-                            gfactor = combo.masses['G']
-                            qfactor = combo.masses['Q']
                             tag = f"{load_case}/{gfactor}G/{qfactor}Q"
-                            factor = combo.loads[load_case]
-                            forces += factor * beam.forces[tag]
+                            fact = combo.loads[load_case]
+                            forces += fact * beam.forces[tag]
+                            tmp = []
+                            for ecc in ecc_factors:
+                                if ecc == 0:
+                                    tmp.append(BeamForces(0, 0, 0, 0, 0, 0))
+                                else:
+                                    tag_e = tag + f"/{ecc}ecc"
+                                    tmp.append(fact * beam.forces[tag_e])
+                            ecc_forces.append(tmp)
+                    # Possible combinations with eccentric loadings
+                    ecc_combos = list(product(*ecc_forces))
+                    for ecc_combo in ecc_combos:
+                        # Add the forces due to ecc. loading
+                        forces_ = sum(ecc_combo, forces)
+                        # Set the loading case (type)
+                        forces_.case = combo_type
+                        # Append the combined forces
+                        beam.design_forces.append(forces_)
                 # Set the loading case (type)
                 forces.case = combo_type
                 # Append the combined forces
@@ -572,16 +710,37 @@ class ElasticModelBase(ABC):
                         forces += qfactor * column.forces["Q/gravity"]
                     if combo_type == 'seismic':
                         forces += qfactor * column.forces["Q/seismic"]
+                if combo_type == 'gravity':
+                    # Set the loading case (type)
+                    forces.case = combo_type
+                    # Append the combined forces
+                    column.design_forces.append(forces)
                 # Add the forces from seismic loading
-                if combo_type == 'seismic':
+                elif combo_type == 'seismic':
+                    # Add the forces from seismic loading
+                    ecc_forces = []  # forces due to eccentric loading
+                    gfactor = combo.masses['G']  # permanent loads factor
+                    qfactor = combo.masses['Q']  # variable loads factor
                     for load_case in seismic_load_cases:
                         if load_case in combo.loads:
-                            gfactor = combo.masses['G']
-                            qfactor = combo.masses['Q']
                             tag = f"{load_case}/{gfactor}G/{qfactor}Q"
-                            factor = combo.loads[load_case]
-                            forces += factor * column.forces[tag]
-                # Set the loading case (type)
-                forces.case = combo_type
-                # Append the combined forces
-                column.design_forces.append(forces)
+                            fact = combo.loads[load_case]
+                            forces += fact * column.forces[tag]
+                            tmp = []  # ecc. forces per load_case
+                            for ecc in ecc_factors:
+                                if ecc == 0:
+                                    tmp.append(ColumnForces(0, 0, 0, 0, 0,
+                                                            0, 0, 0, 0, 0))
+                                else:
+                                    tag_e = tag + f"/{ecc}ecc"
+                                    tmp.append(fact * column.forces[tag_e])
+                            ecc_forces.append(tmp)
+                    # Possible combinations with eccentric loadings
+                    ecc_combos = list(product(*ecc_forces))
+                    for ecc_combo in ecc_combos:
+                        # Add the forces due to ecc. loading
+                        forces_ = sum(ecc_combo, forces)
+                        # Set the loading case (type)
+                        forces_.case = combo_type
+                        # Append the combined forces
+                        column.design_forces.append(forces_)

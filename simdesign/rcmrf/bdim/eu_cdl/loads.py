@@ -83,6 +83,9 @@ class LoadsData(LoadsDataBase):
         Object representing permanent (dead) loads.
     combinations : List[Combination]
         List of load combination objects.
+    eccentricity : float
+        Accidental eccentricity [in %] needs to be considered in the
+        earthquake loading direction, by default 0.
     """
     variable: Variable
     """Object representing variable (live) loads."""
@@ -104,6 +107,9 @@ class Loads(LoadsBase):
         Object representing permanent (dead) loads.
     combinations : List[CombinationBase]
         List of load combinations.
+    eccentricity : float
+        Accidental eccentricity [in %] needs to be considered in the
+        earthquake loading direction.
     _data_path : Path
         Path to the file containing loads data.
     _data_model : LoadsData

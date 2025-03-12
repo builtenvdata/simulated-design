@@ -359,6 +359,7 @@ class Column(ColumnBase):
         for force in self.design_forces:
             # Design strength values considered for this combo
             fsy = fsy_map.get(force.case)
+            # Available longitudinal reinforcement
             Abl_cor = (np.pi * self.dbl_int**2) / 4
             Abl_int = (np.pi * self.dbl_int**2) / 4
             Aslx = self.nblx_int * Abl_int + 2 * Abl_cor

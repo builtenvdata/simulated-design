@@ -83,6 +83,12 @@ bcim, bdim, bnsm = rcmrf.generate(inputs=inputs, outdir="Outputs")
 
 For more examples please see the scripts folder.
 
+Moreover, it is possible to visualize and design buildings with specific geometries:
+
+- [Example of standard frame geometry](https://htmlpreview.github.io/?https://raw.githubusercontent.com//builtenvdata/simulated-design/blob/main/tmp/simple-uniform-geometry.html)
+
+- [Example of custom frame geometry](https://htmlpreview.github.io/?https://raw.githubusercontent.com//builtenvdata/simulated-design/blob/main/tmp/irregular-geometry.html)
+
 ## Contributing
 
 Contributions are welcome! If you’d like to contribute, follow these steps:

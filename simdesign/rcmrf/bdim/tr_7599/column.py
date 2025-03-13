@@ -41,8 +41,8 @@ class DesignTableTR:
 
     References
     ----------
-        Aydin, M. R., Akgün, Ö. R., Topçu, A. Betonarme Kolon Tablolari,
-        Eskisehir, 1991.
+    Aydin, M. R., Akgün, Ö. R., Topçu, A. Betonarme Kolon Tablolari,
+    Eskisehir, 1991.
     """
 
     data: Dict[str, Dict[str, npt.NDArray[np.float64]]]
@@ -89,9 +89,9 @@ class DesignTableTR:
             b - 2 * cover_b, h - 2 * cover_h
         )
 
-        # Finds the index of the closest spacing to 0.10 m (assumption).
+        # Finds the index of the closest spacing to 100 mm (assumption).
         possible_spacings = shortside / np.arange(1, 10)  # Possible spacings
-        closest_idx = np.argmin(np.abs(possible_spacings - 0.10))
+        closest_idx = np.argmin(np.abs(possible_spacings - 100))
 
         if shortside == b - 2 * cover_b:
             num_bars_int_b = closest_idx

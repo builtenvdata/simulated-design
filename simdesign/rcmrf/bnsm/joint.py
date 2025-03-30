@@ -399,8 +399,8 @@ class FloorJoint(StairsJoint):
             # )
             # self.axial_load = -forces.N9
             self.axial_force = (
-                load_factors['G'] * self.design.bottom_column.pre_Nq +
-                load_factors['Q'] * self.design.bottom_column.pre_Ng
+                load_factors['G'] * self.design.bottom_column.hinge_Ng +
+                load_factors['Q'] * self.design.bottom_column.hinge_Nq
                 )
         else:
             raise ValueError(
@@ -834,7 +834,7 @@ class FloorJoint(StairsJoint):
         ----
         Due to the lack of data, equation described for roof was not validated.
         However, we rarely except nonlinearity for joints at the last floor.
-        So, this has the least significance. Let's keep using it for now?
+        So, this has the least significance.
         """
         # Shear deformations for each limit state: cracking, peak, ultimate
         gamma_int = 2 * [0.0002, 0.0090, 0.0200]

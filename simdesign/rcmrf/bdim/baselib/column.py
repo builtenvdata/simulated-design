@@ -268,10 +268,14 @@ class ColumnBase(ABC):
     """Line representation of column (tag and points)."""
     gamma_rc: float
     """Reinforced concrete unit weight."""
+    pre_Nq_pos: float
+    """Expected axial force due to variable loads (factored for position)."""
+    pre_Ng_pos: float
+    """Expected axial force due to permanent loads (factored for position)."""
     pre_Nq: float
-    """Expected axial force due to variable loads."""
+    """Expected axial force due to variable loads (unfactored)."""
     pre_Ng: float
-    """Expected axial force due to permanent loads."""
+    """Expected axial force due to permanent loads (unfactored)."""
     pre_Nd: float
     """Expected preliminary design axial force."""
     orient: Literal['x', 'y', None]
@@ -355,9 +359,13 @@ class ColumnBase(ABC):
     """In-situ concrete cover (quality adjusted)."""
     position_factor: float
     """Position factor considered to account for the column axial force
-    increase during seismic loading. This will be used to increase the
-    axial forces of columns which will be used for the computation of
-    plastic hinge parameters in nonlinear opensees models."""
+    increase during seismic loading."""
+    hinge_Nq: float
+    """Expected axial force due to variable loads in nonlinear model
+    (Used in hinge calculations)."""
+    hinge_Ng: float
+    """Expected axial force due to permanent loads in nonlinear model
+    (Used in hinge calculations)."""
 
     def __init__(
         self, line: Line, section: Literal[1, 2], gamma_rc: float

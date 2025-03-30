@@ -147,8 +147,8 @@ class Column:
         #     self.design.forces['Q/seismic']
         # )
         # self.axial_force = (forces.N1 + forces.N9) / 2
-        self.axial_force = -(load_factors['G'] * design.pre_Nq +
-                             load_factors['Q'] * design.pre_Ng)
+        self.axial_force = -(load_factors['G'] * design.hinge_Ng +
+                             load_factors['Q'] * design.hinge_Nq)
         self.ele_load = float(design.self_wg * load_factors['G'])
 
     def set_ele_node_i(self) -> None:

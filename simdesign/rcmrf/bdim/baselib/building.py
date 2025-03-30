@@ -146,6 +146,14 @@ class BuildingBase(ABC):
 
     If None, column capacity design shear forces are not considered during
     the design."""
+    COLUMN_POSITION_FACTORS: Dict[
+        Literal['bot', 'top'],
+        Dict[Literal['central', 'exterior'], float]
+        ] = {'bot': {'central': 1.1, 'exterior': 1.3},
+             'top': {'central': 1.3, 'exterior': 1.5}}
+    """Position factor considered to account for the column axial force
+    increase due to seismic loading. These are used to compute preliminary
+    axial forces on columns."""
 
     @property
     def stairs_midstorey_beams(self) -> List[BeamBase]:
@@ -277,6 +285,11 @@ class BuildingBase(ABC):
             pre-stressed beams.
         """
         return self.taxonomy.slab_type
+
+    @slab_type.setter
+    def slab_type(self, new_type: Literal[1, 2, 3]) -> None:
+        """Setter for `staircase_slab_depth`."""
+        self.taxonomy.slab_type = new_type
 
     @property
     def staircase_slab_depth(self) -> float:
@@ -1073,11 +1086,11 @@ class BuildingBase(ABC):
         each slab are also set.
         """
         exterior_beam_lines = self.geometry.exterior_horizontal_lines
-
+        # Add loads to floor beams
         for slab in self.slabs:
             beams = [self._find_beam_by_line(line)
                      for line in slab.rectangle.lines]
-
+            # Loop through each slab beam
             for i, beam in enumerate(beams):
                 tributary_area = slab.beam_tributary_areas[i]
                 alpha = slab.beam_alpha_coeffs[i]
@@ -1094,28 +1107,22 @@ class BuildingBase(ABC):
                 if slab.roof:
                     beam.infill_wg = 0.0
 
-        # TODO: Ask about this part to hossam
+        # Add loads to the beams supporting staircase
         mid_beams = self.stairs_midstorey_beams
         for i, slab in enumerate(self.stairs):
             # Beams with staircase loads
             mid_beam = mid_beams[i]
             rect_beams = [self._find_beam_by_line(line)
                           for line in slab.rectangle.lines]
-
+            # Set the loads for mid-level beam
             mid_beam.stairs_wg = slab.beam_influence_areas * \
                 slab.pg / mid_beam.L
             mid_beam.stairs_wq = slab.beam_influence_areas * \
                 slab.pq / mid_beam.L
-            # TODO
-            # Factor 0.5 changes from building to building, why?
-            # (in general it is 0.5)
             mid_beam.infill_wg = 0.5 * self.loads.permanent.infill
 
             for j, beam in enumerate(rect_beams):
                 if j == 1:  # The beam which supports staircase
-                    # TODO
-                    # In case of buildings from B07-B10 this is valid for j=3
-                    # as well. Why?
                     beam.stairs_wg = slab.beam_influence_areas * \
                         slab.pg / beam.L
                     beam.stairs_wq = slab.beam_influence_areas * \
@@ -1165,16 +1172,9 @@ class BuildingBase(ABC):
         used only for the preliminary design of columns.
         """
         # Get the gravity load combinations
-        combos = self.loads.get_gravity_load_combos()
-        # Set the position factors
-        position_factors = {
-            'bot':
-                {'central': 1.1,
-                 'exterior': 1.3},
-            'top':
-                {'central': 1.3,
-                 'exterior': 1.5}
-                            }
+        grav_combos = self.loads.get_gravity_load_combos()
+        # Get the gravity load combinations
+        seism_combos = self.loads.get_seismic_load_combos()
         # Get properties of all vertical lines in the geometry
         vertical_lines = self.geometry.lines_z
         facade_ids = self.geometry.lines_z_facades
@@ -1194,21 +1194,28 @@ class BuildingBase(ABC):
                 loc = 'central'
             else:
                 loc = 'exterior'
-            position_factor = position_factors[lvl][loc]
-            column.position_factor = position_factors[lvl][loc]
+            factor = self.COLUMN_POSITION_FACTORS[lvl][loc]
+            column.position_factor = self.COLUMN_POSITION_FACTORS[lvl][loc]
             # Find the lines of beams transfering gravity loads
             lines = self.geometry.find_lines_by_point(p2)
             # Compute the gravity loads from beams
+            Ng_factored = 0.0
+            Nq_factored = 0.0
             Ng = 0.0
             Nq = 0.0
             for line in lines:
                 # Skip the columns
                 if line not in vertical_lines:
                     beam = self._find_beam_by_line(line)
-                    Ng += position_factor * (beam.wg_total * beam.L) / 2
-                    Nq += position_factor * (beam.wq_total * beam.L) / 2
+                    Ng += (beam.wg_total * beam.L) / 2
+                    Nq += (beam.wq_total * beam.L) / 2
+                    Ng_factored += factor * (beam.wg_total * beam.L) / 2
+                    Nq_factored += factor * (beam.wq_total * beam.L) / 2
             # Add the self weight of column
+            Ng_factored += column.self_wg * column.H
             Ng += column.self_wg * column.H
+            column.pre_Nq_pos = Nq_factored
+            column.pre_Ng_pos = Ng_factored
             column.pre_Nq = Nq
             column.pre_Ng = Ng
 
@@ -1219,17 +1226,29 @@ class BuildingBase(ABC):
                 for i, column in enumerate(columns):
                     if i != 0:
                         column_i_1 = columns[i-1]
+                        column.pre_Nq_pos += column_i_1.pre_Nq_pos
+                        column.pre_Ng_pos += column_i_1.pre_Ng_pos
                         column.pre_Nq += column_i_1.pre_Nq
                         column.pre_Ng += column_i_1.pre_Ng
-
-        # Compute maximum resulting axial forces from gravity load combinations
+        # Compute maximum resulting axial forces
         for column in self.columns:
             Nd = 0.0
-            for combo in combos:
+            # From gravity load combinations
+            for combo in grav_combos:
                 g_fact = combo.loads["G"]
                 q_fact = combo.loads["Q"]
-                tmp = g_fact * column.pre_Ng + q_fact * column.pre_Nq
+                tmp = (g_fact * column.pre_Ng +
+                       q_fact * column.pre_Nq)
                 Nd = max(tmp, Nd)
+            # From seismic load combinations
+            # NOTE: This could be also linked to the beta coefficient
+            if self.beta > 0.01:
+                for combo in seism_combos:
+                    g_fact = combo.masses["G"]
+                    q_fact = combo.masses["Q"]
+                    tmp = (g_fact * column.pre_Ng_pos +
+                           q_fact * column.pre_Nq_pos)
+                    Nd = max(tmp, Nd)
             column.pre_Nd = Nd
 
     def _uniformize_stairs_columns(self) -> None:
@@ -1389,6 +1408,18 @@ class BuildingBase(ABC):
         Can be overwritten for each design class.
         """
         self.beam_type = 2
+
+    def _change_slab_type(self) -> None:
+        """The method used for changing slab types.
+
+        Can be overwritten for each design class.
+        """
+        aspect_ratios = [max(slab.lx / slab.ly, slab.ly / slab.lx)
+                         for slab in self.slabs]
+        if self.slab_type == 3 and max(aspect_ratios) < 2:
+            self.slab_type = 1
+        elif self.slab_type == 3:
+            self.slab_type = 2
 
     def _change_column_section(self) -> None:
         """The method used for changing column sections.
@@ -2200,6 +2231,20 @@ class BuildingBase(ABC):
         if self.columns_fail:
             self.__print_column_failure('stage 2 shear')
 
+    def _set_expected_axial_forces_on_column_hinges(self) -> None:
+        """This method sets the expected axial forces on column hinges.
+
+        These axial forces are used for calculating plastic hinge
+        properties. By default, they are assummed to be equal to the
+        factored axial forces computed during preliminary design phase.
+        """
+        # Set the predesign forces based on final configurations
+        self._set_column_predesign_forces()
+        # Use the position factored expected column axial forces
+        for column in self.columns:
+            column.hinge_Ng = column.pre_Ng_pos
+            column.hinge_Nq = column.pre_Nq_pos
+
     def run_iterative_design_algorithm(self) -> None:
         """Routine for iterative design algorithm.
 
@@ -2251,8 +2296,8 @@ class BuildingBase(ABC):
         # Adjust member design attributes for given quality
         if self.ok:
             self.quality.set_adjusted_properties(self.beams, self.columns)
-            # Set average column axial forces to be used.
-            self._set_column_predesign_forces()
+            # Set average column axial forces to be used in hinge calculations.
+            self._set_expected_axial_forces_on_column_hinges()
         else:
             Warning('No design solution is found.')
 

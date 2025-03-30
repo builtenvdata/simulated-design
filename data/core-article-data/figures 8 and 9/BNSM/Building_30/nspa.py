@@ -45,7 +45,7 @@ def _set_algorithm(ok: int, tol: float, iter: int = 100) -> None:
     return ok
 
 
-def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float], list[float]]:
+def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.0001) -> tuple[list[float], list[float]]:
     """Performs nonlinear static pushover analysis (NSPA) in x direction.
 
     Parameters
@@ -55,7 +55,7 @@ def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float]
         By default 0.1
     dincr : float, optional.
         First displacement increment considered during the analysis.
-        By default 0.001.
+        By default 0.0001.
 
     Return
     ------
@@ -79,10 +79,10 @@ def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float]
     ops.timeSeries('Linear', 2)
     ops.pattern('Plain', 2, 2)
     # Add lateral nspa loads to ops domain
-    ops.load(91000, 0.08482564604055667, 0, 0, 0, 0, 0)
-    ops.load(92000, 0.2061352861498299, 0, 0, 0, 0, 0)
-    ops.load(93000, 0.3638100049443609, 0, 0, 0, 0, 0)
-    ops.load(94000, 0.3452290628652525, 0, 0, 0, 0, 0)
+    ops.load(91000, 0.08978526509072354, 0, 0, 0, 0, 0)
+    ops.load(92000, 0.21118230214119454, 0, 0, 0, 0, 0)
+    ops.load(93000, 0.3608843706606398, 0, 0, 0, 0, 0)
+    ops.load(94000, 0.3381480621074422, 0, 0, 0, 0, 0)
 
     # Set the recorders
     ctrl_node = 94000  # Control node
@@ -152,7 +152,7 @@ def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float]
     return ctrl_disp, base_shear
 
 
-def do_nspa_y(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float], list[float]]:
+def do_nspa_y(max_drift: float = 0.1, dincr: float = 0.0001) -> tuple[list[float], list[float]]:
     """Performs nonlinear static pushover analysis (NSPA) in y direction.
 
     Parameters
@@ -162,7 +162,7 @@ def do_nspa_y(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float]
         By default 0.1
     dincr : float, optional.
         First displacement increment considered during the analysis.
-        By default 0.001.
+        By default 0.0001.
 
     Return
     ------
@@ -186,10 +186,10 @@ def do_nspa_y(max_drift: float = 0.1, dincr: float = 0.001) -> tuple[list[float]
     ops.timeSeries('Linear', 2)
     ops.pattern('Plain', 2, 2)
     # Add lateral nspa loads to ops domain
-    ops.load(91000, 0, 0.0946240161898906, 0, 0, 0, 0)
-    ops.load(92000, 0, 0.22343819244170032, 0, 0, 0, 0)
-    ops.load(93000, 0, 0.3607018940005991, 0, 0, 0, 0)
-    ops.load(94000, 0, 0.32123589736780983, 0, 0, 0, 0)
+    ops.load(91000, 0, 0.09795031985048354, 0, 0, 0, 0)
+    ops.load(92000, 0, 0.22296539102519122, 0, 0, 0, 0)
+    ops.load(93000, 0, 0.3586318703830025, 0, 0, 0, 0)
+    ops.load(94000, 0, 0.32045241874132274, 0, 0, 0, 0)
 
     # Set the recorders
     ctrl_node = 94000  # Control node

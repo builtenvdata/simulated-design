@@ -35,7 +35,7 @@ def add_floors() -> None:
     ops.node(11027, 8.5, 25.2, 2.75)
     ops.node(11028, 13.85, 25.2, 2.75)
     # Retained floor node
-    ops.node(91000, 7.13744858, 12.78089218, 2.75)
+    ops.node(91000, 7.11274042, 12.77867454, 2.75)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 91000, 11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009, 11010, 11011, 11012, 11013, 11014, 11015, 11016, 11017, 11018, 11019, 11020, 11021, 11022, 11023, 11024, 11025, 11026, 11027, 11028)
     # Fix the floating dofs of the retained node
@@ -72,7 +72,7 @@ def add_floors() -> None:
     ops.node(12027, 8.5, 25.2, 5.5)
     ops.node(12028, 13.85, 25.2, 5.5)
     # Retained floor node
-    ops.node(92000, 7.1293816, 12.78083104, 5.5)
+    ops.node(92000, 7.10888314, 12.77930801, 5.5)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 92000, 12001, 12002, 12003, 12004, 12005, 12006, 12007, 12008, 12009, 12010, 12011, 12012, 12013, 12014, 12015, 12016, 12017, 12018, 12019, 12020, 12021, 12022, 12023, 12024, 12025, 12026, 12027, 12028)
     # Fix the floating dofs of the retained node
@@ -109,7 +109,7 @@ def add_floors() -> None:
     ops.node(13027, 8.5, 25.2, 8.25)
     ops.node(13028, 13.85, 25.2, 8.25)
     # Retained floor node
-    ops.node(93000, 7.12118377, 12.78076891, 8.25)
+    ops.node(93000, 7.11043328, 12.78019973, 8.25)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 93000, 13001, 13002, 13003, 13004, 13005, 13006, 13007, 13008, 13009, 13010, 13011, 13012, 13013, 13014, 13015, 13016, 13017, 13018, 13019, 13020, 13021, 13022, 13023, 13024, 13025, 13026, 13027, 13028)
     # Fix the floating dofs of the retained node
@@ -146,7 +146,7 @@ def add_floors() -> None:
     ops.node(14027, 8.5, 25.2, 11.0)
     ops.node(14028, 13.85, 25.2, 11.0)
     # Retained floor node
-    ops.node(94000, 7.17595445, 12.79824897, 11.0)
+    ops.node(94000, 7.16923708, 12.79798923, 11.0)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 94000, 14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011, 14012, 14013, 14014, 14015, 14016, 14017, 14018, 14019, 14020, 14021, 14022, 14023, 14024, 14025, 14026, 14027, 14028)
     # Fix the floating dofs of the retained node

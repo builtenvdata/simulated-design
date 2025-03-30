@@ -53,7 +53,7 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (2, 0, 2.5)
     # Central joint node
-    ops.node(4023, 8.3, 0.0, 8.35, '-mass', 3.494106778797144, 3.494106778797144, 3.494106778797144, 0.0, 0.0, 0.0)
+    ops.node(4023, 8.3, 0.0, 8.35, '-mass', 3.421935524974514, 3.421935524974514, 3.421935524974514, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
     ops.node(34023, 8.425, 0.0, 8.35)
     ops.element('elasticBeamColumn', 34023, 4023, 34023, 99999, 88888)
@@ -64,7 +64,7 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (3, 0, 2.5)
     # Central joint node
-    ops.node(4024, 11.25, 0.0, 8.35, '-mass', 3.494106778797144, 3.494106778797144, 3.494106778797144, 0.0, 0.0, 0.0)
+    ops.node(4024, 11.25, 0.0, 8.35, '-mass', 3.421935524974514, 3.421935524974514, 3.421935524974514, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
     ops.node(54024, 11.125, 0.0, 8.35)
     ops.element('elasticBeamColumn', 54024, 54024, 4024, 99999, 88888)
@@ -100,32 +100,32 @@ def add_joints() -> None:
     # -------------------------------------------------
     # Joint grid ids (x, y, z): (0, 0, 1)
     # Central joint node
-    ops.node(1001, 0.0, 0.0, 3.7, '-mass', 7.958856639104532, 7.958856639104532, 7.958856639104532, 0.0, 0.0, 0.0)
+    ops.node(1001, 0.0, 0.0, 3.7, '-mass', 7.730110461734501, 7.730110461734501, 7.730110461734501, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(31001, 0.15, 0.0, 3.7)
+    ops.node(31001, 0.125, 0.0, 3.7)
     ops.element('elasticBeamColumn', 31001, 1001, 31001, 99999, 88888)
     ops.node(21001, 0.0, 0.0, 3.45)
     ops.element('elasticBeamColumn', 21001, 21001, 1001, 99999, 99999)
     ops.node(71001, 0.0, 0.0, 3.95)
     ops.element('elasticBeamColumn', 71001, 1001, 71001, 99999, 99999)
-    ops.node(41001, 0.0, 0.15, 3.7)
+    ops.node(41001, 0.0, 0.125, 3.7)
     ops.element('elasticBeamColumn', 41001, 1001, 41001, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11001, 1001, 11001, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (1, 0, 1)
     # Central joint node
-    ops.node(1002, 4.15, 0.0, 3.7, '-mass', 11.845185245589287, 11.845185245589287, 11.845185245589287, 0.0, 0.0, 0.0)
+    ops.node(1002, 4.15, 0.0, 3.7, '-mass', 11.574848854151979, 11.574848854151979, 11.574848854151979, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51002, 3.975, 0.0, 3.7)
+    ops.node(51002, 4.0, 0.0, 3.7)
     ops.element('elasticBeamColumn', 51002, 51002, 1002, 99999, 88888)
-    ops.node(31002, 4.325, 0.0, 3.7)
+    ops.node(31002, 4.3, 0.0, 3.7)
     ops.element('elasticBeamColumn', 31002, 1002, 31002, 99999, 88888)
     ops.node(21002, 4.15, 0.0, 3.5)
     ops.element('elasticBeamColumn', 21002, 21002, 1002, 99999, 99999)
     ops.node(71002, 4.15, 0.0, 3.9)
     ops.element('elasticBeamColumn', 71002, 1002, 71002, 99999, 99999)
-    ops.node(41002, 4.15, 0.175, 3.7)
+    ops.node(41002, 4.15, 0.15, 3.7)
     ops.element('elasticBeamColumn', 41002, 1002, 41002, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11002, 1002, 11002, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -166,39 +166,39 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (4, 0, 1)
     # Central joint node
-    ops.node(1005, 15.4, 0.0, 3.7, '-mass', 11.845185245589287, 11.845185245589287, 11.845185245589287, 0.0, 0.0, 0.0)
+    ops.node(1005, 15.4, 0.0, 3.7, '-mass', 11.574848854151979, 11.574848854151979, 11.574848854151979, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51005, 15.225, 0.0, 3.7)
+    ops.node(51005, 15.25, 0.0, 3.7)
     ops.element('elasticBeamColumn', 51005, 51005, 1005, 99999, 88888)
-    ops.node(31005, 15.575, 0.0, 3.7)
+    ops.node(31005, 15.55, 0.0, 3.7)
     ops.element('elasticBeamColumn', 31005, 1005, 31005, 99999, 88888)
     ops.node(21005, 15.4, 0.0, 3.5)
     ops.element('elasticBeamColumn', 21005, 21005, 1005, 99999, 99999)
     ops.node(71005, 15.4, 0.0, 3.9)
     ops.element('elasticBeamColumn', 71005, 1005, 71005, 99999, 99999)
-    ops.node(41005, 15.4, 0.175, 3.7)
+    ops.node(41005, 15.4, 0.15, 3.7)
     ops.element('elasticBeamColumn', 41005, 1005, 41005, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11005, 1005, 11005, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (5, 0, 1)
     # Central joint node
-    ops.node(1006, 19.55, 0.0, 3.7, '-mass', 7.958856639104532, 7.958856639104532, 7.958856639104532, 0.0, 0.0, 0.0)
+    ops.node(1006, 19.55, 0.0, 3.7, '-mass', 7.730110461734501, 7.730110461734501, 7.730110461734501, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51006, 19.4, 0.0, 3.7)
+    ops.node(51006, 19.425, 0.0, 3.7)
     ops.element('elasticBeamColumn', 51006, 51006, 1006, 99999, 88888)
     ops.node(21006, 19.55, 0.0, 3.45)
     ops.element('elasticBeamColumn', 21006, 21006, 1006, 99999, 99999)
     ops.node(71006, 19.55, 0.0, 3.95)
     ops.element('elasticBeamColumn', 71006, 1006, 71006, 99999, 99999)
-    ops.node(41006, 19.55, 0.15, 3.7)
+    ops.node(41006, 19.55, 0.125, 3.7)
     ops.element('elasticBeamColumn', 41006, 1006, 41006, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11006, 1006, 11006, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (0, 1, 1)
     # Central joint node
-    ops.node(1007, 0.0, 4.85, 3.7, '-mass', 12.27510369614994, 12.27510369614994, 12.27510369614994, 0.0, 0.0, 0.0)
+    ops.node(1007, 0.0, 4.85, 3.7, '-mass', 12.351250485140763, 12.351250485140763, 12.351250485140763, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
     ops.node(31007, 0.175, 4.85, 3.7)
     ops.element('elasticBeamColumn', 31007, 1007, 31007, 99999, 88888)
@@ -215,83 +215,83 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (1, 1, 1)
     # Central joint node
-    ops.node(1008, 4.15, 4.85, 3.7, '-mass', 16.34276600595941, 16.34276600595941, 16.34276600595941, 0.0, 0.0, 0.0)
+    ops.node(1008, 4.15, 4.85, 3.7, '-mass', 16.80698618944565, 16.80698618944565, 16.80698618944565, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51008, 3.975, 4.85, 3.7)
+    ops.node(51008, 3.95, 4.85, 3.7)
     ops.element('elasticBeamColumn', 51008, 51008, 1008, 99999, 88888)
-    ops.node(31008, 4.325, 4.85, 3.7)
+    ops.node(31008, 4.35, 4.85, 3.7)
     ops.element('elasticBeamColumn', 31008, 1008, 31008, 99999, 88888)
-    ops.node(21008, 4.15, 4.85, 3.5)
+    ops.node(21008, 4.15, 4.85, 3.475)
     ops.element('elasticBeamColumn', 21008, 21008, 1008, 99999, 99999)
-    ops.node(71008, 4.15, 4.85, 3.9)
+    ops.node(71008, 4.15, 4.85, 3.925)
     ops.element('elasticBeamColumn', 71008, 1008, 71008, 99999, 99999)
-    ops.node(61008, 4.15, 4.675, 3.7)
+    ops.node(61008, 4.15, 4.65, 3.7)
     ops.element('elasticBeamColumn', 61008, 61008, 1008, 99999, 77777)
-    ops.node(41008, 4.15, 5.025, 3.7)
+    ops.node(41008, 4.15, 5.05, 3.7)
     ops.element('elasticBeamColumn', 41008, 1008, 41008, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11008, 1008, 11008, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 1, 1)
     # Central joint node
-    ops.node(1009, 8.3, 4.85, 3.7, '-mass', 16.411947466698518, 16.411947466698518, 16.411947466698518, 0.0, 0.0, 0.0)
+    ops.node(1009, 8.3, 4.85, 3.7, '-mass', 16.854149301560902, 16.854149301560902, 16.854149301560902, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51009, 8.125, 4.85, 3.7)
+    ops.node(51009, 8.1, 4.85, 3.7)
     ops.element('elasticBeamColumn', 51009, 51009, 1009, 99999, 88888)
-    ops.node(31009, 8.475, 4.85, 3.7)
+    ops.node(31009, 8.5, 4.85, 3.7)
     ops.element('elasticBeamColumn', 31009, 1009, 31009, 99999, 88888)
-    ops.node(21009, 8.3, 4.85, 3.5)
+    ops.node(21009, 8.3, 4.85, 3.475)
     ops.element('elasticBeamColumn', 21009, 21009, 1009, 99999, 99999)
-    ops.node(71009, 8.3, 4.85, 3.9)
+    ops.node(71009, 8.3, 4.85, 3.925)
     ops.element('elasticBeamColumn', 71009, 1009, 71009, 99999, 99999)
-    ops.node(61009, 8.3, 4.675, 3.7)
+    ops.node(61009, 8.3, 4.65, 3.7)
     ops.element('elasticBeamColumn', 61009, 61009, 1009, 99999, 77777)
-    ops.node(41009, 8.3, 5.025, 3.7)
+    ops.node(41009, 8.3, 5.05, 3.7)
     ops.element('elasticBeamColumn', 41009, 1009, 41009, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11009, 1009, 11009, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 1, 1)
     # Central joint node
-    ops.node(1010, 11.25, 4.85, 3.7, '-mass', 16.411947466698518, 16.411947466698518, 16.411947466698518, 0.0, 0.0, 0.0)
+    ops.node(1010, 11.25, 4.85, 3.7, '-mass', 16.854149301560902, 16.854149301560902, 16.854149301560902, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51010, 11.075, 4.85, 3.7)
+    ops.node(51010, 11.05, 4.85, 3.7)
     ops.element('elasticBeamColumn', 51010, 51010, 1010, 99999, 88888)
-    ops.node(31010, 11.425, 4.85, 3.7)
+    ops.node(31010, 11.45, 4.85, 3.7)
     ops.element('elasticBeamColumn', 31010, 1010, 31010, 99999, 88888)
-    ops.node(21010, 11.25, 4.85, 3.5)
+    ops.node(21010, 11.25, 4.85, 3.475)
     ops.element('elasticBeamColumn', 21010, 21010, 1010, 99999, 99999)
-    ops.node(71010, 11.25, 4.85, 3.9)
+    ops.node(71010, 11.25, 4.85, 3.925)
     ops.element('elasticBeamColumn', 71010, 1010, 71010, 99999, 99999)
-    ops.node(61010, 11.25, 4.675, 3.7)
+    ops.node(61010, 11.25, 4.65, 3.7)
     ops.element('elasticBeamColumn', 61010, 61010, 1010, 99999, 77777)
-    ops.node(41010, 11.25, 5.025, 3.7)
+    ops.node(41010, 11.25, 5.05, 3.7)
     ops.element('elasticBeamColumn', 41010, 1010, 41010, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11010, 1010, 11010, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 1, 1)
     # Central joint node
-    ops.node(1011, 15.4, 4.85, 3.7, '-mass', 16.34276600595941, 16.34276600595941, 16.34276600595941, 0.0, 0.0, 0.0)
+    ops.node(1011, 15.4, 4.85, 3.7, '-mass', 16.80698618944565, 16.80698618944565, 16.80698618944565, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51011, 15.225, 4.85, 3.7)
+    ops.node(51011, 15.2, 4.85, 3.7)
     ops.element('elasticBeamColumn', 51011, 51011, 1011, 99999, 88888)
-    ops.node(31011, 15.575, 4.85, 3.7)
+    ops.node(31011, 15.6, 4.85, 3.7)
     ops.element('elasticBeamColumn', 31011, 1011, 31011, 99999, 88888)
-    ops.node(21011, 15.4, 4.85, 3.5)
+    ops.node(21011, 15.4, 4.85, 3.475)
     ops.element('elasticBeamColumn', 21011, 21011, 1011, 99999, 99999)
-    ops.node(71011, 15.4, 4.85, 3.9)
+    ops.node(71011, 15.4, 4.85, 3.925)
     ops.element('elasticBeamColumn', 71011, 1011, 71011, 99999, 99999)
-    ops.node(61011, 15.4, 4.675, 3.7)
+    ops.node(61011, 15.4, 4.65, 3.7)
     ops.element('elasticBeamColumn', 61011, 61011, 1011, 99999, 77777)
-    ops.node(41011, 15.4, 5.025, 3.7)
+    ops.node(41011, 15.4, 5.05, 3.7)
     ops.element('elasticBeamColumn', 41011, 1011, 41011, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11011, 1011, 11011, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (5, 1, 1)
     # Central joint node
-    ops.node(1012, 19.55, 4.85, 3.7, '-mass', 12.27510369614994, 12.27510369614994, 12.27510369614994, 0.0, 0.0, 0.0)
+    ops.node(1012, 19.55, 4.85, 3.7, '-mass', 12.351250485140763, 12.351250485140763, 12.351250485140763, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
     ops.node(51012, 19.375, 4.85, 3.7)
     ops.element('elasticBeamColumn', 51012, 51012, 1012, 99999, 88888)
@@ -308,130 +308,130 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (0, 2, 1)
     # Central joint node
-    ops.node(1013, 0.0, 9.7, 3.7, '-mass', 7.908092113110648, 7.908092113110648, 7.908092113110648, 0.0, 0.0, 0.0)
+    ops.node(1013, 0.0, 9.7, 3.7, '-mass', 7.679345935740617, 7.679345935740617, 7.679345935740617, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(31013, 0.15, 9.7, 3.7)
+    ops.node(31013, 0.125, 9.7, 3.7)
     ops.element('elasticBeamColumn', 31013, 1013, 31013, 99999, 88888)
     ops.node(21013, 0.0, 9.7, 3.45)
     ops.element('elasticBeamColumn', 21013, 21013, 1013, 99999, 99999)
     ops.node(71013, 0.0, 9.7, 3.95)
     ops.element('elasticBeamColumn', 71013, 1013, 71013, 99999, 99999)
-    ops.node(61013, 0.0, 9.55, 3.7)
+    ops.node(61013, 0.0, 9.575, 3.7)
     ops.element('elasticBeamColumn', 61013, 61013, 1013, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11013, 1013, 11013, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (1, 2, 1)
     # Central joint node
-    ops.node(1014, 4.15, 9.7, 3.7, '-mass', 11.743656193601518, 11.743656193601518, 11.743656193601518, 0.0, 0.0, 0.0)
+    ops.node(1014, 4.15, 9.7, 3.7, '-mass', 11.47331980216421, 11.47331980216421, 11.47331980216421, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51014, 3.975, 9.7, 3.7)
+    ops.node(51014, 4.0, 9.7, 3.7)
     ops.element('elasticBeamColumn', 51014, 51014, 1014, 99999, 88888)
-    ops.node(31014, 4.325, 9.7, 3.7)
+    ops.node(31014, 4.3, 9.7, 3.7)
     ops.element('elasticBeamColumn', 31014, 1014, 31014, 99999, 88888)
     ops.node(21014, 4.15, 9.7, 3.525)
     ops.element('elasticBeamColumn', 21014, 21014, 1014, 99999, 99999)
     ops.node(71014, 4.15, 9.7, 3.875)
     ops.element('elasticBeamColumn', 71014, 1014, 71014, 99999, 99999)
-    ops.node(61014, 4.15, 9.525, 3.7)
+    ops.node(61014, 4.15, 9.55, 3.7)
     ops.element('elasticBeamColumn', 61014, 61014, 1014, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11014, 1014, 11014, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 2, 1)
     # Central joint node
-    ops.node(1015, 8.3, 9.7, 3.7, '-mass', 9.938902499357495, 9.938902499357495, 9.938902499357495, 0.0, 0.0, 0.0)
+    ops.node(1015, 8.3, 9.7, 3.7, '-mass', 9.710156321987464, 9.710156321987464, 9.710156321987464, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51015, 8.15, 9.7, 3.7)
+    ops.node(51015, 8.175, 9.7, 3.7)
     ops.element('elasticBeamColumn', 51015, 51015, 1015, 99999, 88888)
-    ops.node(31015, 8.45, 9.7, 3.7)
+    ops.node(31015, 8.425, 9.7, 3.7)
     ops.element('elasticBeamColumn', 31015, 1015, 31015, 99999, 88888)
     ops.node(21015, 8.3, 9.7, 3.525)
     ops.element('elasticBeamColumn', 21015, 21015, 1015, 99999, 99999)
     ops.node(71015, 8.3, 9.7, 3.875)
     ops.element('elasticBeamColumn', 71015, 1015, 71015, 99999, 99999)
-    ops.node(61015, 8.3, 9.55, 3.7)
+    ops.node(61015, 8.3, 9.575, 3.7)
     ops.element('elasticBeamColumn', 61015, 61015, 1015, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11015, 1015, 11015, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 2, 1)
     # Central joint node
-    ops.node(1016, 11.25, 9.7, 3.7, '-mass', 9.938902499357495, 9.938902499357495, 9.938902499357495, 0.0, 0.0, 0.0)
+    ops.node(1016, 11.25, 9.7, 3.7, '-mass', 9.710156321987464, 9.710156321987464, 9.710156321987464, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51016, 11.1, 9.7, 3.7)
+    ops.node(51016, 11.125, 9.7, 3.7)
     ops.element('elasticBeamColumn', 51016, 51016, 1016, 99999, 88888)
-    ops.node(31016, 11.4, 9.7, 3.7)
+    ops.node(31016, 11.375, 9.7, 3.7)
     ops.element('elasticBeamColumn', 31016, 1016, 31016, 99999, 88888)
     ops.node(21016, 11.25, 9.7, 3.525)
     ops.element('elasticBeamColumn', 21016, 21016, 1016, 99999, 99999)
     ops.node(71016, 11.25, 9.7, 3.875)
     ops.element('elasticBeamColumn', 71016, 1016, 71016, 99999, 99999)
-    ops.node(61016, 11.25, 9.55, 3.7)
+    ops.node(61016, 11.25, 9.575, 3.7)
     ops.element('elasticBeamColumn', 61016, 61016, 1016, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11016, 1016, 11016, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 2, 1)
     # Central joint node
-    ops.node(1017, 15.4, 9.7, 3.7, '-mass', 11.743656193601518, 11.743656193601518, 11.743656193601518, 0.0, 0.0, 0.0)
+    ops.node(1017, 15.4, 9.7, 3.7, '-mass', 11.47331980216421, 11.47331980216421, 11.47331980216421, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51017, 15.225, 9.7, 3.7)
+    ops.node(51017, 15.25, 9.7, 3.7)
     ops.element('elasticBeamColumn', 51017, 51017, 1017, 99999, 88888)
-    ops.node(31017, 15.575, 9.7, 3.7)
+    ops.node(31017, 15.55, 9.7, 3.7)
     ops.element('elasticBeamColumn', 31017, 1017, 31017, 99999, 88888)
     ops.node(21017, 15.4, 9.7, 3.525)
     ops.element('elasticBeamColumn', 21017, 21017, 1017, 99999, 99999)
     ops.node(71017, 15.4, 9.7, 3.875)
     ops.element('elasticBeamColumn', 71017, 1017, 71017, 99999, 99999)
-    ops.node(61017, 15.4, 9.525, 3.7)
+    ops.node(61017, 15.4, 9.55, 3.7)
     ops.element('elasticBeamColumn', 61017, 61017, 1017, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11017, 1017, 11017, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (5, 2, 1)
     # Central joint node
-    ops.node(1018, 19.55, 9.7, 3.7, '-mass', 7.908092113110648, 7.908092113110648, 7.908092113110648, 0.0, 0.0, 0.0)
+    ops.node(1018, 19.55, 9.7, 3.7, '-mass', 7.679345935740617, 7.679345935740617, 7.679345935740617, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(51018, 19.4, 9.7, 3.7)
+    ops.node(51018, 19.425, 9.7, 3.7)
     ops.element('elasticBeamColumn', 51018, 51018, 1018, 99999, 88888)
     ops.node(21018, 19.55, 9.7, 3.45)
     ops.element('elasticBeamColumn', 21018, 21018, 1018, 99999, 99999)
     ops.node(71018, 19.55, 9.7, 3.95)
     ops.element('elasticBeamColumn', 71018, 1018, 71018, 99999, 99999)
-    ops.node(61018, 19.55, 9.55, 3.7)
+    ops.node(61018, 19.55, 9.575, 3.7)
     ops.element('elasticBeamColumn', 61018, 61018, 1018, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 11018, 1018, 11018, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (0, 0, 2)
     # Central joint node
-    ops.node(2001, 0.0, 0.0, 6.8, '-mass', 7.686991195679455, 7.686991195679455, 7.686991195679455, 0.0, 0.0, 0.0)
+    ops.node(2001, 0.0, 0.0, 6.8, '-mass', 7.582709850113705, 7.582709850113705, 7.582709850113705, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(32001, 0.15, 0.0, 6.8)
+    ops.node(32001, 0.125, 0.0, 6.8)
     ops.element('elasticBeamColumn', 32001, 2001, 32001, 99999, 88888)
     ops.node(22001, 0.0, 0.0, 6.55)
     ops.element('elasticBeamColumn', 22001, 22001, 2001, 99999, 99999)
     ops.node(72001, 0.0, 0.0, 7.05)
     ops.element('elasticBeamColumn', 72001, 2001, 72001, 99999, 99999)
-    ops.node(42001, 0.0, 0.15, 6.8)
+    ops.node(42001, 0.0, 0.125, 6.8)
     ops.element('elasticBeamColumn', 42001, 2001, 42001, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12001, 2001, 12001, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (1, 0, 2)
     # Central joint node
-    ops.node(2002, 4.15, 0.0, 6.8, '-mass', 11.3246959489532, 11.3246959489532, 11.3246959489532, 0.0, 0.0, 0.0)
+    ops.node(2002, 4.15, 0.0, 6.8, '-mass', 11.201454358739134, 11.201454358739134, 11.201454358739134, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52002, 3.975, 0.0, 6.8)
+    ops.node(52002, 4.0, 0.0, 6.8)
     ops.element('elasticBeamColumn', 52002, 52002, 2002, 99999, 88888)
-    ops.node(32002, 4.325, 0.0, 6.8)
+    ops.node(32002, 4.3, 0.0, 6.8)
     ops.element('elasticBeamColumn', 32002, 2002, 32002, 99999, 88888)
     ops.node(22002, 4.15, 0.0, 6.625)
     ops.element('elasticBeamColumn', 22002, 22002, 2002, 99999, 99999)
     ops.node(72002, 4.15, 0.0, 6.975)
     ops.element('elasticBeamColumn', 72002, 2002, 72002, 99999, 99999)
-    ops.node(42002, 4.15, 0.175, 6.8)
+    ops.node(42002, 4.15, 0.15, 6.8)
     ops.element('elasticBeamColumn', 42002, 2002, 42002, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12002, 2002, 12002, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -472,32 +472,32 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (4, 0, 2)
     # Central joint node
-    ops.node(2005, 15.4, 0.0, 6.8, '-mass', 11.3246959489532, 11.3246959489532, 11.3246959489532, 0.0, 0.0, 0.0)
+    ops.node(2005, 15.4, 0.0, 6.8, '-mass', 11.201454358739134, 11.201454358739134, 11.201454358739134, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52005, 15.225, 0.0, 6.8)
+    ops.node(52005, 15.25, 0.0, 6.8)
     ops.element('elasticBeamColumn', 52005, 52005, 2005, 99999, 88888)
-    ops.node(32005, 15.575, 0.0, 6.8)
+    ops.node(32005, 15.55, 0.0, 6.8)
     ops.element('elasticBeamColumn', 32005, 2005, 32005, 99999, 88888)
     ops.node(22005, 15.4, 0.0, 6.625)
     ops.element('elasticBeamColumn', 22005, 22005, 2005, 99999, 99999)
     ops.node(72005, 15.4, 0.0, 6.975)
     ops.element('elasticBeamColumn', 72005, 2005, 72005, 99999, 99999)
-    ops.node(42005, 15.4, 0.175, 6.8)
+    ops.node(42005, 15.4, 0.15, 6.8)
     ops.element('elasticBeamColumn', 42005, 2005, 42005, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12005, 2005, 12005, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (5, 0, 2)
     # Central joint node
-    ops.node(2006, 19.55, 0.0, 6.8, '-mass', 7.686991195679455, 7.686991195679455, 7.686991195679455, 0.0, 0.0, 0.0)
+    ops.node(2006, 19.55, 0.0, 6.8, '-mass', 7.582709850113705, 7.582709850113705, 7.582709850113705, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52006, 19.4, 0.0, 6.8)
+    ops.node(52006, 19.425, 0.0, 6.8)
     ops.element('elasticBeamColumn', 52006, 52006, 2006, 99999, 88888)
     ops.node(22006, 19.55, 0.0, 6.55)
     ops.element('elasticBeamColumn', 22006, 22006, 2006, 99999, 99999)
     ops.node(72006, 19.55, 0.0, 7.05)
     ops.element('elasticBeamColumn', 72006, 2006, 72006, 99999, 99999)
-    ops.node(42006, 19.55, 0.15, 6.8)
+    ops.node(42006, 19.55, 0.125, 6.8)
     ops.element('elasticBeamColumn', 42006, 2006, 42006, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12006, 2006, 12006, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -521,76 +521,76 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (1, 1, 2)
     # Central joint node
-    ops.node(2008, 4.15, 4.85, 6.8, '-mass', 15.87304123531721, 15.87304123531721, 15.87304123531721, 0.0, 0.0, 0.0)
+    ops.node(2008, 4.15, 4.85, 6.8, '-mass', 16.24276600595941, 16.24276600595941, 16.24276600595941, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52008, 3.975, 4.85, 6.8)
+    ops.node(52008, 3.95, 4.85, 6.8)
     ops.element('elasticBeamColumn', 52008, 52008, 2008, 99999, 88888)
-    ops.node(32008, 4.325, 4.85, 6.8)
+    ops.node(32008, 4.35, 4.85, 6.8)
     ops.element('elasticBeamColumn', 32008, 2008, 32008, 99999, 88888)
     ops.node(22008, 4.15, 4.85, 6.625)
     ops.element('elasticBeamColumn', 22008, 22008, 2008, 99999, 99999)
     ops.node(72008, 4.15, 4.85, 6.975)
     ops.element('elasticBeamColumn', 72008, 2008, 72008, 99999, 99999)
-    ops.node(62008, 4.15, 4.675, 6.8)
+    ops.node(62008, 4.15, 4.65, 6.8)
     ops.element('elasticBeamColumn', 62008, 62008, 2008, 99999, 77777)
-    ops.node(42008, 4.15, 5.025, 6.8)
+    ops.node(42008, 4.15, 5.05, 6.8)
     ops.element('elasticBeamColumn', 42008, 2008, 42008, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12008, 2008, 12008, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 1, 2)
     # Central joint node
-    ops.node(2009, 8.3, 4.85, 6.8, '-mass', 15.964241044680168, 15.964241044680168, 15.964241044680168, 0.0, 0.0, 0.0)
+    ops.node(2009, 8.3, 4.85, 6.8, '-mass', 16.33396581532237, 16.33396581532237, 16.33396581532237, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52009, 8.125, 4.85, 6.8)
+    ops.node(52009, 8.1, 4.85, 6.8)
     ops.element('elasticBeamColumn', 52009, 52009, 2009, 99999, 88888)
-    ops.node(32009, 8.475, 4.85, 6.8)
+    ops.node(32009, 8.5, 4.85, 6.8)
     ops.element('elasticBeamColumn', 32009, 2009, 32009, 99999, 88888)
     ops.node(22009, 8.3, 4.85, 6.625)
     ops.element('elasticBeamColumn', 22009, 22009, 2009, 99999, 99999)
     ops.node(72009, 8.3, 4.85, 6.975)
     ops.element('elasticBeamColumn', 72009, 2009, 72009, 99999, 99999)
-    ops.node(62009, 8.3, 4.675, 6.8)
+    ops.node(62009, 8.3, 4.65, 6.8)
     ops.element('elasticBeamColumn', 62009, 62009, 2009, 99999, 77777)
-    ops.node(42009, 8.3, 5.025, 6.8)
+    ops.node(42009, 8.3, 5.05, 6.8)
     ops.element('elasticBeamColumn', 42009, 2009, 42009, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12009, 2009, 12009, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 1, 2)
     # Central joint node
-    ops.node(2010, 11.25, 4.85, 6.8, '-mass', 15.964241044680168, 15.964241044680168, 15.964241044680168, 0.0, 0.0, 0.0)
+    ops.node(2010, 11.25, 4.85, 6.8, '-mass', 16.33396581532237, 16.33396581532237, 16.33396581532237, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52010, 11.075, 4.85, 6.8)
+    ops.node(52010, 11.05, 4.85, 6.8)
     ops.element('elasticBeamColumn', 52010, 52010, 2010, 99999, 88888)
-    ops.node(32010, 11.425, 4.85, 6.8)
+    ops.node(32010, 11.45, 4.85, 6.8)
     ops.element('elasticBeamColumn', 32010, 2010, 32010, 99999, 88888)
     ops.node(22010, 11.25, 4.85, 6.625)
     ops.element('elasticBeamColumn', 22010, 22010, 2010, 99999, 99999)
     ops.node(72010, 11.25, 4.85, 6.975)
     ops.element('elasticBeamColumn', 72010, 2010, 72010, 99999, 99999)
-    ops.node(62010, 11.25, 4.675, 6.8)
+    ops.node(62010, 11.25, 4.65, 6.8)
     ops.element('elasticBeamColumn', 62010, 62010, 2010, 99999, 77777)
-    ops.node(42010, 11.25, 5.025, 6.8)
+    ops.node(42010, 11.25, 5.05, 6.8)
     ops.element('elasticBeamColumn', 42010, 2010, 42010, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12010, 2010, 12010, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 1, 2)
     # Central joint node
-    ops.node(2011, 15.4, 4.85, 6.8, '-mass', 15.87304123531721, 15.87304123531721, 15.87304123531721, 0.0, 0.0, 0.0)
+    ops.node(2011, 15.4, 4.85, 6.8, '-mass', 16.24276600595941, 16.24276600595941, 16.24276600595941, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52011, 15.225, 4.85, 6.8)
+    ops.node(52011, 15.2, 4.85, 6.8)
     ops.element('elasticBeamColumn', 52011, 52011, 2011, 99999, 88888)
-    ops.node(32011, 15.575, 4.85, 6.8)
+    ops.node(32011, 15.6, 4.85, 6.8)
     ops.element('elasticBeamColumn', 32011, 2011, 32011, 99999, 88888)
     ops.node(22011, 15.4, 4.85, 6.625)
     ops.element('elasticBeamColumn', 22011, 22011, 2011, 99999, 99999)
     ops.node(72011, 15.4, 4.85, 6.975)
     ops.element('elasticBeamColumn', 72011, 2011, 72011, 99999, 99999)
-    ops.node(62011, 15.4, 4.675, 6.8)
+    ops.node(62011, 15.4, 4.65, 6.8)
     ops.element('elasticBeamColumn', 62011, 62011, 2011, 99999, 77777)
-    ops.node(42011, 15.4, 5.025, 6.8)
+    ops.node(42011, 15.4, 5.05, 6.8)
     ops.element('elasticBeamColumn', 42011, 2011, 42011, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12011, 2011, 12011, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -614,98 +614,98 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (0, 2, 2)
     # Central joint node
-    ops.node(2013, 0.0, 9.7, 6.8, '-mass', 7.686991195679455, 7.686991195679455, 7.686991195679455, 0.0, 0.0, 0.0)
+    ops.node(2013, 0.0, 9.7, 6.8, '-mass', 7.582709850113705, 7.582709850113705, 7.582709850113705, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(32013, 0.15, 9.7, 6.8)
+    ops.node(32013, 0.125, 9.7, 6.8)
     ops.element('elasticBeamColumn', 32013, 2013, 32013, 99999, 88888)
     ops.node(22013, 0.0, 9.7, 6.55)
     ops.element('elasticBeamColumn', 22013, 22013, 2013, 99999, 99999)
     ops.node(72013, 0.0, 9.7, 7.05)
     ops.element('elasticBeamColumn', 72013, 2013, 72013, 99999, 99999)
-    ops.node(62013, 0.0, 9.55, 6.8)
+    ops.node(62013, 0.0, 9.575, 6.8)
     ops.element('elasticBeamColumn', 62013, 62013, 2013, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12013, 2013, 12013, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (1, 2, 2)
     # Central joint node
-    ops.node(2014, 4.15, 9.7, 6.8, '-mass', 11.3246959489532, 11.3246959489532, 11.3246959489532, 0.0, 0.0, 0.0)
+    ops.node(2014, 4.15, 9.7, 6.8, '-mass', 11.201454358739134, 11.201454358739134, 11.201454358739134, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52014, 3.975, 9.7, 6.8)
+    ops.node(52014, 4.0, 9.7, 6.8)
     ops.element('elasticBeamColumn', 52014, 52014, 2014, 99999, 88888)
-    ops.node(32014, 4.325, 9.7, 6.8)
+    ops.node(32014, 4.3, 9.7, 6.8)
     ops.element('elasticBeamColumn', 32014, 2014, 32014, 99999, 88888)
     ops.node(22014, 4.15, 9.7, 6.625)
     ops.element('elasticBeamColumn', 22014, 22014, 2014, 99999, 99999)
     ops.node(72014, 4.15, 9.7, 6.975)
     ops.element('elasticBeamColumn', 72014, 2014, 72014, 99999, 99999)
-    ops.node(62014, 4.15, 9.525, 6.8)
+    ops.node(62014, 4.15, 9.55, 6.8)
     ops.element('elasticBeamColumn', 62014, 62014, 2014, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12014, 2014, 12014, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 2, 2)
     # Central joint node
-    ops.node(2015, 8.3, 9.7, 6.8, '-mass', 9.681715955014988, 9.681715955014988, 9.681715955014988, 0.0, 0.0, 0.0)
+    ops.node(2015, 8.3, 9.7, 6.8, '-mass', 9.57743460944924, 9.57743460944924, 9.57743460944924, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52015, 8.15, 9.7, 6.8)
+    ops.node(52015, 8.175, 9.7, 6.8)
     ops.element('elasticBeamColumn', 52015, 52015, 2015, 99999, 88888)
-    ops.node(32015, 8.45, 9.7, 6.8)
+    ops.node(32015, 8.425, 9.7, 6.8)
     ops.element('elasticBeamColumn', 32015, 2015, 32015, 99999, 88888)
     ops.node(22015, 8.3, 9.7, 6.625)
     ops.element('elasticBeamColumn', 22015, 22015, 2015, 99999, 99999)
     ops.node(72015, 8.3, 9.7, 6.975)
     ops.element('elasticBeamColumn', 72015, 2015, 72015, 99999, 99999)
-    ops.node(62015, 8.3, 9.55, 6.8)
+    ops.node(62015, 8.3, 9.575, 6.8)
     ops.element('elasticBeamColumn', 62015, 62015, 2015, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12015, 2015, 12015, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 2, 2)
     # Central joint node
-    ops.node(2016, 11.25, 9.7, 6.8, '-mass', 9.681715955014988, 9.681715955014988, 9.681715955014988, 0.0, 0.0, 0.0)
+    ops.node(2016, 11.25, 9.7, 6.8, '-mass', 9.57743460944924, 9.57743460944924, 9.57743460944924, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52016, 11.1, 9.7, 6.8)
+    ops.node(52016, 11.125, 9.7, 6.8)
     ops.element('elasticBeamColumn', 52016, 52016, 2016, 99999, 88888)
-    ops.node(32016, 11.4, 9.7, 6.8)
+    ops.node(32016, 11.375, 9.7, 6.8)
     ops.element('elasticBeamColumn', 32016, 2016, 32016, 99999, 88888)
     ops.node(22016, 11.25, 9.7, 6.625)
     ops.element('elasticBeamColumn', 22016, 22016, 2016, 99999, 99999)
     ops.node(72016, 11.25, 9.7, 6.975)
     ops.element('elasticBeamColumn', 72016, 2016, 72016, 99999, 99999)
-    ops.node(62016, 11.25, 9.55, 6.8)
+    ops.node(62016, 11.25, 9.575, 6.8)
     ops.element('elasticBeamColumn', 62016, 62016, 2016, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12016, 2016, 12016, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 2, 2)
     # Central joint node
-    ops.node(2017, 15.4, 9.7, 6.8, '-mass', 11.3246959489532, 11.3246959489532, 11.3246959489532, 0.0, 0.0, 0.0)
+    ops.node(2017, 15.4, 9.7, 6.8, '-mass', 11.201454358739134, 11.201454358739134, 11.201454358739134, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52017, 15.225, 9.7, 6.8)
+    ops.node(52017, 15.25, 9.7, 6.8)
     ops.element('elasticBeamColumn', 52017, 52017, 2017, 99999, 88888)
-    ops.node(32017, 15.575, 9.7, 6.8)
+    ops.node(32017, 15.55, 9.7, 6.8)
     ops.element('elasticBeamColumn', 32017, 2017, 32017, 99999, 88888)
     ops.node(22017, 15.4, 9.7, 6.625)
     ops.element('elasticBeamColumn', 22017, 22017, 2017, 99999, 99999)
     ops.node(72017, 15.4, 9.7, 6.975)
     ops.element('elasticBeamColumn', 72017, 2017, 72017, 99999, 99999)
-    ops.node(62017, 15.4, 9.525, 6.8)
+    ops.node(62017, 15.4, 9.55, 6.8)
     ops.element('elasticBeamColumn', 62017, 62017, 2017, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12017, 2017, 12017, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (5, 2, 2)
     # Central joint node
-    ops.node(2018, 19.55, 9.7, 6.8, '-mass', 7.686991195679455, 7.686991195679455, 7.686991195679455, 0.0, 0.0, 0.0)
+    ops.node(2018, 19.55, 9.7, 6.8, '-mass', 7.582709850113705, 7.582709850113705, 7.582709850113705, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(52018, 19.4, 9.7, 6.8)
+    ops.node(52018, 19.425, 9.7, 6.8)
     ops.element('elasticBeamColumn', 52018, 52018, 2018, 99999, 88888)
     ops.node(22018, 19.55, 9.7, 6.55)
     ops.element('elasticBeamColumn', 22018, 22018, 2018, 99999, 99999)
     ops.node(72018, 19.55, 9.7, 7.05)
     ops.element('elasticBeamColumn', 72018, 2018, 72018, 99999, 99999)
-    ops.node(62018, 19.55, 9.55, 6.8)
+    ops.node(62018, 19.55, 9.575, 6.8)
     ops.element('elasticBeamColumn', 62018, 62018, 2018, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 12018, 2018, 12018, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -827,76 +827,76 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (1, 1, 3)
     # Central joint node
-    ops.node(3008, 4.15, 4.85, 9.9, '-mass', 15.31921860534779, 15.31921860534779, 15.31921860534779, 0.0, 0.0, 0.0)
+    ops.node(3008, 4.15, 4.85, 9.9, '-mass', 15.774264476907423, 15.774264476907423, 15.774264476907423, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(53008, 4.025, 4.85, 9.9)
+    ops.node(53008, 3.975, 4.85, 9.9)
     ops.element('elasticBeamColumn', 53008, 53008, 3008, 99999, 88888)
-    ops.node(33008, 4.275, 4.85, 9.9)
+    ops.node(33008, 4.325, 4.85, 9.9)
     ops.element('elasticBeamColumn', 33008, 3008, 33008, 99999, 88888)
     ops.node(23008, 4.15, 4.85, 9.7)
     ops.element('elasticBeamColumn', 23008, 23008, 3008, 99999, 99999)
     ops.node(73008, 4.15, 4.85, 10.1)
     ops.element('elasticBeamColumn', 73008, 3008, 73008, 99999, 99999)
-    ops.node(63008, 4.15, 4.725, 9.9)
+    ops.node(63008, 4.15, 4.675, 9.9)
     ops.element('elasticBeamColumn', 63008, 63008, 3008, 99999, 77777)
-    ops.node(43008, 4.15, 4.975, 9.9)
+    ops.node(43008, 4.15, 5.025, 9.9)
     ops.element('elasticBeamColumn', 43008, 3008, 43008, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 13008, 3008, 13008, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 1, 3)
     # Central joint node
-    ops.node(3009, 8.3, 4.85, 9.9, '-mass', 15.410418414710753, 15.410418414710753, 15.410418414710753, 0.0, 0.0, 0.0)
+    ops.node(3009, 8.3, 4.85, 9.9, '-mass', 15.865464286270383, 15.865464286270383, 15.865464286270383, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(53009, 8.175, 4.85, 9.9)
+    ops.node(53009, 8.125, 4.85, 9.9)
     ops.element('elasticBeamColumn', 53009, 53009, 3009, 99999, 88888)
-    ops.node(33009, 8.425, 4.85, 9.9)
+    ops.node(33009, 8.475, 4.85, 9.9)
     ops.element('elasticBeamColumn', 33009, 3009, 33009, 99999, 88888)
     ops.node(23009, 8.3, 4.85, 9.7)
     ops.element('elasticBeamColumn', 23009, 23009, 3009, 99999, 99999)
     ops.node(73009, 8.3, 4.85, 10.1)
     ops.element('elasticBeamColumn', 73009, 3009, 73009, 99999, 99999)
-    ops.node(63009, 8.3, 4.725, 9.9)
+    ops.node(63009, 8.3, 4.675, 9.9)
     ops.element('elasticBeamColumn', 63009, 63009, 3009, 99999, 77777)
-    ops.node(43009, 8.3, 4.975, 9.9)
+    ops.node(43009, 8.3, 5.025, 9.9)
     ops.element('elasticBeamColumn', 43009, 3009, 43009, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 13009, 3009, 13009, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 1, 3)
     # Central joint node
-    ops.node(3010, 11.25, 4.85, 9.9, '-mass', 15.410418414710753, 15.410418414710753, 15.410418414710753, 0.0, 0.0, 0.0)
+    ops.node(3010, 11.25, 4.85, 9.9, '-mass', 15.865464286270383, 15.865464286270383, 15.865464286270383, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(53010, 11.125, 4.85, 9.9)
+    ops.node(53010, 11.075, 4.85, 9.9)
     ops.element('elasticBeamColumn', 53010, 53010, 3010, 99999, 88888)
-    ops.node(33010, 11.375, 4.85, 9.9)
+    ops.node(33010, 11.425, 4.85, 9.9)
     ops.element('elasticBeamColumn', 33010, 3010, 33010, 99999, 88888)
     ops.node(23010, 11.25, 4.85, 9.7)
     ops.element('elasticBeamColumn', 23010, 23010, 3010, 99999, 99999)
     ops.node(73010, 11.25, 4.85, 10.1)
     ops.element('elasticBeamColumn', 73010, 3010, 73010, 99999, 99999)
-    ops.node(63010, 11.25, 4.725, 9.9)
+    ops.node(63010, 11.25, 4.675, 9.9)
     ops.element('elasticBeamColumn', 63010, 63010, 3010, 99999, 77777)
-    ops.node(43010, 11.25, 4.975, 9.9)
+    ops.node(43010, 11.25, 5.025, 9.9)
     ops.element('elasticBeamColumn', 43010, 3010, 43010, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 13010, 3010, 13010, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 1, 3)
     # Central joint node
-    ops.node(3011, 15.4, 4.85, 9.9, '-mass', 15.31921860534779, 15.31921860534779, 15.31921860534779, 0.0, 0.0, 0.0)
+    ops.node(3011, 15.4, 4.85, 9.9, '-mass', 15.774264476907423, 15.774264476907423, 15.774264476907423, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(53011, 15.275, 4.85, 9.9)
+    ops.node(53011, 15.225, 4.85, 9.9)
     ops.element('elasticBeamColumn', 53011, 53011, 3011, 99999, 88888)
-    ops.node(33011, 15.525, 4.85, 9.9)
+    ops.node(33011, 15.575, 4.85, 9.9)
     ops.element('elasticBeamColumn', 33011, 3011, 33011, 99999, 88888)
     ops.node(23011, 15.4, 4.85, 9.7)
     ops.element('elasticBeamColumn', 23011, 23011, 3011, 99999, 99999)
     ops.node(73011, 15.4, 4.85, 10.1)
     ops.element('elasticBeamColumn', 73011, 3011, 73011, 99999, 99999)
-    ops.node(63011, 15.4, 4.725, 9.9)
+    ops.node(63011, 15.4, 4.675, 9.9)
     ops.element('elasticBeamColumn', 63011, 63011, 3011, 99999, 77777)
-    ops.node(43011, 15.4, 4.975, 9.9)
+    ops.node(43011, 15.4, 5.025, 9.9)
     ops.element('elasticBeamColumn', 43011, 3011, 43011, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 13011, 3011, 13011, 99999, '-orient', 0, 0, 1, 0, 1, 0)
@@ -1119,68 +1119,68 @@ def add_joints() -> None:
 
     # Joint grid ids (x, y, z): (1, 1, 4)
     # Central joint node
-    ops.node(4008, 4.15, 4.85, 13.0, '-mass', 13.55453970626522, 13.55453970626522, 13.55453970626522, 0.0, 0.0, 0.0)
+    ops.node(4008, 4.15, 4.85, 13.0, '-mass', 13.782062642045037, 13.782062642045037, 13.782062642045037, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(54008, 4.025, 4.85, 13.0)
+    ops.node(54008, 3.975, 4.85, 13.0)
     ops.element('elasticBeamColumn', 54008, 54008, 4008, 99999, 88888)
-    ops.node(34008, 4.275, 4.85, 13.0)
+    ops.node(34008, 4.325, 4.85, 13.0)
     ops.element('elasticBeamColumn', 34008, 4008, 34008, 99999, 88888)
     ops.node(24008, 4.15, 4.85, 12.825)
     ops.element('elasticBeamColumn', 24008, 24008, 4008, 99999, 99999)
-    ops.node(64008, 4.15, 4.725, 13.0)
+    ops.node(64008, 4.15, 4.675, 13.0)
     ops.element('elasticBeamColumn', 64008, 64008, 4008, 99999, 77777)
-    ops.node(44008, 4.15, 4.975, 13.0)
+    ops.node(44008, 4.15, 5.025, 13.0)
     ops.element('elasticBeamColumn', 44008, 4008, 44008, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 14008, 4008, 14008, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (2, 1, 4)
     # Central joint node
-    ops.node(4009, 8.3, 4.85, 13.0, '-mass', 12.312113113997192, 12.312113113997192, 12.312113113997192, 0.0, 0.0, 0.0)
+    ops.node(4009, 8.3, 4.85, 13.0, '-mass', 12.539636049777007, 12.539636049777007, 12.539636049777007, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(54009, 8.175, 4.85, 13.0)
+    ops.node(54009, 8.125, 4.85, 13.0)
     ops.element('elasticBeamColumn', 54009, 54009, 4009, 99999, 88888)
-    ops.node(34009, 8.425, 4.85, 13.0)
+    ops.node(34009, 8.475, 4.85, 13.0)
     ops.element('elasticBeamColumn', 34009, 4009, 34009, 99999, 88888)
     ops.node(24009, 8.3, 4.85, 12.825)
     ops.element('elasticBeamColumn', 24009, 24009, 4009, 99999, 99999)
-    ops.node(64009, 8.3, 4.725, 13.0)
+    ops.node(64009, 8.3, 4.675, 13.0)
     ops.element('elasticBeamColumn', 64009, 64009, 4009, 99999, 77777)
-    ops.node(44009, 8.3, 4.975, 13.0)
+    ops.node(44009, 8.3, 5.025, 13.0)
     ops.element('elasticBeamColumn', 44009, 4009, 44009, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 14009, 4009, 14009, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (3, 1, 4)
     # Central joint node
-    ops.node(4010, 11.25, 4.85, 13.0, '-mass', 12.312113113997192, 12.312113113997192, 12.312113113997192, 0.0, 0.0, 0.0)
+    ops.node(4010, 11.25, 4.85, 13.0, '-mass', 12.539636049777007, 12.539636049777007, 12.539636049777007, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(54010, 11.125, 4.85, 13.0)
+    ops.node(54010, 11.075, 4.85, 13.0)
     ops.element('elasticBeamColumn', 54010, 54010, 4010, 99999, 88888)
-    ops.node(34010, 11.375, 4.85, 13.0)
+    ops.node(34010, 11.425, 4.85, 13.0)
     ops.element('elasticBeamColumn', 34010, 4010, 34010, 99999, 88888)
     ops.node(24010, 11.25, 4.85, 12.825)
     ops.element('elasticBeamColumn', 24010, 24010, 4010, 99999, 99999)
-    ops.node(64010, 11.25, 4.725, 13.0)
+    ops.node(64010, 11.25, 4.675, 13.0)
     ops.element('elasticBeamColumn', 64010, 64010, 4010, 99999, 77777)
-    ops.node(44010, 11.25, 4.975, 13.0)
+    ops.node(44010, 11.25, 5.025, 13.0)
     ops.element('elasticBeamColumn', 44010, 4010, 44010, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 14010, 4010, 14010, 99999, '-orient', 0, 0, 1, 0, 1, 0)
 
     # Joint grid ids (x, y, z): (4, 1, 4)
     # Central joint node
-    ops.node(4011, 15.4, 4.85, 13.0, '-mass', 13.55453970626522, 13.55453970626522, 13.55453970626522, 0.0, 0.0, 0.0)
+    ops.node(4011, 15.4, 4.85, 13.0, '-mass', 13.782062642045037, 13.782062642045037, 13.782062642045037, 0.0, 0.0, 0.0)
     # Rigid-joint offset elements
-    ops.node(54011, 15.275, 4.85, 13.0)
+    ops.node(54011, 15.225, 4.85, 13.0)
     ops.element('elasticBeamColumn', 54011, 54011, 4011, 99999, 88888)
-    ops.node(34011, 15.525, 4.85, 13.0)
+    ops.node(34011, 15.575, 4.85, 13.0)
     ops.element('elasticBeamColumn', 34011, 4011, 34011, 99999, 88888)
     ops.node(24011, 15.4, 4.85, 12.825)
     ops.element('elasticBeamColumn', 24011, 24011, 4011, 99999, 99999)
-    ops.node(64011, 15.4, 4.725, 13.0)
+    ops.node(64011, 15.4, 4.675, 13.0)
     ops.element('elasticBeamColumn', 64011, 64011, 4011, 99999, 77777)
-    ops.node(44011, 15.4, 4.975, 13.0)
+    ops.node(44011, 15.4, 5.025, 13.0)
     ops.element('elasticBeamColumn', 44011, 4011, 44011, 99999, 77777)
     # Joint flexibility element: Rigid
     ops.element('zeroLengthSection', 14011, 4011, 14011, 99999, '-orient', 0, 0, 1, 0, 1, 0)

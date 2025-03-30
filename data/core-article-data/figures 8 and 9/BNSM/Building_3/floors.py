@@ -31,7 +31,7 @@ def add_floors() -> None:
     ops.node(11023, 25.2, 10.5, 3.2)
     ops.node(11024, 32.6, 10.5, 3.2)
     # Retained floor node
-    ops.node(91000, 16.3, 5.28277371, 3.2)
+    ops.node(91000, 16.3, 5.27622991, 3.2)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 91000, 11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009, 11010, 11011, 11012, 11013, 11014, 11015, 11016, 11017, 11018, 11019, 11020, 11021, 11022, 11023, 11024)
     # Fix the floating dofs of the retained node
@@ -64,7 +64,7 @@ def add_floors() -> None:
     ops.node(12023, 25.2, 10.5, 6.4)
     ops.node(12024, 32.6, 10.5, 6.4)
     # Retained floor node
-    ops.node(92000, 16.3, 5.27989405, 6.4)
+    ops.node(92000, 16.3, 5.27412346, 6.4)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 92000, 12001, 12002, 12003, 12004, 12005, 12006, 12007, 12008, 12009, 12010, 12011, 12012, 12013, 12014, 12015, 12016, 12017, 12018, 12019, 12020, 12021, 12022, 12023, 12024)
     # Fix the floating dofs of the retained node
@@ -97,7 +97,7 @@ def add_floors() -> None:
     ops.node(13023, 25.2, 10.5, 9.6)
     ops.node(13024, 32.6, 10.5, 9.6)
     # Retained floor node
-    ops.node(93000, 16.3, 5.27696945, 9.6)
+    ops.node(93000, 16.3, 5.2721021, 9.6)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 93000, 13001, 13002, 13003, 13004, 13005, 13006, 13007, 13008, 13009, 13010, 13011, 13012, 13013, 13014, 13015, 13016, 13017, 13018, 13019, 13020, 13021, 13022, 13023, 13024)
     # Fix the floating dofs of the retained node
@@ -130,7 +130,7 @@ def add_floors() -> None:
     ops.node(14023, 25.2, 10.5, 12.8)
     ops.node(14024, 32.6, 10.5, 12.8)
     # Retained floor node
-    ops.node(94000, 16.3, 5.30229973, 12.8)
+    ops.node(94000, 16.3, 5.29859788, 12.8)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 94000, 14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011, 14012, 14013, 14014, 14015, 14016, 14017, 14018, 14019, 14020, 14021, 14022, 14023, 14024)
     # Fix the floating dofs of the retained node

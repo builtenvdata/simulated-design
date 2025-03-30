@@ -25,7 +25,7 @@ def add_floors() -> None:
     ops.node(11017, 17.85, 9.2, 3.5)
     ops.node(11018, 22.8, 9.2, 3.5)
     # Retained floor node
-    ops.node(91000, 11.4, 4.66801738, 3.5)
+    ops.node(91000, 11.4, 4.66789323, 3.5)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 91000, 11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009, 11010, 11011, 11012, 11013, 11014, 11015, 11016, 11017, 11018)
     # Fix the floating dofs of the retained node
@@ -52,7 +52,7 @@ def add_floors() -> None:
     ops.node(12017, 17.85, 9.2, 6.2)
     ops.node(12018, 22.8, 9.2, 6.2)
     # Retained floor node
-    ops.node(92000, 11.4, 4.6656393, 6.2)
+    ops.node(92000, 11.4, 4.66552324, 6.2)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 92000, 12001, 12002, 12003, 12004, 12005, 12006, 12007, 12008, 12009, 12010, 12011, 12012, 12013, 12014, 12015, 12016, 12017, 12018)
     # Fix the floating dofs of the retained node

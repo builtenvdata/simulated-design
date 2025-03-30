@@ -27,7 +27,7 @@ def add_floors() -> None:
     ops.node(11019, 7.9, 16.2, 3.5)
     ops.node(11020, 12.9, 16.2, 3.5)
     # Retained floor node
-    ops.node(91000, 6.51432488, 8.22267178, 3.5)
+    ops.node(91000, 6.49687329, 8.21747498, 3.5)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 91000, 11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009, 11010, 11011, 11012, 11013, 11014, 11015, 11016, 11017, 11018, 11019, 11020)
     # Fix the floating dofs of the retained node
@@ -56,7 +56,7 @@ def add_floors() -> None:
     ops.node(12019, 7.9, 16.2, 6.4)
     ops.node(12020, 12.9, 16.2, 6.4)
     # Retained floor node
-    ops.node(92000, 6.51354126, 8.21929188, 6.4)
+    ops.node(92000, 6.49068402, 8.21755382, 6.4)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 92000, 12001, 12002, 12003, 12004, 12005, 12006, 12007, 12008, 12009, 12010, 12011, 12012, 12013, 12014, 12015, 12016, 12017, 12018, 12019, 12020)
     # Fix the floating dofs of the retained node
@@ -85,7 +85,7 @@ def add_floors() -> None:
     ops.node(13019, 7.9, 16.2, 9.3)
     ops.node(13020, 12.9, 16.2, 9.3)
     # Retained floor node
-    ops.node(93000, 6.49501585, 8.2163063, 9.3)
+    ops.node(93000, 6.486755, 8.2168052, 9.3)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 93000, 13001, 13002, 13003, 13004, 13005, 13006, 13007, 13008, 13009, 13010, 13011, 13012, 13013, 13014, 13015, 13016, 13017, 13018, 13019, 13020)
     # Fix the floating dofs of the retained node
@@ -114,7 +114,7 @@ def add_floors() -> None:
     ops.node(14019, 7.9, 16.2, 12.2)
     ops.node(14020, 12.9, 16.2, 12.2)
     # Retained floor node
-    ops.node(94000, 6.5379261, 8.23798462, 12.2)
+    ops.node(94000, 6.53182191, 8.23843195, 12.2)
     # Rigid floor diaphragm - multi-point constraints
     ops.rigidDiaphragm(3, 94000, 14001, 14002, 14003, 14004, 14005, 14006, 14007, 14008, 14009, 14010, 14011, 14012, 14013, 14014, 14015, 14016, 14017, 14018, 14019, 14020)
     # Fix the floating dofs of the retained node

@@ -79,10 +79,10 @@ def do_nspa_x(max_drift: float = 0.1, dincr: float = 0.0001) -> tuple[list[float
     ops.timeSeries('Linear', 2)
     ops.pattern('Plain', 2, 2)
     # Add lateral nspa loads to ops domain
-    ops.load(91000, 0.14435694071477087, 0, 0, 0, 0, 0)
-    ops.load(92000, 0.24660893170438714, 0, 0, 0, 0, 0)
-    ops.load(93000, 0.3424264463387692, 0, 0, 0, 0, 0)
-    ops.load(94000, 0.2666076812420728, 0, 0, 0, 0, 0)
+    ops.load(91000, 0.1516092330954747, 0, 0, 0, 0, 0)
+    ops.load(92000, 0.24786620143003868, 0, 0, 0, 0, 0)
+    ops.load(93000, 0.33854198667666774, 0, 0, 0, 0, 0)
+    ops.load(94000, 0.26198257879781883, 0, 0, 0, 0, 0)
 
     # Set the recorders
     ctrl_node = 94000  # Control node
@@ -186,10 +186,10 @@ def do_nspa_y(max_drift: float = 0.1, dincr: float = 0.0001) -> tuple[list[float
     ops.timeSeries('Linear', 2)
     ops.pattern('Plain', 2, 2)
     # Add lateral nspa loads to ops domain
-    ops.load(91000, 0, 0.11077655864032175, 0, 0, 0, 0)
-    ops.load(92000, 0, 0.22218144000541182, 0, 0, 0, 0)
-    ops.load(93000, 0, 0.35404803667336154, 0, 0, 0, 0)
-    ops.load(94000, 0, 0.312993964680905, 0, 0, 0, 0)
+    ops.load(91000, 0, 0.11816565635439179, 0, 0, 0, 0)
+    ops.load(92000, 0, 0.22401724914422824, 0, 0, 0, 0)
+    ops.load(93000, 0, 0.34902459659365426, 0, 0, 0, 0)
+    ops.load(94000, 0, 0.3087924979077257, 0, 0, 0, 0)
 
     # Set the recorders
     ctrl_node = 94000  # Control node

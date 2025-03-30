@@ -8,10 +8,6 @@ References
 ----------
 RBA (1935) Regulamento para o Emprego de Betão Armado.
 Decreto-Lei N.° 4036, Lisbon, Portugal.
-RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal.
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 
 TODO
 ----
@@ -56,6 +52,7 @@ class Column(ColumnBase):
         float
             Minimum allowed longitudinal reinforcement ratio.
         """
+        # Article 38 - RBA (1935)
         aux = 0.005 + 0.0006 * (self.line.length / min(self.bx, self.by) - 5)
         if aux < 0.005:
             return 0.005

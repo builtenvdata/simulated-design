@@ -9,10 +9,9 @@ Material qualities are higher compared CDN.
 
 References
 ----------
-RBA (1935) Regulamento para o Emprego de Betão Armado. Decreto-Lei N.° 4036,
-Lisbon, Portugal
 RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal
+Decreto-Lei N.° 41658, Lisbon, Portugal.
+REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 

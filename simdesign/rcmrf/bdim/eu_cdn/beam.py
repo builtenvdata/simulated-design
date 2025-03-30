@@ -1,15 +1,13 @@
 """
 Specific routines for defining and designing eu_cdn beams.
 
-Methodology follows the case of DCL1 (REBAP-83) beam design.
+Methodology follows the case of DCL (REBAP-83) beam design.
 Design based on working stress method.
 
 References
 ----------
 RBA (1935) Regulamento para o Emprego de Betão Armado. Decreto-Lei N.° 4036,
 Lisbon, Portugal.
-RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal.
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 

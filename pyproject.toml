@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simdesign"
-version = "0.1.0"
+version = "0.4.0"
 description = "A collaborative framework for the simulated design of buildings following past and current seismic design procedures in Europe."
 authors = [
     { name = "Volkan Ozsarac", email = "ozsarac.volkan@eucentre.it" }
@@ -24,17 +24,24 @@ dependencies = [
     "openpyxl==3.1.5",
     "pyvista[all]==0.44.2",
     "pydantic==2.10.6",
-    "pytest==8.3.4",
-    "openseespy==3.7.0.6; sys_platform == 'win32' and python_version == '3.12'",
-    "openseespywin==3.7.0.6; sys_platform == 'win32' and python_version == '3.12'",
+    "openseespy==3.7.1.2; sys_platform == 'win32' and python_version == '3.12'",
+    "openseespywin==3.7.1.2; sys_platform == 'win32' and python_version == '3.12'",
     "openseespy==3.6.0.3; sys_platform == 'win32' and python_version == '3.11'",
     "openseespywin==3.6.0.3; sys_platform == 'win32' and python_version == '3.11'",
-    "openseespy==3.7.0.6; sys_platform == 'linux' and python_version == '3.12'",
-    "openseespylinux==3.7.0.6; sys_platform == 'linux' and python_version == '3.12'",
+    "openseespy==3.7.1.2; sys_platform == 'linux' and python_version == '3.12'",
+    "openseespylinux==3.7.1.2; sys_platform == 'linux' and python_version == '3.12'",
     "openseespy==3.6.0.3; sys_platform == 'linux' and python_version == '3.11'",
     "openseespylinux==3.6.0.3; sys_platform == 'linux' and python_version == '3.11'",
-    "openseespy==3.7.0.6; sys_platform == 'darwin' and python_version == '3.11'",
+    "openseespy==3.7.1.2; sys_platform == 'darwin' and python_version == '3.11'",
     "openseespymac==3.4.0.2; sys_platform == 'darwin' and python_version == '3.11'"
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8==7.0.0",
+    "pytest==8.3.4",
+    "pytest-cov==5.0.0",
+    "pytest-env==1.1.4"
 ]
 
 [tool.setuptools]

@@ -162,7 +162,7 @@ def random_multivariate_normal(m: np.ndarray, k0: np.ndarray, size: int,
     m = m.reshape(d, 1)
     # Step 1: Compute the Cholesky Decomposition
     # Add small perturbation to the covariance matrix
-    k = k0 + epsilon*np.identity(d)
+    k = k0 + epsilon * np.identity(d)
     # Cholesky decomposition
     lower_triangular_matrix = np.linalg.cholesky(k)
     # Hermitian positive-definite matrix, A=L*L.T
@@ -172,7 +172,7 @@ def random_multivariate_normal(m: np.ndarray, k0: np.ndarray, size: int,
         print('Cholesky decomposition is not verified! '
               'It might be better to reduce the perturbation (epsilon)!')
     # Step 2: Generate Independent Samples u∼N(0,1)
-    u = norm.ppf(np.random.rand(d*size), loc=0, scale=1).reshape(d, size)
+    u = norm.ppf(np.random.rand(d * size), loc=0, scale=1).reshape(d, size)
     # Step 3: Compute x = m + lu
     x = (m + np.dot(lower_triangular_matrix, u)).T
 
@@ -207,7 +207,7 @@ def random_choice(q: List[str], size: int, p: List[float] = None
     array(['B03', 'B02', 'B05'], dtype='<U4')
     """
     if p is None:
-        p = [1/len(q)] * len(q)
+        p = [1 / len(q)] * len(q)
     cumulative_probs = np.cumsum(p)
     ids = []
     for _ in range(size):

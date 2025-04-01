@@ -106,3 +106,12 @@ class Building(BuildingBase):
             elif self.num_storeys <= 9:
                 column.MAX_B_SQUARE = 0.80 * m
                 column.MAX_B_RECTANGLE = 1.30 * m
+
+    def _change_beam_type(self) -> None:
+        """The method used for changing beam types.
+        Can be overwritten for each design class.
+        """
+        # change from wide beam to emergent beam
+        self.beam_type = 2
+        # change from asmolen slab to oneway or twoway slab
+        self._change_slab_type()

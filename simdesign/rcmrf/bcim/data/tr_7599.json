@@ -1,4 +1,4 @@
-{ 
+{  
   "typical_storey_height": 
     {
       "cv": 0.08,
@@ -30,8 +30,8 @@
     },
   "concrete":
     {
-      "grade": ["C14", "C16", "C20", "C25"],
-      "probability": [0.50, 0.30, 0.15, 0.05]
+      "grade": ["C14", "C16", "C18", "C20", "C25"],
+      "probability": [0.3, 0.3, 0.30, 0.075, 0.025]
     },
   "ground_storey_height":
     {
@@ -41,7 +41,7 @@
     },
   "construction_quality":
     {
-      "probability": [0.60, 0.30, 0.10]
+      "probability": [0.10, 0.30, 0.60]
     },
   "slab_typology":
     {
@@ -51,7 +51,7 @@
   "wb_prob_given_hs": 1.0,
   "square_column_prob": 0.05,
   "layout": "all",
-  "beta": 0.06,
+  "beta": 0.064,
   "num_storeys": 5,
   "design_class": "tr_7599",
   "seed": 1994,

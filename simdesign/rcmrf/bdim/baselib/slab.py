@@ -222,7 +222,7 @@ class SlabBase(ABC):
             min_span_length = min(self.lx, self.ly)
             if self.typology == 1 or self.typology == 2:
                 return min(
-                    round(100 * min_span_length/30) / 100,
+                    round(100 * min_span_length / 30) / 100,
                     self.MAX_THICKNESS)
             elif self.typology == 3:
                 return min(
@@ -245,12 +245,12 @@ class SlabBase(ABC):
         """
         # Loading along beam in x
         if self.orientation == 1:
-            ax = self.lx*self.ly/2
+            ax = self.lx * self.ly / 2
             ay = 0
         # Loading along beam in y
         elif self.orientation == 2:
             ax = 0
-            ay = self.lx*self.ly/2
+            ay = self.lx * self.ly / 2
         # Loading along beams on both sides
         elif self.orientation == 3:
             if self.lx > self.ly:

@@ -55,10 +55,10 @@ class FloorDiaphragm:
         sum_mass = 0  # summation of the masses
         sum_mass_moment = 0  # summation of the mass moments
         for i, node in enumerate(self.cnodes):
-            mass = np.array(3*masses[i])
+            mass = np.array(3 * masses[i])
             coords = np.array(node.coordinates)
             sum_mass += mass
-            sum_mass_moment += mass*coords
+            sum_mass_moment += mass * coords
         # Center of mass
         cm = np.round(sum_mass_moment / sum_mass, PRECISION)
         tag = 90000 + self.floor * 1000

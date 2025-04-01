@@ -578,7 +578,8 @@ class BeamBase(ABC):
         hbmin = np.minimum(self.b, self.h)
         hbmax = np.maximum(self.b, self.h)
         return (hbmax * hbmin**3) * (
-            1/3 - 0.21 * (hbmin / hbmax) * (1 - (hbmin**4 / (12*hbmax**4))))
+            1 / 3 - 0.21 * (hbmin / hbmax) * (1 - (hbmin**4 / (12 * hbmax**4)))
+        )
 
     @property
     def L(self) -> float:
@@ -801,7 +802,7 @@ class BeamBase(ABC):
         Array3[np.float64]
             Horizontal (transverse) reinforcement ratio in local-x.
         """
-        Ash = self.nbh_b * np.pi*self.dbh**2/4
+        Ash = self.nbh_b * np.pi * self.dbh**2 / 4
         return Ash / (self.h * self.sbh)
 
     @property
@@ -812,7 +813,7 @@ class BeamBase(ABC):
         Array3[np.float64]
             Horizontal (transverse) reinforcement ratio in local-y.
         """
-        Ash = self.nbh_h * np.pi*self.dbh**2/4
+        Ash = self.nbh_h * np.pi * self.dbh**2 / 4
         return Ash / (self.b * self.sbh)
 
     @property
@@ -828,7 +829,7 @@ class BeamBase(ABC):
         elif self.direction == 'y':  # Beam is along y
             bc = max(col.bx for col in self.columns if col)
         # EC8 5.4.1.2.1 (3) width limit
-        b_max_code = min(bc + self.h, 2*bc)
+        b_max_code = min(bc + self.h, 2 * bc)
         # Masks for finding emergent beams
         bool1 = self.typology == 2
         bool2 = self.exterior
@@ -955,18 +956,18 @@ class BeamBase(ABC):
         # Set direction dependent parameters
         if direction == 'pos':  # positive direction case
             # Longitudinal reinforcement area under tension
-            As_tens = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
-                       self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
+            As_tens = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2)
+                       + self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
             # Longitudinal reinforcement area under compression
-            As_comp = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
-                       self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+            As_comp = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2)
+                       + self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
         elif direction == 'neg':  # negative direction case
             # Longitudinal reinforcement area under tension
-            As_tens = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
-                       self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+            As_tens = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2)
+                       + self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
             # Longitudinal reinforcement area under compression
-            As_comp = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
-                       self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
+            As_comp = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2)
+                       + self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
 
         # Dist. from concrete fiber in compression to the rebars in tension
         if hasattr(self, 'dbh'):
@@ -1016,8 +1017,9 @@ class BeamBase(ABC):
         A_to_use[c >= cb] = Acomp_cntrl[c >= cb]
         B_to_use[c >= cb] = Bcomp_cntrl[c >= cb]
         # The compression zone depth: Panagiotakos and Fardis 2001 - Equation 3
-        ky = (((nyoung**2) * (A_to_use**2) + (2*nyoung*B_to_use))**0.5
-              - nyoung*A_to_use)
+        ky = (
+            (nyoung**2) * (A_to_use**2) + (2 * nyoung * B_to_use)
+        ) ** 0.5 - nyoung * A_to_use
         # Panagiotakos and Fardis 2001 - Equation 1
         fiy1 = self.fsyd / (Es * (1 - ky) * dd)
         # Panagiotakos and Fardis 2001 - Equation 2
@@ -1027,13 +1029,16 @@ class BeamBase(ABC):
         fiy[control == 0] = fiy2[control == 0]
         # Yield Moment: Panagiotakos and Fardis 2001 - Equation 6
         rhol_int = 0.0  # Beams do not have web-reinforcement
-        term1 = (Ec * (ky**2)/2) * (
-            0.5 * (1 + (dd_prime / dd)) - (ky / 3))
-        term2 = (Es/2) * (
-                (1 - ky) * rhol_tens +
-                (ky - (dd_prime / dd)) * rhol_comp +
-                (rhol_int / 6) * (1 - (dd_prime / dd))
-                ) * (1 - (dd_prime / dd))
+        term1 = (Ec * (ky**2) / 2) * (0.5 * (1 + (dd_prime / dd)) - (ky / 3))
+        term2 = (
+            (Es / 2)
+            * (
+                (1 - ky) * rhol_tens
+                + (ky - (dd_prime / dd)) * rhol_comp
+                + (rhol_int / 6) * (1 - (dd_prime / dd))
+            )
+            * (1 - (dd_prime / dd))
+        )
         My = (self.b * (dd**3)) * fiy * (term1 + term2)
 
         return My
@@ -1151,13 +1156,18 @@ class BeamBase(ABC):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20

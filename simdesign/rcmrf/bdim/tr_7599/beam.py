@@ -132,8 +132,8 @@ class Beam(BeamBase):
                 # Increase breadth
                 self.b += self.B_INCR_EB
                 # Compute height for economic section, assuming d = 0.1h
-                mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd *
-                               self.b)) ** 0.5) / 0.9
+                mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd
+                               * self.b)) ** 0.5) / 0.9
                 # Compute height to control deformations
                 if self.stairs_wg != 0.0 or sum(self.slab_wg) != 0.0:
                     # The beam carries a slab (stairs or floor slab)
@@ -151,13 +151,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20

@@ -8,12 +8,6 @@ References
 ----------
 RBA (1935) Regulamento para o Emprego de Betão Armado.
 Decreto-Lei N.° 4036, Lisbon, Portugal.
-
-TODO
-----
-Discuss the default constants.
-See specific lines with TODOs.
-Add specific reference pages for design equations.
 """
 
 # Imports from installed packages
@@ -80,15 +74,15 @@ class Column(ColumnBase):
             self.bx = (min_area**0.5)
             self.by = (min_area**0.5)
         elif self.section == 2:  # Rectangular section
-            if self.orient == 'x':  # Longer dimension is bx
+            if self.orient == "x":  # Longer dimension is bx
                 self.by = self.min_b
-                self.bx = min_area/self.min_b
-            elif self.orient == 'y':  # Longer dimension is by
+                self.bx = min_area / self.min_b
+            elif self.orient == "y":  # Longer dimension is by
                 self.bx = self.min_b
-                self.by = min_area/self.min_b
+                self.by = min_area / self.min_b
         # Check against minimum dimensions
-        self.bx = max(ceil(20*self.bx)/20, self.min_b)
-        self.by = max(ceil(20*self.by)/20, self.min_b)
+        self.bx = max(ceil(20 * self.bx) / 20, self.min_b)
+        self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def apply_section_compatibility(self) -> None:
         """Modifies the section dimensions for square section compatibility.
@@ -104,8 +98,8 @@ class Column(ColumnBase):
         """
         if self.section == 1:  # Square section
             # Make both dimensions equal to their maximum
-            self.bx = ceil(20*max(self.bx, self.by)) / 20
-            self.by = ceil(20*max(self.bx, self.by)) / 20
+            self.bx = ceil(20 * max(self.bx, self.by)) / 20
+            self.by = ceil(20 * max(self.bx, self.by)) / 20
         elif self.section == 2:  # Rectangular section
             pass
 

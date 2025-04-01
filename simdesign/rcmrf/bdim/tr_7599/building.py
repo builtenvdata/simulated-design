@@ -27,8 +27,8 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: tr_7599.
-    """
+    """Building object for design class: tr_7599."""
+
     beams: List[Beam]
     """List of beam instances."""
     columns: List[Column]
@@ -97,11 +97,20 @@ class Building(BuildingBase):
         """
         for column in self.columns:
             if self.num_storeys <= 3:
-                column.MAX_B_SQUARE = 0.60*m
-                column.MAX_B_RECTANGLE = 0.80*m
+                column.MAX_B_SQUARE = 0.60 * m
+                column.MAX_B_RECTANGLE = 0.80 * m
             elif self.num_storeys <= 6:
-                column.MAX_B_SQUARE = 0.80*m
-                column.MAX_B_RECTANGLE = 1.00*m
+                column.MAX_B_SQUARE = 0.80 * m
+                column.MAX_B_RECTANGLE = 1.00 * m
             elif self.num_storeys <= 9:
-                column.MAX_B_SQUARE = 0.80*m
-                column.MAX_B_RECTANGLE = 1.30*m
+                column.MAX_B_SQUARE = 0.80 * m
+                column.MAX_B_RECTANGLE = 1.30 * m
+
+    def _change_beam_type(self) -> None:
+        """The method used for changing beam types.
+        Can be overwritten for each design class.
+        """
+        # change from wide beam to emergent beam
+        self.beam_type = 2
+        # change from asmolen slab to oneway or twoway slab
+        self._change_slab_type()

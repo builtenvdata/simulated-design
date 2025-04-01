@@ -184,8 +184,8 @@ class ElasticModelBase(ABC):
         # COLUMNS
         TRANSF_TAG = 1  # Geometric transformation tag
         VECXZ = [-1, 0, 0]  # X, Y, and Z components of vecxz
-        FACTY = 5/6  # shear shape factor along local Y
-        FACTZ = 5/6  # shear shape factor along local Z
+        FACTY = 5 / 6  # shear shape factor along local Y
+        FACTZ = 5 / 6  # shear shape factor along local Z
         NUM_INT_PTS = 9  # number of integration points along the element
         # Define geometric transformation
         ops.geomTransf('Linear', TRANSF_TAG, *VECXZ)
@@ -217,8 +217,8 @@ class ElasticModelBase(ABC):
         VECXZ_X = [0, -1, 0]  # X, Y, and Z components of vecxz for beams in X
         TRANSF_TAG_Y = 3  # Geometric transformation tag for beams along Y
         VECXZ_Y = [1, 0, 0]  # X, Y, and Z components of vecxz for beams in Y
-        FACTY = 5/6  # shear shape factor along local Y
-        FACTZ = 5/6  # shear shape factor along local Z
+        FACTY = 5 / 6  # shear shape factor along local Y
+        FACTZ = 5 / 6  # shear shape factor along local Z
         NUM_INT_PTS = 9  # number of integration points along the element
         # Define geometric transformations
         ops.geomTransf('Linear', TRANSF_TAG_X, *VECXZ_X)
@@ -309,11 +309,11 @@ class ElasticModelBase(ABC):
                 coords = np.array(node.coordinates)
                 all_coords.append(coords)
                 sum_mass += mass
-                sum_mass_moment += mass*coords
+                sum_mass_moment += mass * coords
             # Find centre of (CM)
             cm = np.round(sum_mass_moment / sum_mass, 2)
             # Floor retained node tag
-            rnode = int(90000 + 1000*i)
+            rnode = int(90000 + 1000 * i)
             # Rigid diaphragm node tags
             floor_nodes = [rnode] + cnodes
             # Recreate the retained nodes with new CM
@@ -333,7 +333,7 @@ class ElasticModelBase(ABC):
             lx, ly, _ = all_coords.max(axis=0) - all_coords.min(axis=0)
             floor_lx.append(lx)
             floor_ly.append(ly)
-            floor_weights.append(sum_mass[0]*grav_acc)
+            floor_weights.append(sum_mass[0] * grav_acc)
             floor_heights.append(cm[2])
 
         return (rnodes, np.array(floor_weights), np.array(floor_heights),

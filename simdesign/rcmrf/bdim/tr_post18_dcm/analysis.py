@@ -107,8 +107,8 @@ class ElasticModel(ElasticModelBase):
                                 else:
                                     tag_e = tag + f"/{ecc}ecc"
                                     tmp.append(fact * beam.forces[tag_e])
-                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR *
-                                                  fact * beam.forces[tag_e])
+                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR
+                                                  * fact * beam.forces[tag_e])
                             ecc_forces.append(tmp)
                             ecc_forces_ov.append(tmp_ov)
 
@@ -180,8 +180,10 @@ class ElasticModel(ElasticModelBase):
                                                                0, 0, 0, 0, 0))
                                 else:
                                     tmp.append(fact * column.forces[tag_e])
-                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR *
-                                                  fact * column.forces[tag_e])
+                                    tmp_ov.append(
+                                        self.OVERSTRENGTH_FACTOR
+                                        * fact * column.forces[tag_e]
+                                    )
                             ecc_forces.append(tmp)
                             ecc_forces_ov.append(tmp_ov)
 

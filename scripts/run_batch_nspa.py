@@ -50,9 +50,9 @@ for design_class in design_classes:
     for i, taxonomy in enumerate(bcim.taxonomy):
         print("----------------------------------------------------")
         print(f"Designing {design_class.upper()} building: "
-              f"{i+1}/{len(bcim.taxonomy)}")
+              f"{i + 1}/{len(bcim.taxonomy)}")
         # Set the output directory
-        outdir_building = outdir_class / f'Building_{i+1}'
+        outdir_building = outdir_class / f'Building_{i + 1}'
         # Initialize BDIM
         bdim = rcmrf.BDIM(taxonomy)
         # To ensure the reproducibility of BDIM set the seed

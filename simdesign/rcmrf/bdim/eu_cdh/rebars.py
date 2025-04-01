@@ -69,14 +69,14 @@ class Rebars(RebarsBase):
     """Concrete material instance considered in design of beams and columns."""
     steel: Steel
     """Steel material instance considered in design of beams and columns."""
-    beam_min_sbl: float = 40*mm
+    beam_min_sbl: float = 40 * mm
     """For beams, minimum spacing between longitudinal bars (reinforcement).
     Reference?"""
-    col_min_sbl: float = 35*mm
+    col_min_sbl: float = 35 * mm
     """For columns, minimum spacing between longitudinal bars (reinforcement).
     Reference?
     """
-    col_max_leg_dist: float = 150*mm
+    col_max_leg_dist: float = 150 * mm
     """For columns, maximum distance between longitudinal bars within a section
     that can be considered to be confined without the need to have
     an extra stirrup leg around them.
@@ -97,7 +97,7 @@ class Rebars(RebarsBase):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_min_col_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in columns.
@@ -112,7 +112,7 @@ class Rebars(RebarsBase):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_beam_max_sbh(self, **kwargs) -> float | np.ndarray:
         """Gets maximum spacing between horizontal bars
@@ -132,8 +132,7 @@ class Rebars(RebarsBase):
         dbh = kwargs['dbh']  # transverse reinf. diameter
         dbl = kwargs['dbl']  # long. reinf. diameter
         max_sbh = np.minimum(
-            np.minimum(225*mm, h/4),
-            np.minimum(24*dbh, 8*dbl)
+            np.minimum(225 * mm, h / 4), np.minimum(24 * dbh, 8 * dbl)
         )
         return max_sbh
 
@@ -154,7 +153,7 @@ class Rebars(RebarsBase):
         by = kwargs['by']  # column width along y
         bx = kwargs['bx']  # column width along x
         cover = kwargs['cover']
-        b0 = np.minimum(by, bx) - 2*cover
-        dbl = kwargs['dbl']  # long. reinf. diameter
-        max_sbh = np.minimum(np.minimum(b0/2, 175*mm), 8*dbl)
+        b0 = np.minimum(by, bx) - 2 * cover
+        dbl = kwargs["dbl"]  # long. reinf. diameter
+        max_sbh = np.minimum(np.minimum(b0 / 2, 175 * mm), 8 * dbl)
         return max_sbh

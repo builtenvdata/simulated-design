@@ -228,13 +228,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20

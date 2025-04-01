@@ -132,7 +132,7 @@ class StairsBase(ABC):
         One is located at mid-storey level, while the other is located at
         floor level.
         """
-        return self.lx*self.ly/2
+        return self.lx * (self.ly / 2)
 
     def set_loads(
         self, permanent_loads: PermanentBase, variable_loads: VariableBase

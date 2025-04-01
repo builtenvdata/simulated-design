@@ -1,11 +1,6 @@
 """
 Specific routines for defining and designing tr_pre75 columns.
 
-TODO
-----
-Discuss the default constants.
-Add specific reference pages for design equations.
-
 Notes
 -----
 Design based on working stress method.
@@ -57,7 +52,7 @@ ABACUS_MU = np.array([
     0.0, 0.0277777777777778, 0.0555555555555556, 0.0833333333333333,
     0.111111111111111, 0.138888888888889, 0.166666666666667,
     0.194444444444444, 0.222222222222222, 0.250000000000000
-    ])
+])
 ABACUS_NIU = np.array([
     0.0, 0.0777777777777778, 0.155555555555556, 0.233333333333333,
     0.311111111111111, 0.388888888888889, 0.466666666666667,
@@ -93,7 +88,7 @@ ABACUS_RHOL = np.array([
     [0.0, 0.0309847222222222, 0.0619694444444444, 0.0929541666666667,
      0.132961000000000, 0.185786555555556, 0.239298333333333,
      0.283691888888889, 0.338197000000000, 0.387725000000000]
-          ]) / MODULAR_RATIO
+]) / MODULAR_RATIO
 # Interpolator used for retrieving the required column long. reinf. ratio
 # NOTE: The values outside the domain are extrapolated
 rho_interpolator = RegularGridInterpolator(
@@ -219,15 +214,15 @@ class Column(ColumnBase):
             self.bx = (min_area**0.5)
             self.by = (min_area**0.5)
         elif self.section == 2:  # Rectangular section
-            if self.orient == 'x':  # Longer dimension is bx
+            if self.orient == "x":  # Longer dimension is bx
                 self.by = self.min_b
-                self.bx = min_area/self.min_b
-            elif self.orient == 'y':  # Longer dimension is by
+                self.bx = min_area / self.min_b
+            elif self.orient == "y":  # Longer dimension is by
                 self.bx = self.min_b
-                self.by = min_area/self.min_b
+                self.by = min_area / self.min_b
         # Check against minimum dimensions
-        self.bx = max(ceil(20*self.bx)/20, self.min_b)
-        self.by = max(ceil(20*self.by)/20, self.min_b)
+        self.bx = max(ceil(20 * self.bx) / 20, self.min_b)
+        self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def apply_section_compatibility(self) -> None:
         """Modifies the section dimensions for square section compatibility.
@@ -243,8 +238,8 @@ class Column(ColumnBase):
         """
         if self.section == 1:  # Square section
             # Make both dimensions equal to their maximum
-            self.bx = ceil(20*max(self.bx, self.by)) / 20
-            self.by = ceil(20*max(self.bx, self.by)) / 20
+            self.bx = ceil(20 * max(self.bx, self.by)) / 20
+            self.by = ceil(20 * max(self.bx, self.by)) / 20
         elif self.section == 2:  # Rectangular section
             pass
 
@@ -316,8 +311,8 @@ class Column(ColumnBase):
         Asly_req = 0.0
         for force in self.design_forces:
             # Dimensionless design force quantities
-            niu_1 = (-1*force.N1) / (self.Ag * fcd)
-            niu_9 = (-1*force.N9) / (self.Ag * fcd)
+            niu_1 = (-force.N1) / (self.Ag * fcd)
+            niu_9 = (-force.N9) / (self.Ag * fcd)
             mu_x1 = abs(force.Mx1) / ((self.bx * self.by**2) * fcd)
             mu_y1 = abs(force.My1) / ((self.by * self.bx**2) * fcd)
             mu_x9 = abs(force.Mx9) / ((self.bx * self.by**2) * fcd)
@@ -327,8 +322,8 @@ class Column(ColumnBase):
             rhol_x9, rhol_y9 = get_rhol(niu_9, mu_x9, mu_y9, fcd, fsyd)
             rhol_x = max(rhol_x1, rhol_x9)
             rhol_y = max(rhol_y1, rhol_y9)
-            Aslx = 0.5*rhol_x*self.Ag
-            Asly = 0.5*rhol_y*self.Ag
+            Aslx = 0.5 * rhol_x * self.Ag
+            Asly = 0.5 * rhol_y * self.Ag
             # Update the required area based on maximum
             Aslx_req = max(Aslx_req, Aslx)
             Asly_req = max(Asly_req, Asly)

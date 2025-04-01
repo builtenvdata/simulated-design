@@ -110,25 +110,25 @@ class Building(BuildingBase):
         for column in self.columns:
             if self.num_storeys <= 3:
                 if self.beta <= 0.20:
-                    column.MAX_B_SQUARE = 0.45*m
-                    column.MAX_B_RECTANGLE = 0.70*m
+                    column.MAX_B_SQUARE = 0.45 * m
+                    column.MAX_B_RECTANGLE = 0.70 * m
                 else:
-                    column.MAX_B_SQUARE = 0.60*m
-                    column.MAX_B_RECTANGLE = 0.80*m
+                    column.MAX_B_SQUARE = 0.60 * m
+                    column.MAX_B_RECTANGLE = 0.80 * m
             elif self.num_storeys <= 6:
                 if self.beta <= 0.20:
-                    column.MAX_B_SQUARE = 0.60*m
-                    column.MAX_B_RECTANGLE = 1.00*m
+                    column.MAX_B_SQUARE = 0.60 * m
+                    column.MAX_B_RECTANGLE = 1.00 * m
                 else:
-                    column.MAX_B_SQUARE = 0.80*m
-                    column.MAX_B_RECTANGLE = 1.20*m
+                    column.MAX_B_SQUARE = 0.80 * m
+                    column.MAX_B_RECTANGLE = 1.20 * m
             elif self.num_storeys <= 9:
                 if self.beta <= 0.20:
-                    column.MAX_B_SQUARE = 0.80*m
-                    column.MAX_B_RECTANGLE = 1.20*m
+                    column.MAX_B_SQUARE = 0.80 * m
+                    column.MAX_B_RECTANGLE = 1.20 * m
                 else:
-                    column.MAX_B_SQUARE = 1.00*m
-                    column.MAX_B_RECTANGLE = 1.40*m
+                    column.MAX_B_SQUARE = 1.00 * m
+                    column.MAX_B_RECTANGLE = 1.40 * m
 
     def _change_materials(self) -> None:
         """The method used for changing materials in iterative design

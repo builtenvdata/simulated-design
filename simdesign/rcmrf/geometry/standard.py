@@ -129,7 +129,7 @@ class StandardFrame(FrameBase):
         Initialize the points of the frame.
         """
         for k in range(self._num_storeys + 1):  # Along -z
-            tag = k*1000 + 1  # add 1000 for each floor
+            tag = k * 1000 + 1  # add 1000 for each floor
             for j in range(self._num_bays_y + 1):  # Along -y
                 for i in range(self._num_bays_x + 1):  # Along -x
                     x = i * self._bay_width_x  # x-coord
@@ -155,11 +155,11 @@ class StandardFrame(FrameBase):
             for j in range(self._num_bays_y + 1):  # Along -y
                 for i in range(self._num_bays_x + 1):  # Along -x
                     point1_grid = [i, j, k]
-                    point2_grid = [i, j, k+1]
+                    point2_grid = [i, j, k + 1]
                     point1 = self.find_point_by_grid_ids(point1_grid)
                     point2 = self.find_point_by_grid_ids(point2_grid)
                     points = [point1, point2]
-                    tag = k*1000 + counter
+                    tag = k * 1000 + counter
                     counter += 1
                     new_line = Line(points, tag)
                     self.lines.append(new_line)
@@ -170,11 +170,11 @@ class StandardFrame(FrameBase):
             for j in range(self._num_bays_y + 1):  # Along -y
                 for i in range(self._num_bays_x):  # Along -x
                     point1_grid = [i, j, k]
-                    point2_grid = [i+1, j, k]
+                    point2_grid = [i + 1, j, k]
                     point1 = self.find_point_by_grid_ids(point1_grid)
                     point2 = self.find_point_by_grid_ids(point2_grid)
                     points = [point1, point2]
-                    tag = k*1000 + counter
+                    tag = k * 1000 + counter
                     counter += 1
                     new_line = Line(points, tag)
                     self.lines.append(new_line)
@@ -185,11 +185,11 @@ class StandardFrame(FrameBase):
             for j in range(self._num_bays_y):  # Along -y
                 for i in range(self._num_bays_x + 1):  # Along -x
                     point1_grid = [i, j, k]
-                    point2_grid = [i, j+1, k]
+                    point2_grid = [i, j + 1, k]
                     point1 = self.find_point_by_grid_ids(point1_grid)
                     point2 = self.find_point_by_grid_ids(point2_grid)
                     points = [point1, point2]
-                    tag = k*1000 + counter
+                    tag = k * 1000 + counter
                     counter += 1
                     new_line = Line(points, tag)
                     self.lines.append(new_line)
@@ -205,9 +205,9 @@ class StandardFrame(FrameBase):
                 for i in range(self._num_bays_x):  # Along -x
                     # Find points on the rectangle
                     lower_left_grid = [i, j, k]
-                    upper_right_grid = [i+1, j+1, k]
-                    lower_right_grid = [i+1, j, k]
-                    upper_left_grid = [i, j+1, k]
+                    upper_right_grid = [i + 1, j + 1, k]
+                    lower_right_grid = [i + 1, j, k]
+                    upper_left_grid = [i, j + 1, k]
                     point1 = self.find_point_by_grid_ids(lower_left_grid)
                     point2 = self.find_point_by_grid_ids(upper_left_grid)
                     point3 = self.find_point_by_grid_ids(upper_right_grid)
@@ -224,7 +224,7 @@ class StandardFrame(FrameBase):
                     line4 = self.find_line_by_points(line4_points)
                     lines = [line1, line2, line3, line4]
                     # Create a Rectangle object and append
-                    tag = k*1000 + counter
+                    tag = k * 1000 + counter
                     counter += 1
                     rectangle = Rectangle(points, lines, tag)
                     rectangle.sort_by_xy()

@@ -232,13 +232,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20
@@ -394,7 +399,7 @@ class Beam(BeamBase):
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
 
         # Compression to tension reinf. ratio must be greater than 0.5
-        # for 1sr and 2nd seismic zones
+        # for 1st and 2nd seismic zones
         mask = Asl_top / Asl_bot < 0.5
         if any(mask):
             Asl_top[mask] = 0.5 * Asl_bot[mask]
@@ -424,8 +429,9 @@ class Beam(BeamBase):
         Ve = np.array([self.Ve1, self.envelope_forces.V5, self.Ve9])
 
         # Shear force due to gravity loads
-        forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
-        Vdy = np.array([abs(forces.V1), abs(forces.V5), abs(forces.V9)])
+        grav_forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
+        Vd_gravity = np.array([abs(grav_forces.V1), abs(grav_forces.V5),
+                               abs(grav_forces.V9)])
 
         # Shear force resisted by concrete, Eq.8.1 in TS500-2000
         Vcr = 0.65 * self.fctd * self.b * (0.9 * self.h)
@@ -440,11 +446,10 @@ class Beam(BeamBase):
         Ash_sbh[mask] = self.rhoh_min * self.b
 
         # Ve > Vcr case
-        shear_force_for_reinforcement = np.where(Ve - Vdy >= 0.5 * Vd, Ve,
-                                                 Ve - Vc)
-        Ash_sbh[~mask] = shear_force_for_reinforcement[~mask] / (
-            self.fsyd * (0.9 * self.h)
-        )
+        shear_force_for_reinforcement = np.where((Vd - Vd_gravity) >= 0.5 * Vd,
+                                                 Ve, Ve - Vc)
+        Ash_sbh[~mask] = shear_force_for_reinforcement[~mask] / \
+            (self.fsyd * (0.9 * self.h))
 
         # Save required transverse reinforcement area to spacing ratio
         Ash_sbh_min = self.rhoh_min * self.b  # Min. transverse reinforcement

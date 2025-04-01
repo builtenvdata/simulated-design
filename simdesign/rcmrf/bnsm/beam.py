@@ -129,8 +129,8 @@ class Beam:
         self.design = design
         self.bondslip_factor = bondslip_factor
         self.ele_load = round(
-            float(design.wg_total * load_factors['G'] +
-                  design.wq_total * load_factors['Q']),
+            float(design.wg_total * load_factors['G']
+                  + design.wq_total * load_factors['Q']),
             PRECISION)
 
     def set_ele_node_i(self) -> None:
@@ -224,12 +224,12 @@ class Beam:
             f"ops.element('zeroLength', {hinge_i_tag}, {hinge_i_nodes}, "
             f"'-mat', {hinge_i_mats}, '-dir', {mat_dirs}, "
             f"'-orient', {orientation})"
-            )
+        )
         content.append(
             f"ops.element('zeroLength', {hinge_j_tag}, {hinge_j_nodes}, "
             f"'-mat', {hinge_j_mats}, '-dir', {mat_dirs}, "
             f"'-orient', {orientation})"
-            )
+        )
 
         return content
 
@@ -281,11 +281,11 @@ class Beam:
         content.append(
             f"element zeroLength {hinge_i_tag} {hinge_i_nodes} "
             f"-mat {hinge_i_mats} -dir {mat_dirs} -orient {orientation}"
-            )
+        )
         content.append(
             f"element zeroLength {hinge_j_tag} {hinge_j_nodes} "
             f"-mat {hinge_j_mats} -dir {mat_dirs} -orient {orientation}"
-            )
+        )
 
         return content
 
@@ -307,9 +307,9 @@ class Beam:
             in OpenSees.
         """
         return (
-                f"ops.eleLoad('-ele', {self.ele_tag}, '-type', "
-                f"'-beamUniform', {-self.ele_load}, 0.0)"
-            )
+            f"ops.eleLoad('-ele', {self.ele_tag}, '-type', "
+            f"'-beamUniform', {-self.ele_load}, 0.0)"
+        )
 
     def to_tcl_grav_loads(self) -> str:
         """Gets the Tcl commands to construct beam gravity load object in
@@ -322,9 +322,9 @@ class Beam:
             in OpenSees.
         """
         return (
-                f"eleLoad -ele {self.ele_tag} -type "
-                f"-beamUniform {-self.ele_load} 0.0"
-            )
+            f"eleLoad -ele {self.ele_tag} -type "
+            f"-beamUniform {-self.ele_load} 0.0"
+        )
 
     def _get_hinge_ele_inputs(self) -> Tuple[int, List[int], List[int],
                                              int, List[int], List[int],
@@ -427,17 +427,17 @@ class Beam:
         rhoh = self.design.rhoh_y
 
         # Shear span, assuming equal to 50% of the free length of the element
-        ls = ln/2  # NOTE: Could be varied with intensity of loading, but ok.
+        ls = ln / 2  # NOTE: Could be varied with intensity of loading, but ok.
         niu = 0.0  # Axial load ratio, assuming beams do not have any
         # Post-yield hardening stiffness - Haselton et al. 2008 - Equation 3.17
-        Mc_My = 1.25 * (0.89**niu) * (0.91**(0.01*fc_mpa))
+        Mc_My = 1.25 * (0.89**niu) * (0.91 ** (0.01 * fc_mpa))
         #  Residual strength to capping strength ratio - assumed
         Mr_Mc = 0.1  # 10%
         # Reinforcing bar buckling coefficient, by Dhakal and Maekawa 2002
-        sn = (sbh[0] / dbl_t1) * (fsyl_mpa / 100)**0.5
+        sn = (sbh[0] / dbl_t1) * (fsyl_mpa / 100) ** 0.5
         # Shear cracking is expected to precede flexural yield EC8-3 pp 41
         av = 1.0
-        z = 0.9 * (0.9*h)  # lever arm
+        z = 0.9 * (0.9 * h)  # lever arm
         # NOTE: av.z is the tension shift of the bending diagram see:
         # EN 1992-1-1: 2004, 9.2.1.3(2)
 
@@ -449,35 +449,45 @@ class Beam:
         Mc_neg = Mc_My * My_neg
         Mc_pos = Mc_My * My_pos
         # Residual moment capacity
-        Mr_neg = Mr_Mc*Mc_neg
-        Mr_pos = Mr_Mc*Mc_pos
+        Mr_neg = Mr_Mc * Mc_neg
+        Mr_pos = Mr_Mc * Mc_pos
 
         # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
         c_u = 1.0  # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi
-        theta_cap_pl_pos = 0.12 * (1 + 0.55 * self.bondslip_factor) * \
-            (0.16**niu) * ((0.02 + 40*rhoh)**0.43) * \
-            (0.54**(0.01*c_u*fc_mpa)) * (0.66**(0.1*sn)) * (2.27**(10.0*rhol))
+        theta_cap_pl_pos = (
+            0.12
+            * (1 + 0.55 * self.bondslip_factor)
+            * (0.16**niu)
+            * ((0.02 + 40 * rhoh) ** 0.43)
+            * (0.54 ** (0.01 * c_u * fc_mpa))
+            * (0.66 ** (0.1 * sn))
+            * (2.27 ** (10.0 * rhol))
+        )
         # Non-symmetric beam section - Equation 7
         # NOTE: This is different than MATLAB implementation
-        ratio_pos_neg = np.maximum(
-            0.01, self.design.rhol_top / self.design.rhol_bot) ** 0.225
+        ratio_pos_neg = (
+            np.maximum(0.01, self.design.rhol_top / self.design.rhol_bot)
+            ** 0.225
+        )
         theta_cap_pl_neg = ratio_pos_neg * theta_cap_pl_pos
         # Post-capping rotation capacity by Haselton et al. 2016 - Equation 8
-        theta_pc_neg = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
+        theta_pc_neg = 0.76 * (0.031**niu) * ((0.02 + 40 * rhoh) ** 1.02)
         theta_pc_neg[theta_pc_neg >= 0.10] = 0.10
-        theta_pc_pos = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
+        theta_pc_pos = 0.76 * (0.031**niu) * ((0.02 + 40 * rhoh) ** 1.02)
         theta_pc_pos[theta_pc_pos >= 0.10] = 0.10
 
         # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
-        theta_y1_neg = fiy_neg * ((ls + (av*z))/3)
-        theta_y1_pos = fiy_pos * ((ls + (av*z))/3)
-        theta_y2 = 0.0014 * (1 + 1.5*h/ls)
-        theta_y3_neg = 0.125*fiy_neg*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
-        theta_y3_bot = 0.125*fiy_pos*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
+        theta_y1_neg = fiy_neg * ((ls + (av * z)) / 3)
+        theta_y1_pos = fiy_pos * ((ls + (av * z)) / 3)
+        theta_y2 = 0.0014 * (1 + 1.5 * h / ls)
+        theta_y3_neg = 0.125 * fiy_neg * dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
+        theta_y3_bot = 0.125 * fiy_pos * dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
         theta_y_pos = (
-            theta_y1_neg + theta_y2 + self.bondslip_factor * theta_y3_neg)
+            theta_y1_neg + theta_y2 + self.bondslip_factor * theta_y3_neg
+        )
         theta_y_bot = (
-            theta_y1_pos + theta_y2 + self.bondslip_factor * theta_y3_bot)
+            theta_y1_pos + theta_y2 + self.bondslip_factor * theta_y3_bot
+        )
 
         # Elastic stiffness multiplier
         # Ibarra and Krawinkler (2005), Zareian and Medina (2010)
@@ -522,7 +532,7 @@ class Beam:
             -Mc_neg[0], -theta_2_neg[0],
             -Mr_neg[0], -theta_3_neg[0],
             pinchx, pinchy, damage1, damage2, beta
-                 ]
+        ]
         mat_tag_j = self.ele_node_j.tag
         mat_inputs_j = [
             mat_tag_j,
@@ -533,7 +543,7 @@ class Beam:
             -Mc_neg[-1], -theta_2_neg[-1],
             -Mr_neg[-1], -theta_3_neg[-1],
             pinchx, pinchy, damage1, damage2, beta
-                 ]
+        ]
 
         # Rounding to precision
         mat_inputs_i = round_list(mat_inputs_i)
@@ -562,7 +572,7 @@ class Beam:
             self.ele_tag, self.ele_node_i.tag, self.ele_node_j.tag,
             self.design.Ag, self.Ecm_q, self.Gcm_q,
             self.design.J, Iy_mod, Iz_mod
-            ]
+        ]
         # Append geometric transformation
         if self.design.direction == 'x':
             ele_inputs.append(LINEAR_TRANSF_X)
@@ -617,18 +627,18 @@ class Beam:
         # Set direction dependent parameters
         if direction == 'positive':  # positive direction case
             # Longitudinal reinforcement area under tension
-            As_tens = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2) +
-                       nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
+            As_tens = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2)
+                       + nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
             # Longitudinal reinforcement area under compression
-            As_comp = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2) +
-                       nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
+            As_comp = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2)
+                       + nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
         elif direction == 'negative':  # negative direction case
             # Longitudinal reinforcement area under tension
-            As_tens = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2) +
-                       nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
+            As_tens = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2)
+                       + nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
             # Longitudinal reinforcement area under compression
-            As_comp = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2) +
-                       nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
+            As_comp = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2)
+                       + nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
 
         # Concrete crushing strain used for computing section capacity
         EPS_CU = 0.0035
@@ -662,8 +672,8 @@ class Beam:
         # Panagiotakos and Fardis 2001 - Equation 4 & 5
         Acomp_cntrl = rhol_tens + rhol_comp
         Atens_cntrl = rhol_tens + rhol_comp
-        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
-        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
+        Bcomp_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
+        Btens_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
         # Yielding is controlled by the tension steel
         control = np.ones_like(dd)
         A_to_use = Atens_cntrl
@@ -673,8 +683,9 @@ class Beam:
         A_to_use[c >= cb] = Acomp_cntrl[c >= cb]
         B_to_use[c >= cb] = Bcomp_cntrl[c >= cb]
         # The compression zone depth: Panagiotakos and Fardis 2001 - Equation 3
-        ky = (((nyoung**2) * (A_to_use**2) + (2*nyoung*B_to_use))**0.5
-              - nyoung*A_to_use)
+        ky = (
+            (nyoung**2) * (A_to_use**2) + (2 * nyoung * B_to_use)
+        ) ** 0.5 - nyoung * A_to_use
         # Panagiotakos and Fardis 2001 - Equation 1
         fiy1 = fsyl / (Es * (1 - ky) * dd)
         # Panagiotakos and Fardis 2001 - Equation 2
@@ -684,13 +695,17 @@ class Beam:
         fiy[control == 0] = fiy2[control == 0]
         # Yield Moment: Panagiotakos and Fardis 2001 - Equation 6
         rhol_int = 0.0  # Beams do not have web-reinforcement
-        term1 = (Ec * (ky**2)/2) * (
+        term1 = (Ec * (ky**2) / 2) * (
             0.5 * (1 + (dd_prime / dd)) - (ky / 3))
-        term2 = (Es/2) * (
-                (1 - ky) * rhol_tens +
-                (ky - (dd_prime / dd)) * rhol_comp +
-                (rhol_int / 6) * (1 - (dd_prime / dd))
-                ) * (1 - (dd_prime / dd))
+        term2 = (
+            (Es / 2)
+            * (
+                (1 - ky) * rhol_tens
+                + (ky - (dd_prime / dd)) * rhol_comp
+                + (rhol_int / 6) * (1 - (dd_prime / dd))
+            )
+            * (1 - (dd_prime / dd))
+        )
         My = (b * (dd**3)) * fiy * (term1 + term2)
 
         return My, fiy

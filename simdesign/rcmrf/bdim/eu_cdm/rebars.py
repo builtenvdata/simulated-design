@@ -55,14 +55,14 @@ class Rebars(RebarsBase):
     """
     _data_path = Path(__file__).parent / 'data' / 'rebars.json'
     """Path to the json file containing rebar data."""
-    beam_min_sbl: float = 40*mm
+    beam_min_sbl: float = 40 * mm
     """For beams, minimum spacing between longitudinal bars (reinforcement).
     Reference?"""
-    col_min_sbl: float = 35*mm
+    col_min_sbl: float = 35 * mm
     """For columns, minimum spacing between longitudinal bars (reinforcement).
     Reference?
     """
-    col_max_leg_dist: float = 150*mm
+    col_max_leg_dist: float = 150 * mm
     """For columns, maximum distance between longitudinal bars within a section
     that can be considered to be confined without the need to have an extra
     stirrup leg around them.
@@ -87,9 +87,9 @@ class Rebars(RebarsBase):
             12.5cm for fyk=500 MPa
         """
         if self.steel.fsyk == 400:
-            return 100*mm
+            return 100 * mm
         elif self.steel.fsyk == 500:
-            return 125*mm
+            return 125 * mm
 
     def _get_min_beam_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in beams.
@@ -104,7 +104,7 @@ class Rebars(RebarsBase):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_min_col_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in columns.
@@ -119,7 +119,7 @@ class Rebars(RebarsBase):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_col_max_sbh(self, **kwargs) -> float | np.ndarray:
         """Gets maximum spacing between horizontal bars
@@ -135,7 +135,7 @@ class Rebars(RebarsBase):
         bx = kwargs['bx']  # column width along x
         dbl = kwargs['dbl']  # long. reinf. diameter
         max_sbh = np.minimum(
-            np.minimum(12*dbl, 300*mm),
+            np.minimum(12 * dbl, 300 * mm),
             np.minimum(by, bx),
         )
         return max_sbh
@@ -154,7 +154,6 @@ class Rebars(RebarsBase):
         dbh = kwargs['dbh']  # transverse reinf. diameter
         dbl = kwargs['dbl']  # long. reinf. diameter
         max_sbh = np.minimum(
-            np.minimum(200*mm, h),
-            np.minimum(24*dbh, 12*dbl)
+            np.minimum(200 * mm, h), np.minimum(24 * dbh, 12 * dbl)
         )
         return max_sbh

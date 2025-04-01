@@ -104,11 +104,11 @@ class Building(BuildingBase):
         """
         for column in self.columns:
             if self.num_storeys <= 3:
-                column.MAX_B_SQUARE = 0.45*m
-                column.MAX_B_RECTANGLE = 0.70*m
+                column.MAX_B_SQUARE = 0.45 * m
+                column.MAX_B_RECTANGLE = 0.70 * m
             elif self.num_storeys <= 6:
-                column.MAX_B_SQUARE = 0.60*m
-                column.MAX_B_RECTANGLE = 1.00*m
+                column.MAX_B_SQUARE = 0.60 * m
+                column.MAX_B_RECTANGLE = 1.00 * m
             elif self.num_storeys <= 9:
-                column.MAX_B_SQUARE = 0.85*m
-                column.MAX_B_RECTANGLE = 1.20*m
+                column.MAX_B_SQUARE = 0.85 * m
+                column.MAX_B_RECTANGLE = 1.20 * m

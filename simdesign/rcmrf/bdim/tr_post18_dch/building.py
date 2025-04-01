@@ -21,13 +21,12 @@ case for RCMRF buildings with high ductility in case of DTS1 and DTS2.
 
 # Imports from installed packages
 from typing import List, Type, Tuple
-import numpy as np
 
 # Imports from the design class (tr_post18_dch) library
 from .analysis import ElasticModel
 from .beam import Beam
 from .column import Column
-from .joint import Joint, JointBase
+from .joint import Joint
 from .materials import Materials, Concrete, Steel
 from .quality import Quality
 from .loads import Loads
@@ -178,8 +177,8 @@ class Building(BuildingBase):
                     )
                     forces_bottom = (
                         factors["G"] * joint.bottom_column.forces["G/seismic"]
-                        + factors["Q"] *
-                        joint.bottom_column.forces["Q/seismic"]
+                        + factors["Q"]
+                        * joint.bottom_column.forces["Q/seismic"]
                     )
                     forces_top.Mx1 = 0.5 * gamma_rd * sum_mrdb_y
                     forces_top.My1 = 0.5 * gamma_rd * sum_mrdb_x
@@ -208,41 +207,6 @@ class Building(BuildingBase):
         ---------
         Section-7.3.7 in TBEC-2018
         """
-
-        def get_sum_mrdb_at_joint(joint: JointBase) -> Tuple[float, float]:
-            """Gets the summation of moment of resistances of joint beams.
-
-            Parameters
-            ----------
-            joint : JointBase
-                Instance of the Joint object.
-
-            Returns
-            -------
-            Tuple[float, float]
-                Summation of moment of resistances of joint beams for
-                positive and negative directions.
-            """
-            # Sum of the design values of moment of resistances for beams
-            sum_mrdb_x_pos = 0.0
-            sum_mrdb_x_neg = 0.0
-            sum_mrdb_y_pos = 0.0
-            sum_mrdb_y_neg = 0.0
-            if joint.left_beam:
-                sum_mrdb_x_pos += joint.left_beam.mrd_pos[-1]
-                sum_mrdb_x_neg += joint.left_beam.mrd_neg[-1]
-            if joint.right_beam:
-                sum_mrdb_x_pos += joint.right_beam.mrd_neg[0]
-                sum_mrdb_x_neg += joint.right_beam.mrd_pos[0]
-            if joint.rear_beam:
-                sum_mrdb_y_pos += joint.rear_beam.mrd_pos[-1]
-                sum_mrdb_y_neg += joint.rear_beam.mrd_neg[-1]
-            if joint.front_beam:
-                sum_mrdb_y_pos += joint.front_beam.mrd_neg[0]
-                sum_mrdb_y_neg += joint.front_beam.mrd_pos[0]
-
-            return (sum_mrdb_x_pos, sum_mrdb_x_neg, sum_mrdb_y_pos,
-                    sum_mrdb_y_neg)
 
         def get_column_clear_length() -> Tuple[float, float]:
             """Gets column clear length (distance between column faces).
@@ -300,63 +264,27 @@ class Building(BuildingBase):
             # Find joints at both ends
             joint_i = self._find_joint_by_point(column.elastic_nodes[0])
             joint_j = self._find_joint_by_point(column.elastic_nodes[1])
-            # Clear lengths of column in x and y
-            col_lcx, col_lcy = get_column_clear_length()
 
-            if (
-                joint_i.top_column
-                and joint_i.bottom_column
-                and joint_j.top_column
-                and joint_j.bottom_column
-            ):
+            Vcap_x, Vcap_y = 0, 0
+            for force in column.design_forces:
+                # Clear lengths of column in x and y
+                col_lcx, col_lcy = get_column_clear_length()
 
-                # Sum of the moment of resistances of the joint beams
-                (
-                    sum_mrdb_x_pos_i,
-                    sum_mrdb_x_neg_i,
-                    sum_mrdb_y_pos_i,
-                    sum_mrdb_y_neg_i,
-                ) = get_sum_mrdb_at_joint(joint_i)
-                (
-                    sum_mrdb_x_pos_j,
-                    sum_mrdb_x_neg_j,
-                    sum_mrdb_y_pos_j,
-                    sum_mrdb_y_neg_j,
-                ) = get_sum_mrdb_at_joint(joint_j)
+                # The column moment of resistances at both ends
+                mrdx_i = column.get_mrdx(Ned=abs(force.N1))
+                mrdy_i = column.get_mrdy(Ned=abs(force.N1))
+                mrdx_j = column.get_mrdx(Ned=abs(force.N9))
+                mrdy_j = column.get_mrdy(Ned=abs(force.N9))
 
-                # Moment distribution ratios for in line columns (Selected
-                # seismic combos (9,13) are belongs to seismic combos
-                # in x and y directions)
-                ratio_x_top = abs(joint_j.bottom_column.design_forces[14].
-                                  Mx9) / (abs(joint_j.bottom_column.
-                                              design_forces[14].Mx9) +
-                                          abs(joint_j.top_column.
-                                              design_forces[14].Mx1))
-                ratio_y_top = abs(joint_j.bottom_column.design_forces[10].
-                                  My9) / (abs(joint_j.bottom_column.
-                                              design_forces[10].My9) +
-                                          abs(joint_j.top_column.
-                                              design_forces[10].My1))
-                ratio_x_bot = abs(joint_i.top_column.design_forces[14].
-                                  Mx1) / (abs(joint_i.top_column.
-                                              design_forces[14].Mx1) +
-                                          abs(joint_i.bottom_column.
-                                              design_forces[14].Mx9))
-                ratio_y_bot = abs(joint_i.top_column.design_forces[10].
-                                  My1) / (abs(joint_i.top_column.
-                                              design_forces[10].My1) +
-                                          abs(joint_i.bottom_column.
-                                              design_forces[10].My9))
-
-                # Column plastic moments to be used for shear capacity forces
-                Mpi_x_pos = gamma_rd * ratio_x_bot * sum_mrdb_y_pos_i
-                Mpi_x_neg = gamma_rd * ratio_x_bot * sum_mrdb_y_neg_i
-                Mpj_x_pos = gamma_rd * ratio_x_top * sum_mrdb_y_pos_j
-                Mpj_x_neg = gamma_rd * ratio_x_top * sum_mrdb_y_neg_j
-                Mpi_y_pos = gamma_rd * ratio_y_bot * sum_mrdb_x_pos_i
-                Mpi_y_neg = gamma_rd * ratio_y_bot * sum_mrdb_x_neg_i
-                Mpj_y_pos = gamma_rd * ratio_y_top * sum_mrdb_x_pos_j
-                Mpj_y_neg = gamma_rd * ratio_y_top * sum_mrdb_x_neg_j
+                # Column plastic moments for shear capacity forces
+                Mpi_x_pos = gamma_rd * mrdx_i
+                Mpi_x_neg = gamma_rd * mrdx_i
+                Mpj_x_pos = gamma_rd * mrdx_j
+                Mpj_x_neg = gamma_rd * mrdx_j
+                Mpi_y_pos = gamma_rd * mrdy_i
+                Mpi_y_neg = gamma_rd * mrdy_i
+                Mpj_y_pos = gamma_rd * mrdy_j
+                Mpj_y_neg = gamma_rd * mrdy_j
 
                 # Capacity design shear forces at both ends
                 Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
@@ -365,122 +293,23 @@ class Building(BuildingBase):
                 Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
 
                 # Set the capacity design shear forces
-                Vcap_x = max(Vdx_pos, Vdx_neg)
-                Vcap_y = max(Vdy_pos, Vdy_neg)
+                Vcap_x = max(Vcap_x, Vdx_pos, Vdx_neg)
+                Vcap_y = max(Vcap_y, Vdy_pos, Vdy_neg)
 
-                # Modify capacity shear forces with overstrength adjusted
-                # shear forces
-                Vd_x_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vx1,
-                    column.envelope_forces_overstrength_adjusted.Vx9,
-                )
-                Vd_y_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vy1,
-                    column.envelope_forces_overstrength_adjusted.Vy9,
-                )
-                Vcap_x = min(Vcap_x, Vd_x_oa)
-                Vcap_y = min(Vcap_y, Vd_y_oa)
+            # Modify capacity shear forces with overstrength adjusted
+            # shear forces
+            Vd_x_oa = max(
+                column.envelope_forces_overstrength_adjusted.Vx1,
+                column.envelope_forces_overstrength_adjusted.Vx9)
+            Vd_y_oa = max(
+                column.envelope_forces_overstrength_adjusted.Vy1,
+                column.envelope_forces_overstrength_adjusted.Vy9)
 
-                # Modify capacity shear forces with envelope shear forces
-                Vd_x = max(column.envelope_forces.Vx1, column.
-                           envelope_forces.Vx9)
-                Vd_y = max(column.envelope_forces.Vy1, column.
-                           envelope_forces.Vy9)
-                Vcap_x = max(Vcap_x, Vd_x)
-                Vcap_y = max(Vcap_y, Vd_y)
-
-                # Set the design shear values
-                column.Ve_x = Vcap_x
-                column.Ve_y = Vcap_y
-
-            elif (
-                joint_j.top_column and joint_j.bottom_column
-            ):  # Ground storey column case
-                # Unique gravity load factors from seismic load combinations
-                comb_grav_factors = self._get_unique_seism_combo_grav_factors()
-                Vcap_x = 0
-                Vcap_y = 0
-                for factors in comb_grav_factors:
-                    # Initialize column forces
-                    forces = (
-                        factors["G"] * column.forces["G/seismic"]
-                        + factors["Q"] * column.forces["Q/seismic"]
-                    )
-                    # The column moment of resistances at both ends
-                    mrdx_i = column.get_mrdx(Ned=forces.N1)
-                    mrdy_i = column.get_mrdy(Ned=forces.N1)
-
-                    # Column plastic moments at i joint, Equation 7.3.7.4
-                    # in TBEC-2018
-                    Mpi_x_pos = gamma_rd * mrdx_i
-                    Mpi_x_neg = gamma_rd * mrdx_i
-                    Mpi_y_pos = gamma_rd * mrdy_i
-                    Mpi_y_neg = gamma_rd * mrdy_i
-
-                    # Sum of the moment of resistances of the joint j beams
-                    (
-                        sum_mrdb_x_pos_j,
-                        sum_mrdb_x_neg_j,
-                        sum_mrdb_y_pos_j,
-                        sum_mrdb_y_neg_j,
-                    ) = get_sum_mrdb_at_joint(joint_j)
-
-                    # Moment distribution ratios for in line columns (Selected
-                    # seismic combos (9,13) are belongs to seismic combos
-                    # in x and y directions)
-                    ratio_x_top = abs(joint_j.bottom_column.design_forces[14].
-                                      Mx9) / (abs(joint_j.bottom_column.
-                                                  design_forces[14].Mx9) +
-                                              abs(joint_j.top_column.
-                                                  design_forces[14].Mx1))
-                    ratio_y_top = abs(joint_j.bottom_column.design_forces[10].
-                                      My9) / (abs(joint_j.bottom_column.
-                                                  design_forces[10].My9) +
-                                              abs(joint_j.top_column.
-                                                  design_forces[10].My1))
-
-                    # Column plastic moments at joint j to be used for shear
-                    # capacity forces
-                    Mpj_x_pos = gamma_rd * ratio_x_top * sum_mrdb_y_pos_j
-                    Mpj_x_neg = gamma_rd * ratio_x_top * sum_mrdb_y_neg_j
-                    Mpj_y_pos = gamma_rd * ratio_y_top * sum_mrdb_x_pos_j
-                    Mpj_y_neg = gamma_rd * ratio_y_top * sum_mrdb_x_neg_j
-
-                    # Capacity design shear forces at both ends
-                    Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
-                    Vdx_neg = (Mpi_y_neg + Mpj_y_pos) / col_lcx
-                    Vdy_pos = (Mpi_x_pos + Mpj_x_neg) / col_lcy
-                    Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
-
-                    Vcap_x = max(Vcap_x, Vdx_pos, Vdx_neg)
-                    Vcap_y = max(Vcap_y, Vdy_pos, Vdy_neg)
-
-                # Modify capacity shear forces with overstrength adjusted
-                # shear forces
-                Vd_x_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vx1,
-                    column.envelope_forces_overstrength_adjusted.Vx9,
-                )
-                Vd_y_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vy1,
-                    column.envelope_forces_overstrength_adjusted.Vy9,
-                )
-                Vcap_x = min(Vcap_x, Vd_x_oa)
-                Vcap_y = min(Vcap_y, Vd_y_oa)
-
-                # Modify capacity shear forces with envelope shear forces
-                Vd_x = max(column.envelope_forces.Vx1,
-                           column.envelope_forces.Vx9)
-                Vd_y = max(column.envelope_forces.Vy1,
-                           column.envelope_forces.Vy9)
-                Vcap_x = max(Vcap_x, Vd_x)
-                Vcap_y = max(Vcap_y, Vd_y)
-
-                # Set the design shear values
-                column.Ve_x = Vcap_x
-                column.Ve_y = Vcap_y
-            else:
-                pass
+            # Set the design shear values
+            column.Ve_x = max(min(Vcap_x, Vd_x_oa), column.envelope_forces.Vx1,
+                              column.envelope_forces.Vx9)
+            column.Ve_y = max(min(Vcap_y, Vd_y_oa), column.envelope_forces.Vy1,
+                              column.envelope_forces.Vy9)
 
     def _set_beam_capacity_design_shear_forces(self) -> None:
         """Appends the beam capacity design shear forces to the list of
@@ -570,10 +399,8 @@ class Building(BuildingBase):
 
             # Modify capacity shear forces with overstrength adjusted
             # shear forces
-            Ve1 = np.minimum(Ve1,
-                             beam.envelope_forces_overstrength_adjusted.V1)
-            Ve9 = np.minimum(Ve9,
-                             beam.envelope_forces_overstrength_adjusted.V9)
+            Ve1 = min(Ve1, beam.envelope_forces_overstrength_adjusted.V1)
+            Ve9 = min(Ve9, beam.envelope_forces_overstrength_adjusted.V9)
 
             # Set the design shear forces
             beam.Ve1 = Ve1

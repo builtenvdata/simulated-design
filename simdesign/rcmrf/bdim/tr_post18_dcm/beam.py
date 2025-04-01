@@ -293,13 +293,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
 
         # Round
         self.h = ceil(20 * self.h) / 20
@@ -319,10 +324,10 @@ class Beam(BeamBase):
 
         # Maximum of envelope forces
         Vmax = max(
-                self.envelope_forces_overstrength_adjusted.V1,
-                self.envelope_forces_overstrength_adjusted.V5,
-                self.envelope_forces_overstrength_adjusted.V9,
-            )
+            self.envelope_forces_overstrength_adjusted.V1,
+            self.envelope_forces_overstrength_adjusted.V5,
+            self.envelope_forces_overstrength_adjusted.V9,
+        )
 
         Mmax = max(
             self.envelope_forces.M1_pos,
@@ -335,8 +340,8 @@ class Beam(BeamBase):
 
         # Verify the adequacy of the section dimensions
         mu = Mmax / (self.fcd * self.b * d**2)  # For max. bending moment
-        Vrd_max = (0.85 * (self.b / mm) * (d / mm) *
-                   np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
+        Vrd_max = (0.85 * (self.b / mm) * (d / mm)
+                   * np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
 
         if mu < mu_economic and Vmax < Vrd_max:
             self.ok = True  # Ok
@@ -453,8 +458,8 @@ class Beam(BeamBase):
         Asl_top = np.maximum(Asl_top, Asl_min_tens)
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
 
-        # Compression to tension reinf. ratio must be greater than 0.5,
-        # Section 7.4.2 in TBEC2018
+        # Compression to tension reinf. ratio must be greater than 0.3
+        # for DTS3 and DTS4
         mask = Asl_top / Asl_bot < 0.3
         if any(mask):
             Asl_top[mask] = 0.3 * Asl_bot[mask]

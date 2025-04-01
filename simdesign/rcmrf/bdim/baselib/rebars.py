@@ -118,27 +118,27 @@ class RebarsBase(ABC):
     """Concrete material instance considered in design of beams and columns."""
     steel: SteelBase
     """Steel material instance considered in design of beams and columns."""
-    beam_max_sbl: float = 2000*mm
+    beam_max_sbl: float = 2000 * mm
     """Maximum spacing between longitudinal bars (reinforcement) for beams."""
-    beam_min_sbl: float = 40*mm
+    beam_min_sbl: float = 40 * mm
     """Minimum spacing between longitudinal bars (reinforcement) for beams."""
-    beam_max_leg_dist: float = 2000*mm
+    beam_max_leg_dist: float = 2000 * mm
     """For beams, maximum distance between longitudinal bars within a beam
     section that can be considered to be confined without the need to have
     an extra stirrup leg around them."""
-    beam_cover: float = 30*mm
+    beam_cover: float = 30 * mm
     """Concrete cover for beams."""
-    col_max_sbl: float = 2000*mm
+    col_max_sbl: float = 2000 * mm
     """Maximum spacing between longitudinal bars (reinforcement) for columns.
     """
-    col_min_sbl: float = 35*mm
+    col_min_sbl: float = 35 * mm
     """Minimum spacing between longitudinal bars (reinforcement) for columns.
     """
-    col_max_leg_dist: float = 2000*mm
+    col_max_leg_dist: float = 2000 * mm
     """Maximum distance between longitudinal bars within a column
     section that can be considered to be confined without the need to have
     an extra stirrup leg around them."""
-    col_cover: float = 30*mm
+    col_cover: float = 30 * mm
     """Concrete cover for columns."""
 
     def __init__(self) -> None:
@@ -192,7 +192,7 @@ class RebarsBase(ABC):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_min_col_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in columns.
@@ -203,7 +203,7 @@ class RebarsBase(ABC):
             Minimum transverse reinforcement diameter.
         """
         dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_col_max_sbh(self, **kwargs) -> float | np.ndarray:
         """Gets maximum spacing between horizontal bars
@@ -218,9 +218,7 @@ class RebarsBase(ABC):
         by = kwargs['by']  # column width along y
         bx = kwargs['bx']  # column width along x
         dbl = kwargs['dbl']  # long. reinf. diameter
-        max_sbh = np.minimum(
-            np.minimum(by, bx), 12*dbl
-        )
+        max_sbh = np.minimum(np.minimum(by, bx), 12 * dbl)
         return max_sbh
 
     def _get_beam_max_sbh(self, **kwargs) -> float | np.ndarray:
@@ -237,8 +235,7 @@ class RebarsBase(ABC):
         dbh = kwargs['dbh']  # transverse reinf. diameter
         dbl = kwargs['dbl']  # long. reinf. diameter
         max_sbh = np.minimum(
-            np.minimum(250*mm, h),
-            np.minimum(24*dbh, 12*dbl)
+            np.minimum(250 * mm, h), np.minimum(24 * dbh, 12 * dbl)
         )
         return max_sbh
 
@@ -366,22 +363,22 @@ class RebarsBase(ABC):
             dbh = self.beam_trans_bar_diams[np.where(diff >= 0)[0][0]]
 
             if min_nbl_2 is None:
-                min_nbl_2 = nbl_1-1
+                min_nbl_2 = nbl_1 - 1
             nbl_2 = np.maximum(
-                np.ceil((Asl_req - nbl_1*Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
+                np.ceil((Asl_req - nbl_1 * Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
                 min_nbl_2)
-            distx = np.round((b -
-                             (nbl_1*dbl_1 + nbl_2*dbl_2 + 2*self.beam_cover
-                              + 2*dbh)) / (nbl_1 + nbl_2 - 1), PRECISION)
+            distx = np.round((b - (nbl_1 * dbl_1 + nbl_2 * dbl_2
+                                   + 2 * self.beam_cover + 2 * dbh)
+                              ) / (nbl_1 + nbl_2 - 1), PRECISION)
             # Increase num rebars to not exceed max spacing limit
             for i in np.where(distx > self.beam_max_sbl)[0].tolist():
                 while distx[i] > self.beam_max_sbl:
                     nbl_2[i] += 1
-                    distx[i] = (b[i] - (nbl_1*dbl_1 + nbl_2[i]*dbl_2
-                                        + 2*self.beam_cover + 2*dbh)
+                    distx[i] = (b[i] - (nbl_1 * dbl_1 + nbl_2[i] * dbl_2
+                                        + 2 * self.beam_cover + 2 * dbh)
                                 ) / (nbl_1 + nbl_2[i] - 1)
                     distx = np.round(distx, PRECISION)
-            Asl = nbl_1*Ab_dict[dbl_1] + nbl_2*Ab_dict[dbl_2]
+            Asl = nbl_1 * Ab_dict[dbl_1] + nbl_2 * Ab_dict[dbl_2]
             Asl_rat = np.divide(Asl, Asl_req,
                                 out=np.full_like(Asl, 1e2),
                                 where=Asl_req != 0)
@@ -422,11 +419,11 @@ class RebarsBase(ABC):
         # ...........................................................................
         for i, dbl_1 in enumerate(self.beam_long_bar_diams[1:], 1):
             # Using the previous one as lower bar diameter
-            dbl_2 = self.beam_long_bar_diams[i-1]
-            # TODO: Alternatively iterate for all lower rebars
+            dbl_2 = self.beam_long_bar_diams[i - 1]
+            # NOTE: Alternatively iterate for all lower rebars
             # for db2 in self.long_bar_diams[:i]:
 
-            for m in range(2, max_nbl_1+1, 1):
+            for m in range(2, max_nbl_1 + 1, 1):
                 n, Asl_rat = get_two_type_long_bar_solution(
                     Asl_req=Asl_top, nbl_1=m, dbl_1=dbl_1, dbl_2=dbl_2)
                 key = f"{m}dbl1{dbl_1}_dbl2{dbl_2}"
@@ -471,7 +468,7 @@ class RebarsBase(ABC):
         dbl_1 = dbl_top1  # Use the same big bar (#1)
         if dbl_top1 != dbl_top2:  # no other rebar option
             dbl_2 = dbl_top2
-            for m in range(2, max_nbl_1+1, 1):
+            for m in range(2, max_nbl_1 + 1, 1):
                 n, Asl_rat = get_two_type_long_bar_solution(
                     Asl_req=Asl_bot, nbl_1=m,
                     dbl_1=dbl_1, dbl_2=dbl_2)
@@ -481,11 +478,11 @@ class RebarsBase(ABC):
         else:   # no other rebar options are possible
             # Using the previous one as lower bar diameter
             i = np.where(self.beam_long_bar_diams == dbl_1)[0][0]
-            dbl_2 = self.beam_long_bar_diams[i-1]
-            # TODO: Alternatively iterate for all lower rebars
+            dbl_2 = self.beam_long_bar_diams[i - 1]
+            # NOTE: Alternatively iterate for all lower rebars
             # for db2 in self.long_bar_diams[:i]:
 
-            for m in range(2, max_nbl_1+1, 1):
+            for m in range(2, max_nbl_1 + 1, 1):
                 n, Asl_rat = get_two_type_long_bar_solution(
                     Asl_req=Asl_bot, nbl_1=m,
                     dbl_1=dbl_1, dbl_2=dbl_2)
@@ -558,12 +555,12 @@ class RebarsBase(ABC):
         """
         # Initialization
         num_sec = len(Ash_sbh)  # Number of beam sections
-        nbh_x = 2*np.ones(num_sec)  # no. of legs parallel to width (always 2)
+        nbh_x = 2 * np.ones(num_sec)  # no. of legs parallel to width, always 2
         nbh_y = np.zeros(num_sec)  # no. of legs parallel to height
         sbh = np.zeros(num_sec)  # transverse reinforcement (bar) spacing
         dbh = np.zeros(num_sec)  # transverse reinforcement (bar) diameter
         # Maximum possible number of legs (bars) parallel to height
-        max_nbh_y = np.minimum(nbl_t1+nbl_t2, nbl_b1+nbl_b2)
+        max_nbh_y = np.minimum(nbl_t1 + nbl_t2, nbl_b1 + nbl_b2)
         # Minimum transverse reinforcement diameter
         dbh_min = self._get_min_beam_dbh(dbl=np.maximum(dbl_t1, dbl_b1))
         for j in range(num_sec):
@@ -608,7 +605,7 @@ class RebarsBase(ABC):
                         # increase transverse reinforcement diameter
                         idx = np.where(
                             self.beam_trans_bar_diams == dbh[j])[0][0]
-                        dbh[j] = self.beam_trans_bar_diams[idx+1]
+                        dbh[j] = self.beam_trans_bar_diams[idx + 1]
                     elif iterate:
                         # Accept the underdesign, no solution is found.
                         nbh_y[j] = max_nbh_y[j]
@@ -763,60 +760,66 @@ class RebarsBase(ABC):
 
             # Number of bars with 2nd diameter
             nbl_2x = np.maximum(
-                np.ceil((Aslx_req - nbl_1x*Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
+                np.ceil((Aslx_req - nbl_1x * Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
                 min_nbl_2)
             nbl_2y = np.maximum(
-                np.ceil((Asly_req - nbl_1y*Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
+                np.ceil((Asly_req - nbl_1y * Ab_dict[dbl_1]) / Ab_dict[dbl_2]),
                 min_nbl_2)
             # Bar spacing
-            dist_x = np.round((bx -
-                              (nbl_1x*dbl_1 + nbl_2x*dbl_2 + 2*self.col_cover +
-                               2*dbh)) / (nbl_1x + nbl_2x - 1), PRECISION)
-            dist_y = np.round((by -
-                              (nbl_1y*dbl_1 + nbl_2y*dbl_2 + 2*self.col_cover +
-                               2*dbh)) / (nbl_1y + nbl_2y - 1), PRECISION)
+            dist_x = np.round((bx - (nbl_1x * dbl_1 + nbl_2x * dbl_2
+                                     + 2 * self.col_cover + 2 * dbh)
+                               ) / (nbl_1x + nbl_2x - 1), PRECISION)
+            dist_y = np.round((by - (nbl_1y * dbl_1 + nbl_2y * dbl_2
+                                     + 2 * self.col_cover + 2 * dbh)
+                               ) / (nbl_1y + nbl_2y - 1), PRECISION)
 
             # Increase num rebars along X to not exceed max spacing limit
             for i in np.where(dist_x > self.col_max_sbl)[0].tolist():
                 while dist_x[i] > self.col_max_sbl[i]:
                     nbl_2x[i] += 1
-                    dist_x[i] = (bx[i] - (nbl_1x*dbl_1 + nbl_2x[i]*dbl_2
-                                          + 2*self.col_cover + 2*dbh)
+                    dist_x[i] = (bx[i] - (nbl_1x * dbl_1 + nbl_2x[i] * dbl_2
+                                          + 2 * self.col_cover + 2 * dbh)
                                  ) / (nbl_1x + nbl_2x[i] - 1)
                     dist_x = np.round(dist_x, PRECISION)
             # Increase num rebars along Y to not exceed max spacing limit
             for i in np.where(dist_y > self.col_max_sbl)[0].tolist():
                 while dist_y[i] > self.col_max_sbl[i]:
                     nbl_2y[i] += 1
-                    dist_y[i] = (by[i] - (nbl_1y*dbl_1 + nbl_2y[i]*dbl_2
-                                          + 2*self.col_cover + 2*dbh)
+                    dist_y[i] = (by[i] - (nbl_1y * dbl_1 + nbl_2y[i] * dbl_2
+                                          + 2 * self.col_cover + 2 * dbh)
                                  ) / (nbl_1y + nbl_2y[i] - 1)
                     dist_y = np.round(dist_y, PRECISION)
 
             # Compute total bar area
-            Aslx = nbl_1x*Ab_dict[dbl_1] + nbl_2x*Ab_dict[dbl_2]
-            Asly = nbl_1y*Ab_dict[dbl_1] + nbl_2y*Ab_dict[dbl_2]
-            Asl = 2*(Aslx + Asly) - 4*Ab_dict[dbl_1]
+            Aslx = nbl_1x * Ab_dict[dbl_1] + nbl_2x * Ab_dict[dbl_2]
+            Asly = nbl_1y * Ab_dict[dbl_1] + nbl_2y * Ab_dict[dbl_2]
+            Asl = 2 * (Aslx + Asly) - 4 * Ab_dict[dbl_1]
             Asl_min = rhol_min * bx * by
             # Check for min. long. reinf. and increase reinf.
             for i in np.where(Asl_min > Asl)[0].tolist():
                 while Asl_min[i] > Asl[i]:
-                    if Aslx[i]/Asly[i] > bx[i]/by[i]:
+                    if Aslx[i] / Asly[i] > bx[i] / by[i]:
                         nbl_2x[i] += 1
-                        dist_x[i] = (bx[i] - (nbl_1x*dbl_1 + nbl_2x[i]*dbl_2
-                                              + 2*self.col_cover + 2*dbh)
-                                     ) / (nbl_1x + nbl_2x[i] - 1)
+                        dist_x[i] = (bx[i] - (
+                            nbl_1x * dbl_1 + nbl_2x[i] * dbl_2
+                            + 2 * self.col_cover + 2 * dbh)
+                        ) / (nbl_1x + nbl_2x[i] - 1)
                         dist_x = np.round(dist_x, PRECISION)
                     else:
                         nbl_2y[i] += 1
-                        dist_y[i] = (by[i] - (nbl_1y*dbl_1 + nbl_2y[i]*dbl_2
-                                              + 2*self.col_cover + 2*dbh)
-                                     ) / (nbl_1y + nbl_2y[i] - 1)
+                        dist_y[i] = (by[i] - (
+                            nbl_1y * dbl_1 + nbl_2y[i] * dbl_2
+                            + 2 * self.col_cover + 2 * dbh)
+                        ) / (nbl_1y + nbl_2y[i] - 1)
                         dist_y = np.round(dist_y, PRECISION)
 
-                    Aslx[i] = nbl_1x*Ab_dict[dbl_1] + nbl_2x[i]*Ab_dict[dbl_2]
-                    Asly[i] = nbl_1y*Ab_dict[dbl_1] + nbl_2y[i]*Ab_dict[dbl_2]
-                    Asl[i] = 2*(Aslx[i] + Asly[i]) - 4*Ab_dict[dbl_1]
+                    Aslx[i] = (
+                        nbl_1x * Ab_dict[dbl_1] + nbl_2x[i] * Ab_dict[dbl_2]
+                    )
+                    Asly[i] = (
+                        nbl_1y * Ab_dict[dbl_1] + nbl_2y[i] * Ab_dict[dbl_2]
+                    )
+                    Asl[i] = 2 * (Aslx[i] + Asly[i]) - 4 * Ab_dict[dbl_1]
 
             # Penalize the solution if it does not respect the spacing limit
             Asl[dist_x < self.col_min_sbl] = 1e4
@@ -844,7 +847,9 @@ class RebarsBase(ABC):
         nbl_cy = 2
         min_nbl_i = 0
         for i, dbl_c in enumerate(self.col_long_bar_diams):
-            for dbl_i in reversed(self.col_long_bar_diams[max(i-1, 0):i+1]):
+            for dbl_i in reversed(
+                self.col_long_bar_diams[max(i - 1, 0): i + 1]
+            ):
                 key = f"dblc{dbl_c}_dbli{dbl_i}"
                 nbl_ix, nbl_iy, Asl = get_two_type_long_bar_solution(
                     Aslx_req, Asly_req, nbl_cx, nbl_cy, dbl_c, dbl_i,
@@ -987,7 +992,7 @@ class RebarsBase(ABC):
                         # increase transverse reinforcement diameter
                         idx = np.where(
                             self.col_trans_bar_diams == dbh[j])[0][0]
-                        dbh[j] = self.col_trans_bar_diams[idx+1]
+                        dbh[j] = self.col_trans_bar_diams[idx + 1]
                     else:
                         # Accept the underdesign, no solution is found.
                         nbh_y[j] = max_nbh_y[j]

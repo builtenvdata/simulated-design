@@ -373,7 +373,7 @@ class BNSM:
         ops.uniaxialMaterial('Elastic', RIGID_MAT, BIG_VALUE)
         ops.section(
             'Aggregator', RIGID_SEC,
-            RIGID_MAT, 'P', RIGID_MAT, 'Vy',  RIGID_MAT, 'Vz',
+            RIGID_MAT, 'P', RIGID_MAT, 'Vy', RIGID_MAT, 'Vz',
             RIGID_MAT, 'My', RIGID_MAT, 'Mz', RIGID_MAT, 'T'
         )
         # Add foundations to ops domain (nodes and constraints)
@@ -466,9 +466,11 @@ class BNSM:
             except BaseException as e:
                 print(f"Using {s[1:]} as solver... received an error: {e}")
         if not ok:
-            raise UserWarning("Could not complete the eigenvalue analysis, " +
-                              "something is wrong...\n" +
-                              "Try to reduce number of modes to determine...")
+            raise UserWarning(
+                "Could not complete the eigenvalue analysis, "
+                + "something is wrong...\n"
+                + "Try to reduce number of modes to determine..."
+            )
 
         # Save eigen vectors for retained floor nodes
         if out_dir:
@@ -479,12 +481,12 @@ class BNSM:
             modal_path = (out_dir / 'ModalProperties.txt').as_posix()
             # Save eigen vectors for retained floor nodes
             nodes = [floor.rnode.tag for floor in self.floors]
-            for i in range(1, num_modes+1):
+            for i in range(1, num_modes + 1):
                 modal_disps = []
                 for node in nodes:
                     disps = ', '.join([
                         f'{disp}' for disp in ops.nodeEigenvector(node, i)
-                        ])
+                    ])
                     modal_disps.append(f'{node}, {disps}')
                 modal_disps = '\n'.join(modal_disps)
                 eigen_path = (out_dir / f'EigenVectors_Mode{i}.txt').as_posix()
@@ -545,7 +547,7 @@ class BNSM:
         # Set foundation nodes
         supports = [
             found.foundation_node.tag for found in self.foundations
-            ]
+        ]
         # Set floor nodes
         floors = [floor.rnode.tag for floor in self.floors]
         # Base level coordinate
@@ -565,13 +567,13 @@ class BNSM:
                 Path.mkdir(out_dir)
             reaction_file_path = (
                 out_dir / f'support_reactions_{direction}.out'
-                ).as_posix()
+            ).as_posix()
             disp_file_path = (
                 out_dir / f'storey_displacements_{direction}.out'
-                ).as_posix()
+            ).as_posix()
             storey_heights_file_path = (
                 out_dir / f'storey_heights_{direction}.out'
-                ).as_posix()
+            ).as_posix()
             ops.recorder('Node', '-file', disp_file_path, '-node', *floors,
                          '-dof', ctrl_dof, 'disp')
             ops.recorder('Node', '-file', reaction_file_path, '-node',
@@ -611,21 +613,21 @@ class BNSM:
             # Reduce dincr to an half
             if ok != 0:
                 ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5*dincr
-                    )
+                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5 * dincr
+                )
                 ok = self.__set_nspa_algorithm(ok, tol_init)
             # Reduce dincr to a quarter
             if ok != 0:
                 ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.25*dincr
-                    )
+                    'DisplacementControl', ctrl_node, ctrl_dof, 0.25 * dincr
+                )
                 ok = self.__set_nspa_algorithm(ok, tol_init)
             # Increase tolerance by factor of 10
             if ok != 0:
-                ok = self.__set_nspa_algorithm(ok, 10*tol_init)
+                ok = self.__set_nspa_algorithm(ok, 10 * tol_init)
             # increase tolerance by factor of 100
             if ok != 0:
-                ok = self.__set_nspa_algorithm(ok, 100*tol_init)
+                ok = self.__set_nspa_algorithm(ok, 100 * tol_init)
 
             # Get the base shear force
             ops.reactions()
@@ -635,16 +637,16 @@ class BNSM:
                     for found in self.foundations]))
             # current_shear = ops.getTime()
             # Set continue flag
-            cont = (current_disp < max_disp and
-                    current_shear < 50000 and
-                    current_shear >= 0.2*max(base_shear))
+            cont = (current_disp < max_disp
+                    and current_shear < 50000
+                    and current_shear >= 0.2 * max(base_shear))
             # Append base shear and control node displacement
             if ok == 0 and cont:
                 base_shear.append(current_shear)
                 ctrl_disp.append(current_disp)
             elif (
-                max(base_shear) == 0.0 or  # Analysis did not even start
-                base_shear[-1] / max(base_shear) > 0.8  # Not good enough
+                max(base_shear) == 0.0  # Analysis did not even start
+                or base_shear[-1] / max(base_shear) > 0.8  # Not good enough
             ):
                 ok = -1
 
@@ -909,9 +911,9 @@ class BNSM:
             "",
             "# Rigid-like material and section",
             f"ops.uniaxialMaterial('Elastic', {RIGID_MAT}, {BIG_VALUE})",
-            f"ops.section('Aggregator', {RIGID_SEC}, {RIGID_MAT}, 'P', " +
-            f"{RIGID_MAT}, 'Vy',  {RIGID_MAT}, 'Vz', {RIGID_MAT}, 'My', " +
-            f"{RIGID_MAT}, 'Mz', {RIGID_MAT}, 'T')",
+            f"ops.section('Aggregator', {RIGID_SEC}, {RIGID_MAT}, 'P', "
+            + f"{RIGID_MAT}, 'Vy',  {RIGID_MAT}, 'Vz', {RIGID_MAT}, 'My', "
+            + f"{RIGID_MAT}, 'Mz', {RIGID_MAT}, 'T')",
             "",
             "# Define components of foundations",
             "add_foundations()",
@@ -1218,7 +1220,7 @@ class BNSM:
         content.append(
             "        disps = "
             "', '.join([f'{disp}' for disp in ops.nodeEigenvector(node, i)])"
-            )
+        )
         content.append("        modal_disps.append(f'{node}, {disps}')")
         content.append("    modal_disps = '\\n'.join(modal_disps)")
         content.append("    report_file_path = (output_directory / "
@@ -1274,7 +1276,7 @@ class BNSM:
         # Set support nodes
         supports = ', '.join([
             f"{found.foundation_node.tag}" for found in self.foundations
-            ])
+        ])
         # Set floor nodes
         floors = ', '.join([f"{floor.rnode.tag}" for floor in self.floors])
         # Directions per dof
@@ -1303,7 +1305,7 @@ class BNSM:
             "base_shear : list[float]",
             "    Base shear value obtained as sum of the reaction forces.",
             '"""'
-            ]
+        ]
         # Add lines for setting the output directory
         content.append("# Set output directory")
         content.append(
@@ -1346,19 +1348,19 @@ class BNSM:
         content.append("# Base level coordinate")
         content.append(
             "base_level = min([ops.nodeCoord(node, 3) for node in supports])"
-            )
+        )
         content.append("# Save storey heights")
         content.append("with open(storey_heights_file_path, 'w') as file:")
         content.append("    for node in floors:")
         content.append(
             "        file.write(f'{ops.nodeCoord(node, 3) - base_level}\\n')"
-            )
+        )
         # Add lines for setting the analysis parameters
         content.append("")
         content.append("# Set some analysis parameters")
         content.append(
             "max_disp = max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)"
-            )
+        )
         content.append("tol_init = 1.0e-6")
         content.append("iter_init = 20")
         content.append("ops.wipeAnalysis()")
@@ -1431,7 +1433,7 @@ class BNSM:
             f"def do_nspa_{direction}(max_drift: float = {self.max_drift}, "
             f"dincr: float = {self.dincr}) "
             "-> tuple[list[float], list[float]]:"
-            ]
+        ]
         content = method + content
 
         return content
@@ -1483,7 +1485,7 @@ class BNSM:
         content.append("    ok = ops.analyze(1)")
         content.append(
             "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm"
-            )
+        )
         content.append("if ok != 0:")
         content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('BFGS')")
@@ -1499,7 +1501,7 @@ class BNSM:
         # Add method definition
         method = [
             "def _set_algorithm(ok: int, tol: float, iter: int = 100) -> None:"
-            ]
+        ]
         content = method + content
 
         return content
@@ -1586,9 +1588,9 @@ class BNSM:
             "",
             "# Rigid-like material and section",
             f"uniaxialMaterial Elastic {RIGID_MAT} {BIG_VALUE}",
-            f"section Aggregator {RIGID_SEC} {RIGID_MAT} P " +
-            f"{RIGID_MAT} Vy {RIGID_MAT} Vz {RIGID_MAT} My " +
-            f"{RIGID_MAT} Mz {RIGID_MAT} T",
+            f"section Aggregator {RIGID_SEC} {RIGID_MAT} P "
+            + f"{RIGID_MAT} Vy {RIGID_MAT} Vz {RIGID_MAT} My "
+            + f"{RIGID_MAT} Mz {RIGID_MAT} T",
             "",
             "# Define components of foundations",
             "source foundations.tcl",
@@ -1752,7 +1754,7 @@ class BNSM:
             "# ------",
             "# dict",
             "#     Dictionary containing modal properties.",
-            ]
+        ]
         content.append("")
         # Add lines for setting the output directory
         content.append("# Set output directory")
@@ -1785,7 +1787,7 @@ class BNSM:
         content.append(
             '    set report_file '
             '[open "$output_directory/EigenVectors_Mode${i}.txt" "w"]'
-            )
+        )
         content.append("    puts $report_file $modalDisps")
         content.append("    close $report_file")
         content.append("}")
@@ -1794,11 +1796,11 @@ class BNSM:
         content.append("# Perform modal analysis and save results")
         content.append(
             'set report_file "$output_directory/ModalProperties.txt"'
-            )
+        )
         content.append(
             'set results [modalProperties -print -return -file '
             '$report_file -unorm]'
-            )
+        )
         # Add return statement
         content.append("")
         content.append("return $results")
@@ -1835,7 +1837,7 @@ class BNSM:
         # Set support nodes
         supports = ' '.join([
             f"{found.foundation_node.tag}" for found in self.foundations
-            ])
+        ])
         # Set floor nodes
         floors = ' '.join([f"{floor.rnode.tag}" for floor in self.floors])
         # Directions per dof
@@ -1866,7 +1868,7 @@ class BNSM:
             "# base_shear : list[float]",
             "#    Base shear value obtained as sum of the reaction forces.",
             ""
-            ]
+        ]
         # Add lines for setting the output directory
         content.append("# Set output directory")
         content.append("set output_directory \"NSPA-Results\"")
@@ -1920,7 +1922,7 @@ class BNSM:
         content.append("foreach node $floors {")
         content.append(
             "    puts $file [expr {[nodeCoord $node 3] - $base_level}]"
-            )
+        )
         content.append("}")
         content.append("close $file")
         # Add lines for setting the analysis parameters
@@ -1929,7 +1931,7 @@ class BNSM:
         content.append(
             "set max_disp "
             "[expr {$max_drift * [nodeCoord $ctrl_node 3] - $base_level}]"
-            )
+        )
         content.append("set tol_init 1.0e-6")
         content.append("set iter_init 20")
         content.append("wipeAnalysis")
@@ -1996,7 +1998,7 @@ class BNSM:
         content.append(
             "    "
             "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
-            )
+        )
         content.append("    # Set continue flag")
         content.append(
             "    "
@@ -2025,8 +2027,8 @@ class BNSM:
         # Add method definition
         var1 = "{ max_drift " + f"{self.max_drift}" + " }"
         var2 = "{ dincr " + f"{self.dincr}" + " }"
-        method = [f"proc do_nspa_{direction}" + " { " +
-                  f"{var1} {var2}" + " }" + " { "]
+        method = [f"proc do_nspa_{direction}" + " { "
+                  + f"{var1} {var2}" + " }" + " { "]
         content = method + content
         # Add method closure bracket
         content = content + ["}", ""]

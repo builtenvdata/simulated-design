@@ -147,10 +147,11 @@ class BuildingBase(ABC):
     If None, column capacity design shear forces are not considered during
     the design."""
     COLUMN_POSITION_FACTORS: Dict[
-        Literal['bot', 'top'],
-        Dict[Literal['central', 'exterior'], float]
-        ] = {'bot': {'central': 1.1, 'exterior': 1.3},
-             'top': {'central': 1.3, 'exterior': 1.5}}
+        Literal["bot", "top"], Dict[Literal["central", "exterior"], float]
+    ] = {
+        "bot": {"central": 1.1, "exterior": 1.3},
+        "top": {"central": 1.3, "exterior": 1.5},
+    }
     """Position factor considered to account for the column axial force
     increase due to seismic loading. These are used to compute preliminary
     axial forces on columns."""
@@ -760,7 +761,7 @@ class BuildingBase(ABC):
                 left_beam=left_beam, right_beam=right_beam,
                 front_beam=front_beam, rear_beam=rear_beam,
                 top_column=top_column, bottom_column=bottom_column
-                )
+            )
             self.joints.append(joint)
 
     def _set_quality_model(self) -> None:
@@ -998,13 +999,14 @@ class BuildingBase(ABC):
         matching_stairs = next(filtered_stairs, None)
         return matching_stairs
 
-    def _find_elements_by_point(
-        self, node: Point
-        ) -> Tuple[
-            Optional[BeamBase], Optional[BeamBase],
-            Optional[BeamBase], Optional[BeamBase],
-            Optional[ColumnBase], Optional[ColumnBase]
-            ]:
+    def _find_elements_by_point(self, node: Point) -> Tuple[
+        Optional[BeamBase],
+        Optional[BeamBase],
+        Optional[BeamBase],
+        Optional[BeamBase],
+        Optional[ColumnBase],
+        Optional[ColumnBase],
+    ]:
         """Finds the elements connected to the given node/point.
 
         Parameters
@@ -1056,7 +1058,7 @@ class BuildingBase(ABC):
             left_beamx, right_beamx,
             front_beamy, rear_beamy,
             top_column, bottom_column
-            )
+        )
 
     def _find_joint_by_point(self, node: Point) -> Optional[JointBase]:
         """Finds the joints by the given node/point.
@@ -1153,9 +1155,9 @@ class BuildingBase(ABC):
                 g_fact = combo.loads['G']
                 q_fact = combo.loads['Q']
                 # Moment at mid-span (alpha factored load)
-                Md_tmp = g_fact*beam.simple_Mg + q_fact*beam.simple_Mq
+                Md_tmp = g_fact * beam.simple_Mg + q_fact * beam.simple_Mq
                 # Compute the shear at the support
-                Vd_tmp = g_fact*beam.simple_Vg + q_fact*beam.simple_Vq
+                Vd_tmp = g_fact * beam.simple_Vg + q_fact * beam.simple_Vq
                 # Update maximums
                 Md = max(Md, Md_tmp)
                 Vd = max(Vd, Vd_tmp)
@@ -1184,7 +1186,7 @@ class BuildingBase(ABC):
         for column in self.columns:
             # Get position factor
             _, p2 = column.elastic_nodes
-            if p2.grid_ids[2] > max_floor/2:
+            if p2.grid_ids[2] > max_floor / 2:
                 lvl = "top"
             else:
                 lvl = "bot"
@@ -1225,7 +1227,7 @@ class BuildingBase(ABC):
                 columns.reverse()
                 for i, column in enumerate(columns):
                     if i != 0:
-                        column_i_1 = columns[i-1]
+                        column_i_1 = columns[i - 1]
                         column.pre_Nq_pos += column_i_1.pre_Nq_pos
                         column.pre_Ng_pos += column_i_1.pre_Ng_pos
                         column.pre_Nq += column_i_1.pre_Nq
@@ -1237,8 +1239,8 @@ class BuildingBase(ABC):
             for combo in grav_combos:
                 g_fact = combo.loads["G"]
                 q_fact = combo.loads["Q"]
-                tmp = (g_fact * column.pre_Ng +
-                       q_fact * column.pre_Nq)
+                tmp = (g_fact * column.pre_Ng
+                       + q_fact * column.pre_Nq)
                 Nd = max(tmp, Nd)
             # From seismic load combinations
             # NOTE: This could be also linked to the beta coefficient
@@ -1246,8 +1248,8 @@ class BuildingBase(ABC):
                 for combo in seism_combos:
                     g_fact = combo.masses["G"]
                     q_fact = combo.masses["Q"]
-                    tmp = (g_fact * column.pre_Ng_pos +
-                           q_fact * column.pre_Nq_pos)
+                    tmp = (g_fact * column.pre_Ng_pos
+                           + q_fact * column.pre_Nq_pos)
                     Nd = max(tmp, Nd)
             column.pre_Nd = Nd
 
@@ -1288,7 +1290,7 @@ class BuildingBase(ABC):
         building a constant section is used for column along the building.
         """
         # Uniformize the continuous columns of same stairs
-        # TODO: This seems reduntant for now, following is enough.
+        # NOTE: This seems reduntant for now, following is enough.
         self._uniformize_stairs_columns()
         # Ensuring bottom column dimensions are always greater or equal
         self._ensure_column_dim_consistency()
@@ -1319,8 +1321,8 @@ class BuildingBase(ABC):
                     start = 0
                     for i, remainder in enumerate(remainders):
                         if remainder == 0:
-                            slices.append(columns[start:i+1])
-                            start = i+1
+                            slices.append(columns[start:i + 1])
+                            start = i + 1
                     # Append the last slice if necessary
                     if remainders[-1] != 0:
                         slices.append(columns[start:])
@@ -1492,7 +1494,7 @@ class BuildingBase(ABC):
         idxs = [i for i, beam in enumerate(self.beams) if not beam.ok]
         print(
             len(idxs), f"beams failed to pass {text} design verification."
-            )
+        )
         # for idx in idxs:
         #     print(f"beam:{idx}, h={self.beams[idx].h},"
         #           f"b={self.beams[idx].b}")
@@ -1504,7 +1506,7 @@ class BuildingBase(ABC):
                 if not (col.ok_x and col.ok_y)]
         print(
             f"{len(idxs)} columns failed to pass {text} design verification."
-            )
+        )
         # for idx in idxs:
         #     print(f"Column:{idx}, bx={self.columns[idx].bx},"
         #           f"by={self.columns[idx].by}")
@@ -1548,7 +1550,7 @@ class BuildingBase(ABC):
             for beam in beams:
                 Asl_top = np.append(Asl_top, beam.Asl_top_req)
                 Asl_bot = np.append(Asl_bot, beam.Asl_bot_req)
-                b = np.append(b, np.array([beam.b]*len(beam.Asl_top_req)))
+                b = np.append(b, np.array([beam.b] * len(beam.Asl_top_req)))
             # Determine rebar arrangement
             (
                 dbl_t1, nbl_t1, dbl_t2, nbl_t2,
@@ -1559,33 +1561,25 @@ class BuildingBase(ABC):
             # Required for lap splices at joints (cont. reinf.)
             # NOTE: This could be unrealistic for adjacent spans with
             # very different lengths
-            for kk in range(2, len(nbl_b2)-3, 3):
-                nbl_t1[kk] = max(nbl_t1[kk],
-                                 nbl_t1[kk + 1])
-                nbl_t1[kk+1] = max(nbl_t1[kk],
-                                   nbl_t1[kk + 1])
-                nbl_t2[kk] = max(nbl_t2[kk],
-                                 nbl_t2[kk + 1])
-                nbl_t2[kk+1] = max(nbl_t2[kk],
-                                   nbl_t2[kk + 1])
-                nbl_b1[kk] = max(nbl_b1[kk],
-                                 nbl_b1[kk + 1])
-                nbl_b1[kk+1] = max(nbl_b1[kk],
-                                   nbl_b1[kk + 1])
-                nbl_b2[kk] = max(nbl_b2[kk],
-                                 nbl_b2[kk + 1])
-                nbl_b2[kk+1] = max(nbl_b2[kk],
-                                   nbl_b2[kk + 1])
+            for kk in range(2, len(nbl_b2) - 3, 3):
+                nbl_t1[kk] = max(nbl_t1[kk], nbl_t1[kk + 1])
+                nbl_t1[kk + 1] = max(nbl_t1[kk], nbl_t1[kk + 1])
+                nbl_t2[kk] = max(nbl_t2[kk], nbl_t2[kk + 1])
+                nbl_t2[kk + 1] = max(nbl_t2[kk], nbl_t2[kk + 1])
+                nbl_b1[kk] = max(nbl_b1[kk], nbl_b1[kk + 1])
+                nbl_b1[kk + 1] = max(nbl_b1[kk], nbl_b1[kk + 1])
+                nbl_b2[kk] = max(nbl_b2[kk], nbl_b2[kk + 1])
+                nbl_b2[kk + 1] = max(nbl_b2[kk], nbl_b2[kk + 1])
             # Store rebar solutions and validate
             for i, beam in enumerate(beams):
-                beam.dbl_t1 = dbl_t1[3*i:3*(i+1)]
-                beam.nbl_t1 = nbl_t1[3*i:3*(i+1)]
-                beam.dbl_t2 = dbl_t2[3*i:3*(i+1)]
-                beam.nbl_t2 = nbl_t2[3*i:3*(i+1)]
-                beam.dbl_b1 = dbl_b1[3*i:3*(i+1)]
-                beam.nbl_b1 = nbl_b1[3*i:3*(i+1)]
-                beam.dbl_b2 = dbl_b2[3*i:3*(i+1)]
-                beam.nbl_b2 = nbl_b2[3*i:3*(i+1)]
+                beam.dbl_t1 = dbl_t1[3 * i:3 * (i + 1)]
+                beam.nbl_t1 = nbl_t1[3 * i:3 * (i + 1)]
+                beam.dbl_t2 = dbl_t2[3 * i:3 * (i + 1)]
+                beam.nbl_t2 = nbl_t2[3 * i:3 * (i + 1)]
+                beam.dbl_b1 = dbl_b1[3 * i:3 * (i + 1)]
+                beam.nbl_b1 = nbl_b1[3 * i:3 * (i + 1)]
+                beam.dbl_b2 = dbl_b2[3 * i:3 * (i + 1)]
+                beam.nbl_b2 = nbl_b2[3 * i:3 * (i + 1)]
                 beam.validate_longitudinal_reinforcement()
         # Check if beams fail stage 2 flexure design verification
         if self.beams_fail:
@@ -1633,13 +1627,14 @@ class BuildingBase(ABC):
                 # Both top and bottom columns exist
                 if joint.top_column and joint.bottom_column:
                     forces_top = (
-                        factors['G']*joint.top_column.forces['G/seismic'] +
-                        factors['Q']*joint.top_column.forces['Q/seismic']
-                        )
+                        factors['G'] * joint.top_column.forces['G/seismic']
+                        + factors['Q'] * joint.top_column.forces['Q/seismic']
+                    )
                     forces_bottom = (
-                        factors['G']*joint.bottom_column.forces['G/seismic'] +
-                        factors['Q']*joint.bottom_column.forces['Q/seismic']
-                        )
+                        factors['G'] * joint.bottom_column.forces['G/seismic']
+                        + factors['Q']
+                        * joint.bottom_column.forces['Q/seismic']
+                    )
                     forces_top.Mx1 = 0.5 * gamma_rd * sum_mrdb_y
                     forces_top.My1 = 0.5 * gamma_rd * sum_mrdb_x
                     joint.top_column.design_forces.append(forces_top)
@@ -1649,18 +1644,19 @@ class BuildingBase(ABC):
                 # Only top column exists
                 elif joint.top_column:
                     forces_top = (
-                        factors['G']*joint.top_column.forces['G/seismic'] +
-                        factors['Q']*joint.top_column.forces['Q/seismic']
-                        )
+                        factors['G'] * joint.top_column.forces['G/seismic']
+                        + factors['Q'] * joint.top_column.forces['Q/seismic']
+                    )
                     forces_top.Mx1 = gamma_rd * sum_mrdb_y
                     forces_top.My1 = gamma_rd * sum_mrdb_x
                     joint.top_column.design_forces.append(forces_top)
                 # Only bottom column exists
                 elif joint.bottom_column:
                     forces_bottom = (
-                        factors['G']*joint.bottom_column.forces['G/seismic'] +
-                        factors['Q']*joint.bottom_column.forces['Q/seismic']
-                        )
+                        factors['G'] * joint.bottom_column.forces['G/seismic']
+                        + factors['Q']
+                        * joint.bottom_column.forces['Q/seismic']
+                    )
                     forces_bottom.Mx9 = gamma_rd * sum_mrdb_y
                     forces_bottom.My9 = gamma_rd * sum_mrdb_x
                     joint.bottom_column.design_forces.append(forces_bottom)
@@ -1729,9 +1725,9 @@ class BuildingBase(ABC):
             # Top column exists
             if joint.top_column:
                 forces_top = (
-                    factors['G']*joint.top_column.forces['G/seismic'] +
-                    factors['Q']*joint.top_column.forces['Q/seismic']
-                    )
+                    factors['G'] * joint.top_column.forces['G/seismic']
+                    + factors['Q'] * joint.top_column.forces['Q/seismic']
+                )
                 if beam.direction == 'x':  # use column mrd_y
                     sum_mrd += joint.top_column.get_mrdy(Ned=forces_top.N1)
                 elif beam.direction == 'y':  # use column mrd_x
@@ -1739,9 +1735,9 @@ class BuildingBase(ABC):
             # Bottom column exists
             if joint.bottom_column:
                 forces_bottom = (
-                    factors['G']*joint.bottom_column.forces['G/seismic'] +
-                    factors['Q']*joint.bottom_column.forces['Q/seismic']
-                    )
+                    factors['G'] * joint.bottom_column.forces['G/seismic']
+                    + factors['Q'] * joint.bottom_column.forces['Q/seismic']
+                )
                 if beam.direction == 'x':  # Use column mrd_y
                     sum_mrd += joint.bottom_column.get_mrdy(
                         Ned=forces_bottom.N9)
@@ -1816,20 +1812,20 @@ class BuildingBase(ABC):
             # Capacity design forces for columns
             for factors in combo_grav_factors:
                 # Shear force due to gravity loads (g+nq)
-                Vd = (factors['G']*beam.wg_total +
-                      factors['Q']*beam.wq_total) * (beam_lc / 2)
+                Vd = (factors['G'] * beam.wg_total
+                      + factors['Q'] * beam.wq_total) * (beam_lc / 2)
                 # Sum of the moment of resistances of the joint columns
                 sum_mrdc_i = get_sum_mrdc_at_joint(joint_i)
                 sum_mrdc_j = get_sum_mrdc_at_joint(joint_j)
                 # The beam moment of resistances at both ends
                 Mpi_pos = gamma_rd * beam.mrd_pos[0] * min(
-                    1.0, sum_mrdc_i/sum_mrdb_i_pos)
+                    1.0, sum_mrdc_i / sum_mrdb_i_pos)
                 Mpi_neg = gamma_rd * beam.mrd_neg[0] * min(
-                    1.0, sum_mrdc_i/sum_mrdb_i_neg)
+                    1.0, sum_mrdc_i / sum_mrdb_i_neg)
                 Mpj_pos = gamma_rd * beam.mrd_pos[-1] * min(
-                    1.0, sum_mrdc_j/sum_mrdb_j_pos)
+                    1.0, sum_mrdc_j / sum_mrdb_j_pos)
                 Mpj_neg = gamma_rd * beam.mrd_neg[-1] * min(
-                    1.0, sum_mrdc_j/sum_mrdb_j_neg)
+                    1.0, sum_mrdc_j / sum_mrdb_j_neg)
                 # Capacity design shear forces at both ends
                 Ved_i_pos = Vd + (Mpi_pos + Mpj_neg) / beam_lc
                 Ved_i_neg = Vd - (Mpi_neg + Mpj_pos) / beam_lc
@@ -1892,19 +1888,19 @@ class BuildingBase(ABC):
                 nbl_b2 = np.append(nbl_b2, beam.nbl_b2)
                 dbl_t1 = np.append(dbl_t1, beam.dbl_t1)
                 dbl_b1 = np.append(dbl_b1, beam.dbl_b1)
-                b = np.append(b, np.array([beam.b]*len(beam.Asl_top_req)))
-                h = np.append(h, np.array([beam.h]*len(beam.Asl_top_req)))
+                b = np.append(b, np.array([beam.b] * len(beam.Asl_top_req)))
+                h = np.append(h, np.array([beam.h] * len(beam.Asl_top_req)))
             # Determine transverse reinforcement solution
             dbh, sbh, nbh_x, nbh_y = self.rebars.get_beam_transv_rebars(
                 Ash_sbh, nbl_t1, nbl_t2, nbl_b1,
                 nbl_b2, dbl_t1, dbl_b1, b, h
-                )
+            )
             # Store rebar solutions and validate
             for i, beam in enumerate(beams):
-                beam.dbh = dbh[3*i:3*(i+1)]
-                beam.sbh = sbh[3*i:3*(i+1)]
-                beam.nbh_b = nbh_x[3*i:3*(i+1)]
-                beam.nbh_h = nbh_y[3*i:3*(i+1)]
+                beam.dbh = dbh[3 * i:3 * (i + 1)]
+                beam.sbh = sbh[3 * i:3 * (i + 1)]
+                beam.nbh_b = nbh_x[3 * i:3 * (i + 1)]
+                beam.nbh_h = nbh_y[3 * i:3 * (i + 1)]
                 beam.validate_transverse_reinforcement()
         if self.beams_fail:
             self.__print_beam_failure('stage 2 shear')
@@ -2029,17 +2025,17 @@ class BuildingBase(ABC):
             # Top column exists
             if joint.top_column:
                 forces_top = (
-                    factors['G']*joint.top_column.forces['G/seismic'] +
-                    factors['Q']*joint.top_column.forces['Q/seismic']
-                    )
+                    factors['G'] * joint.top_column.forces['G/seismic']
+                    + factors['Q'] * joint.top_column.forces['Q/seismic']
+                )
                 sum_mrd_x += joint.top_column.get_mrdx(Ned=forces_top.N1)
                 sum_mrd_y += joint.top_column.get_mrdy(Ned=forces_top.N1)
             # Bottom column exists
             if joint.bottom_column:
                 forces_bottom = (
-                    factors['G']*joint.bottom_column.forces['G/seismic'] +
-                    factors['Q']*joint.bottom_column.forces['Q/seismic']
-                    )
+                    factors['G'] * joint.bottom_column.forces['G/seismic']
+                    + factors['Q'] * joint.bottom_column.forces['Q/seismic']
+                )
                 sum_mrd_x += joint.bottom_column.get_mrdx(Ned=forces_bottom.N9)
                 sum_mrd_y += joint.bottom_column.get_mrdy(Ned=forces_bottom.N9)
 
@@ -2115,9 +2111,9 @@ class BuildingBase(ABC):
             for factors in combo_grav_factors:
                 # Initialize column forces
                 forces = (
-                    factors['G']*column.forces['G/seismic'] +
-                    factors['Q']*column.forces['Q/seismic']
-                    )
+                    factors['G'] * column.forces['G/seismic']
+                    + factors['Q'] * column.forces['Q/seismic']
+                )
                 forces.case = 'seismic'
                 # The beam moment of resistances at both ends
                 mrdx_i = column.get_mrdx(Ned=forces.N1)
@@ -2138,21 +2134,21 @@ class BuildingBase(ABC):
                     Mpi_y_neg = gamma_rd * mrdy_i
                 else:
                     Mpi_x_pos = gamma_rd * mrdx_i * min(
-                        1.0, sum_mrdb_y_pos_i/sum_mrdc_x_i)
+                        1.0, sum_mrdb_y_pos_i / sum_mrdc_x_i)
                     Mpi_x_neg = gamma_rd * mrdx_i * min(
-                        1.0, sum_mrdb_y_neg_i/sum_mrdc_x_i)
+                        1.0, sum_mrdb_y_neg_i / sum_mrdc_x_i)
                     Mpi_y_pos = gamma_rd * mrdy_i * min(
-                        1.0, sum_mrdb_x_pos_i/sum_mrdc_y_i)
+                        1.0, sum_mrdb_x_pos_i / sum_mrdc_y_i)
                     Mpi_y_neg = gamma_rd * mrdy_i * min(
-                        1.0, sum_mrdb_x_neg_i/sum_mrdc_y_i)
+                        1.0, sum_mrdb_x_neg_i / sum_mrdc_y_i)
                 Mpj_x_pos = gamma_rd * mrdx_j * min(
-                    1.0, sum_mrdb_y_pos_j/sum_mrdc_x_j)
+                    1.0, sum_mrdb_y_pos_j / sum_mrdc_x_j)
                 Mpj_x_neg = gamma_rd * mrdx_j * min(
-                    1.0, sum_mrdb_y_neg_j/sum_mrdc_x_j)
+                    1.0, sum_mrdb_y_neg_j / sum_mrdc_x_j)
                 Mpj_y_pos = gamma_rd * mrdy_j * min(
-                    1.0, sum_mrdb_x_pos_j/sum_mrdc_y_j)
+                    1.0, sum_mrdb_x_pos_j / sum_mrdc_y_j)
                 Mpj_y_neg = gamma_rd * mrdy_j * min(
-                    1.0, sum_mrdb_x_neg_j/sum_mrdc_y_j)
+                    1.0, sum_mrdb_x_neg_j / sum_mrdc_y_j)
                 # Capacity design shear forces at both ends
                 Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
                 Vdx_neg = (Mpi_y_neg + Mpj_y_pos) / col_lcx
@@ -2220,7 +2216,7 @@ class BuildingBase(ABC):
                 dbh, sbh, nbh_x, nbh_y
             ) = self.rebars.get_column_transv_rebars(
                 bx, by, Ashx_sbh_req, Ashy_sbh_req, dbl_c, nbl_ix, nbl_iy
-                )
+            )
             for i, col in enumerate(columns):
                 col.dbh = dbh[i]
                 col.sbh = sbh[i]

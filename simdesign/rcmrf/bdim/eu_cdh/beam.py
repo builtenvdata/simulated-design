@@ -14,12 +14,6 @@ CEN (2004) Eurocode 8: Design of structures for earthquake resistance - Part 1:
 General rules, seismic actions and rules for buildings. Brussels, Belgium
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-
-TODO
-----
-Discuss the default constants.
-See specific lines with TODOs.
-Add specific reference pages for design equations.
 """
 
 # Imports from installed packages
@@ -53,8 +47,7 @@ class Beam(BeamBase):
     """Peak ground acceleration value considered in design."""
     MIN_B_EB: float = 0.25 * m
     """The default minimum breadth (width) of emergent beams."""
-    # TODO: EC8 5.5.1.2.1(1)P says minimum width is 200mm.
-
+    # NOTE: EC8 5.5.1.2.1(1)P says minimum width is 200mm.
     # TODO: Max aspect ratio based on EN 1992-1-1:2004 5.9(3) eqn 5.40a?
 
     @property
@@ -65,7 +58,7 @@ class Beam(BeamBase):
         float
             Minimum longitudinal reinforcement ratio in tension zone
         """
-        fctm = (0.3 * (self.fck/MPa)**(2/3)) * MPa
+        fctm = (0.3 * (self.fck / MPa) ** (2 / 3)) * MPa
         if self.ag > 0.05:  # Moderate to high seismic loads
             # EN 1998-1:2004, Eqn. 5.12
             return 0.50 * (fctm / self.fsyk)
@@ -93,7 +86,7 @@ class Beam(BeamBase):
             Minimum transverse reinforcement ratio
         """
         # EN 1992-1-1:2004, 9.2.2(5), Eqn. 9.5N
-        return 0.08 * ((self.fck/MPa)**0.5) / (self.fsyk/MPa)
+        return 0.08 * ((self.fck / MPa) ** 0.5) / (self.fsyk / MPa)
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
         """Does preliminary design of beam.
@@ -153,13 +146,16 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (self.b > self.max_b
+                       or self.b / self.h > self.MAX_ASPECT_RATIO_WB):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20
@@ -178,23 +174,24 @@ class Beam(BeamBase):
         z = 0.9 * d  # lever arm, i.e., distance between comp. and tens. forces
         # Following EC2-1/6.2.3: Members with vertical shear reinforcement
         # Strength reduction factor for concrete cracked in shear
-        v = 0.6 * (1 - self.fck / (250*MPa))  # Eqn 6.6N
+        v = 0.6 * (1 - self.fck / (250 * MPa))  # Eqn 6.6N
         if self.fsyd / self.fsyk >= 0.80:
             v1 = v  # Note 1: Recommended strength reduction factor
         else:  # Note 2: If fsyd is below 80% of fsyk
             if self.fck <= 60 * MPa:
                 v1 = 0.6
             else:
-                v1 = max(0.6 * (1 - self.fck / (200*MPa)), 0.5)
+                v1 = max(0.6 * (1 - self.fck / (200 * MPa)), 0.5)
         # Coefficient taking account the stress state in the comp. chord
         alpha_cw = 1.0  # assuming no axial force (beams), eqn. 6.11aN
         # Angle between the conc. comp. strut and the beam axis perp. to shear
         theta = 21.80140948635181  # in degrees, based on eqn. 6.7N
         theta = 45  # in degrees, based on eqn. 6.7N
-        tan_theta = np.tan(theta*np.pi/180)  # 0.4 - 1.0
-        cot_theta = 1/tan_theta  # 1.0 - 2.5
+        tan_theta = np.tan(theta * np.pi / 180)  # 0.4 - 1.0
+        cot_theta = 1 / tan_theta  # 1.0 - 2.5
         # Assuming vertical shear reinforcement is provided: Eqn. 6.9
-        Vrd_max = (alpha_cw*self.b*z*v1*self.fcd) / (cot_theta+tan_theta)
+        Vrd_max = (alpha_cw * self.b * z * v1 * self.fcd) / (
+            cot_theta + tan_theta)
         # Maximum of envelope forces
         Vmax = max(self.envelope_forces.V1, self.envelope_forces.V5,
                    self.envelope_forces.V9)
@@ -205,7 +202,7 @@ class Beam(BeamBase):
             abs(self.envelope_forces.M1_neg),
             abs(self.envelope_forces.M5_neg),
             abs(self.envelope_forces.M9_neg)
-            )
+        )
         # Verify the adequacy of the section dimensions
         mu = Mmax / (self.fcd * self.b * d**2)  # for max. bending moment
         if mu < mu_economic and Vmax < Vrd_max:
@@ -228,10 +225,6 @@ class Beam(BeamBase):
         bending moments.
         3. Required reinforcement is computed at different sections:
         start, mid, end.
-
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
@@ -259,7 +252,7 @@ class Beam(BeamBase):
         omega_pos = omega_lim + omega_pos_prime
         # REBAP pp. 35, eq 10
         omega_pos[mu_pos <= mu_lim] = (
-            mu_pos[mu_pos <= mu_lim] * (1 + 0.75*mu_pos[mu_pos <= mu_lim]))
+            mu_pos[mu_pos <= mu_lim] * (1 + 0.75 * mu_pos[mu_pos <= mu_lim]))
         # Reinforcement computation for negative moment envelope (-)
         # REBAP pp. 33
         mu_neg = moment_neg / (self.fcd * self.b * d**2)
@@ -271,7 +264,7 @@ class Beam(BeamBase):
         omega_neg = omega_lim + omega_neg_prime
         # REBAP pp. 35, eq 10
         omega_neg[mu_neg <= mu_lim] = (
-            mu_neg[mu_neg <= mu_lim] * (1 + 0.75*mu_neg[mu_neg <= mu_lim]))
+            mu_neg[mu_neg <= mu_lim] * (1 + 0.75 * mu_neg[mu_neg <= mu_lim]))
         # Prime is used for compression reinforcement.
         # It can be both at top and bottom due to seismic loading
         omega_pos = np.maximum(omega_pos, omega_neg_prime)
@@ -285,12 +278,12 @@ class Beam(BeamBase):
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
         # EC 8-1 / 5.4.3.1.2 (4a) Detailing for local ductility
         # Compression to tension reinf. ratio must be greater than 0.5
-        mask1 = Asl_top/Asl_bot < 0.5
+        mask1 = Asl_top / Asl_bot < 0.5
         if np.any(mask1):
-            Asl_top[mask1] = 0.5*Asl_bot[mask1]
-        mask1 = Asl_bot/Asl_top < 0.5
+            Asl_top[mask1] = 0.5 * Asl_bot[mask1]
+        mask1 = Asl_bot / Asl_top < 0.5
         if np.any(mask1):
-            Asl_bot[mask1] = 0.5*Asl_top[mask1]
+            Asl_bot[mask1] = 0.5 * Asl_top[mask1]
         # Save required longitudinal steel area at top and bottom
         self.Asl_top_req = Asl_top
         self.Asl_bot_req = Asl_bot

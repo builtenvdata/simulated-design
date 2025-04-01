@@ -94,7 +94,7 @@ def _get_pv_2node_ele(ele_arr: List[np.ndarray], node_tags: np.ndarray
             tmp_arr = np.array([
                 2, _get_node_index(ii[1], node_tags),
                 _get_node_index(ii[2], node_tags)
-                ])
+            ])
             line_ele = np.hstack((line_ele, tmp_arr))
 
     return line_ele.astype(int)
@@ -705,8 +705,8 @@ def plot_mode_shape(
         mode_node_array = this_mode_node_array
 
     # Calculate the deflected node coordinates using the mode shape data
-    deflected_node_coord_arr = (node_array[:, 1:] +
-                                scale * mode_node_array[:, 1:])
+    deflected_node_coord_arr = (node_array[:, 1:]
+                                + scale * mode_node_array[:, 1:])
 
     # Combine node IDs with their deflected coordinates
     deflected_node_arr = np.hstack(

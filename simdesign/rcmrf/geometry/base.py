@@ -483,9 +483,9 @@ class FrameBase(ABC):
                         points.append(point)
 
                 lines = []
-                for pt_i in range(len(points)-1):
+                for pt_i in range(len(points) - 1):
                     p1 = points[pt_i]
-                    p2 = points[pt_i+1]
+                    p2 = points[pt_i + 1]
                     line = self.find_line_by_points([p1, p2])
                     lines.append(line)
                 if any(lines):
@@ -517,9 +517,9 @@ class FrameBase(ABC):
                         points.append(point)
 
                 lines = []
-                for pt_i in range(len(points)-1):
+                for pt_i in range(len(points) - 1):
                     p1 = points[pt_i]
-                    p2 = points[pt_i+1]
+                    p2 = points[pt_i + 1]
                     line = self.find_line_by_points([p1, p2])
                     lines.append(line)
                 if any(lines):
@@ -552,9 +552,9 @@ class FrameBase(ABC):
                         points.append(point)
 
                 lines = []
-                for pt_i in range(len(points)-1):
+                for pt_i in range(len(points) - 1):
                     p1 = points[pt_i]
-                    p2 = points[pt_i+1]
+                    p2 = points[pt_i + 1]
                     line = self.find_line_by_points([p1, p2])
                     lines.append(line)
                 if any(lines):
@@ -661,7 +661,7 @@ class FrameBase(ABC):
                 rectangles.append(rect)
             else:  # Check if any rectangle exist above
                 check = []
-                for i in range(idx+1, idx_max+1):
+                for i in range(idx + 1, idx_max + 1):
                     grid_ids[2] = self.system_grid_data.z.ids[i]
                     point = self.find_point_by_grid_ids(grid_ids)
                     rect_up = self.find_rectangles_by_left_lower_point(point)
@@ -695,17 +695,17 @@ class FrameBase(ABC):
                         if point is not None:
                             points.append(point)
 
-                    for pt_i in range(len(points)-1):
+                    for pt_i in range(len(points) - 1):
                         add = True
                         p1 = points[pt_i]
-                        p2 = points[pt_i+1]
+                        p2 = points[pt_i + 1]
                         line = self.find_line_by_points([p1, p2])
                         if line is None:
                             add = False
                         elif i != imin and i != imax:
                             grids = p1.grid_ids.copy()
                             # Check for any next points in y
-                            for ii in range(i+1, imax+1):
+                            for ii in range(i + 1, imax + 1):
                                 grids[1] = ii
                                 p = self.find_point_by_grid_ids(grids)
                                 if p:
@@ -732,17 +732,17 @@ class FrameBase(ABC):
                         if point is not None:
                             points.append(point)
 
-                    for pt_i in range(len(points)-1):
+                    for pt_i in range(len(points) - 1):
                         add = True
                         p1 = points[pt_i]
-                        p2 = points[pt_i+1]
+                        p2 = points[pt_i + 1]
                         line = self.find_line_by_points([p1, p2])
                         if line is None:
                             add = False
                         elif i != imin and i != imax:
                             grids = p1.grid_ids.copy()
                             # Check for any next points in y
-                            for ii in range(i+1, imax+1):
+                            for ii in range(i + 1, imax + 1):
                                 grids[0] = ii
                                 p = self.find_point_by_grid_ids(grids)
                                 if p:
@@ -1439,9 +1439,9 @@ class FrameBase(ABC):
         x_grid = location[0]
         y_grid = location[1]
         p1 = self.find_point_by_grid_ids([x_grid, y_grid, 0])
-        p2 = self.find_point_by_grid_ids([x_grid+1, y_grid, 0])
-        p3 = self.find_point_by_grid_ids([x_grid, y_grid+1, 0])
-        p4 = self.find_point_by_grid_ids([x_grid+1, y_grid+1, 0])
+        p2 = self.find_point_by_grid_ids([x_grid + 1, y_grid, 0])
+        p3 = self.find_point_by_grid_ids([x_grid, y_grid + 1, 0])
+        p4 = self.find_point_by_grid_ids([x_grid + 1, y_grid + 1, 0])
         if None in [p1, p2, p3, p4]:
             raise ValueError("Cannot add continuous stairs to this location. "
                              "Base points do not exist.")
@@ -1485,11 +1485,11 @@ class FrameBase(ABC):
                         # find lower left point
                         p1 = self.find_point_by_grid_ids([i, j, k])
                         # find upper left point
-                        p2 = self.find_point_by_grid_ids([i, j+1, k])
+                        p2 = self.find_point_by_grid_ids([i, j + 1, k])
                         # find upper right point
-                        p3 = self.find_point_by_grid_ids([i+1, j+1, k])
+                        p3 = self.find_point_by_grid_ids([i + 1, j + 1, k])
                         # find lower right point
-                        p4 = self.find_point_by_grid_ids([i+1, j, k])
+                        p4 = self.find_point_by_grid_ids([i + 1, j, k])
                         points = [p1, p2, p3, p4]
                         if None in points:
                             raise ValueError(
@@ -1526,7 +1526,8 @@ class FrameBase(ABC):
         will be 1.5.
         - Do not update the grid system after using this method.
 
-        #### TODO list
+        TODO
+        ----
         - Improve the the behaviour grid id restrictions of stairs.
         """
         for rectangle in self.stairs_rectangles:
@@ -1535,16 +1536,16 @@ class FrameBase(ABC):
             stairs_lines = []
 
             # Create new nodes at mid storey height for each staircase
-            for top_point in rectangle.points[::3]:  # TODO: ask beam loc
+            for top_point in rectangle.points[::3]:  # NOTE: assumed beam loc
                 # Getting mid point coordinates and grids
                 i, j, k = top_point.grid_ids
-                bot_point = self.find_point_by_grid_ids([i, j, k-1])
+                bot_point = self.find_point_by_grid_ids([i, j, k - 1])
                 coords_top = np.array(top_point.coordinates)
                 coords_bot = np.array(bot_point.coordinates)
                 coords_mid = (coords_top + coords_bot) / 2
                 coords_mid = round_list(coords_mid.tolist())
                 # create the mid Point
-                grid = [i, j, k-0.5]
+                grid = [i, j, k - 0.5]
                 tag = max(self.point_tags) + 1
                 mid_point = Point(grid, coords_mid, tag)
                 self.points.append(mid_point)
@@ -1563,7 +1564,7 @@ class FrameBase(ABC):
             # Add supporting vertical lines which are not divided
             for top_point in rectangle.points[1:3]:
                 i, j, k = top_point.grid_ids
-                bot_point = self.find_point_by_grid_ids([i, j, k-1])
+                bot_point = self.find_point_by_grid_ids([i, j, k - 1])
                 vert_line_points = [bot_point, top_point]
                 vert_line = self.find_line_by_points(vert_line_points)
                 stairs_lines.append(vert_line)
@@ -1579,7 +1580,7 @@ class FrameBase(ABC):
             self.stairs_lines.append(stairs_lines)
 
             # update grid system data
-            self.system_grid_data.z.ids.append(k-0.5)
+            self.system_grid_data.z.ids.append(k - 0.5)
             self.system_grid_data.z.ordinates.append(coords_mid[-1])
 
         # Sort 'ID' list and get the permutation indices
@@ -1676,7 +1677,7 @@ class FrameBase(ABC):
         z_ticks = np.unique(points[:, 2])
         bounds = [min(x_ticks), max(x_ticks), min(y_ticks),
                   max(y_ticks), min(z_ticks), max(z_ticks)]
-        # TODO: Can't show exact grid lines at the moment.
+        # NOTE: Can't show exact grid lines at the moment.
         # plotter.show_grid(bounds=bounds, font_family='times',
         #                   n_xlabels=len(x_ticks), n_ylabels=len(y_ticks),
         #                   n_zlabels=len(z_ticks))
@@ -1708,10 +1709,10 @@ class FrameBase(ABC):
             points = self.find_points_by_level(z_id)
             if z_id == floor_id - 0.5:
                 for point in points:
-                    point.coordinates[2] += h_difference/2
+                    point.coordinates[2] += h_difference / 2
                     point.coordinates[2] = \
                         round(point.coordinates[2], PRECISION)
-                self.system_grid_data.z.ordinates[i] += h_difference/2
+                self.system_grid_data.z.ordinates[i] += h_difference / 2
                 self.system_grid_data.z.ordinates[i] = \
                     round(self.system_grid_data.z.ordinates[i], PRECISION)
             elif z_id >= floor_id:

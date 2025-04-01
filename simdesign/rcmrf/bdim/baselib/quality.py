@@ -219,23 +219,23 @@ class QualityBase(ABC):
         col_sbh_ratio = uniform.ppf(
             np.random.rand(num_columns),
             loc=uniform_low_sbh,
-            scale=uniform_up_sbh-uniform_low_sbh
-            )
+            scale=uniform_up_sbh - uniform_low_sbh
+        )
         beam_sbh_start_ratio = uniform.ppf(
             np.random.rand(num_beams),
             loc=uniform_low_sbh,
             scale=uniform_up_sbh - uniform_low_sbh
-            )
+        )
         beam_sbh_end_ratio = uniform.ppf(
             np.random.rand(num_beams),
             loc=uniform_low_sbh,
             scale=uniform_up_sbh - uniform_low_sbh
-            )
+        )
         beam_sbh_mid_ratio = uniform.ppf(
             np.random.rand(num_beams),
             loc=uniform_low_sbh,
             scale=uniform_up_sbh - uniform_low_sbh
-            )
+        )
         # Store adjusted properties of columns
         for i, col in enumerate(columns):
             col.fc_q = col.fcm * col_fc_ratio[i]

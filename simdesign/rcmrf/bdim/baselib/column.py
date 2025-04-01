@@ -592,7 +592,8 @@ class ColumnBase(ABC):
         hmin = np.minimum(self.bx, self.by)
         hmax = np.maximum(self.bx, self.by)
         return (hmax * hmin**3) * (
-            1/3 - 0.21 * (hmin / hmax) * (1 - (hmin**4 / (12*hmax**4))))
+            1 / 3 - 0.21 * (hmin / hmax) * (1 - (hmin**4 / (12 * hmax**4)))
+        )
 
     @property
     def self_wg(self) -> float:
@@ -672,7 +673,7 @@ class ColumnBase(ABC):
         Abl_int = (np.pi * self.dbl_int**2) / 4
         nbl_int = 2 * (self.nbly_int + self.nblx_int)
         nbl_cor = 4
-        return (nbl_cor*Abl_cor + nbl_int*Abl_int) / self.Ag
+        return (nbl_cor * Abl_cor + nbl_int * Abl_int) / self.Ag
 
     @property
     def rhoh_x(self) -> float:
@@ -756,10 +757,10 @@ class ColumnBase(ABC):
         """
         # Modify dimension in global x
         if not self.ok_x:
-            self.bx = ceil(20*(self.bx + self.BX_INCR)) / 20
+            self.bx = ceil(20 * (self.bx + self.BX_INCR)) / 20
         # Modify dimension in global y
         if not self.ok_y:
-            self.by = ceil(20*(self.by + self.BY_INCR)) / 20
+            self.by = ceil(20 * (self.by + self.BY_INCR)) / 20
         # Make dimensions compatible with the section type (square, rect)
         self.apply_section_compatibility()
 
@@ -772,15 +773,15 @@ class ColumnBase(ABC):
         """
         if self.section == 1:  # Square section
             # Make both dimensions equal to their maximum
-            self.bx = ceil(20*max(self.bx, self.by)) / 20
-            self.by = ceil(20*max(self.bx, self.by)) / 20
+            self.bx = ceil(20 * max(self.bx, self.by)) / 20
+            self.by = ceil(20 * max(self.bx, self.by)) / 20
         elif self.section == 2:  # Rectangular section
             # Shorter dimension should be at least half of the longer dimension
-            if self.orient == 'x':  # Longer dimension is bx
-                self.by = ceil(20*max(self.by, 0.5*self.bx)) / 20
+            if self.orient == "x":  # Longer dimension is bx
+                self.by = ceil(20 * max(self.by, 0.5 * self.bx)) / 20
                 self.by = ceil(20 * self.by) / 20
-            elif self.orient == 'y':  # Longer dimension is by
-                self.bx = ceil(20*max(self.bx, 0.5*self.by)) / 20
+            elif self.orient == "y":  # Longer dimension is by
+                self.bx = ceil(20 * max(self.bx, 0.5 * self.by)) / 20
                 self.bx = ceil(20 * self.bx) / 20
 
     def predesign_section_dimensions(self) -> None:
@@ -799,15 +800,15 @@ class ColumnBase(ABC):
             self.bx = (min_area**0.5)
             self.by = (min_area**0.5)
         elif self.section == 2:  # Rectangular section
-            if self.orient == 'x':  # Longer dimension is bx
-                self.bx = (2*min_area)**0.5
-                self.by = 0.5*self.bx
-            elif self.orient == 'y':  # Longer dimension is by
-                self.by = (2*min_area)**0.5
-                self.bx = 0.5*self.by
+            if self.orient == "x":  # Longer dimension is bx
+                self.bx = (2 * min_area) ** 0.5
+                self.by = 0.5 * self.bx
+            elif self.orient == "y":  # Longer dimension is by
+                self.by = (2 * min_area) ** 0.5
+                self.bx = 0.5 * self.by
         # Check against minimum dimensions
-        self.bx = max(ceil(20*self.bx)/20, self.min_b)
-        self.by = max(ceil(20*self.by)/20, self.min_b)
+        self.bx = max(ceil(20 * self.bx) / 20, self.min_b)
+        self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def validate_section_dimensions(self) -> None:
         """Method for validating section dimensions against maximum.
@@ -850,7 +851,7 @@ class ColumnBase(ABC):
             Design value of moment of resistance around local x.
         """
         # Make compression force positive
-        return self._get_mrd(-1.0*kwargs['Ned'], 'x')
+        return self._get_mrd(-1.0 * kwargs['Ned'], 'x')
 
     def get_mrdy(self, **kwargs) -> float:
         """Computes the design value of moment of resistance around local y.
@@ -868,7 +869,7 @@ class ColumnBase(ABC):
             Design value of moment of resistance around local y.
         """
         # Make compression force positive
-        return self._get_mrd(-1.0*kwargs['Ned'], 'y')
+        return self._get_mrd(-1.0 * kwargs["Ned"], "y")
 
     def _get_mrd(self, Ned: float, axis=Literal['x', 'y']) -> float:
         """Computes the design value of moment of resistance around
@@ -903,7 +904,8 @@ class ColumnBase(ABC):
             h = self.bx
             nbl_int = self.nbly_int
         # Total steel area, ignoring the intermediate steel
-        Asl = 2*np.pi*0.25*(2*self.dbl_cor**2 + nbl_int*self.dbl_int**2)
+        Asl = 2 * np.pi * 0.25 * (
+            2 * self.dbl_cor**2 + nbl_int * self.dbl_int**2)
         # Dimensionless omega (similar to reinf. ratio)
         omega = (Asl / self.Ag) * (self.fsyd / self.fcd)
         # Axial load ratio

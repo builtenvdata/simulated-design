@@ -1,5 +1,5 @@
 """
-Specific routines for defining tr_pre75 construction quality adjusments.
+Specific routines for defining tr_pre75 construction quality adjustments.
 """
 # Imports from installed packages
 from pathlib import Path

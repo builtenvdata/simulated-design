@@ -118,14 +118,14 @@ class Building(BuildingBase):
         """
         for column in self.columns:
             if self.num_storeys <= 3:
-                column.MAX_B_SQUARE = 0.60*m
-                column.MAX_B_RECTANGLE = 0.80*m
+                column.MAX_B_SQUARE = 0.60 * m
+                column.MAX_B_RECTANGLE = 0.80 * m
             elif self.num_storeys <= 6:
-                column.MAX_B_SQUARE = 0.80*m
-                column.MAX_B_RECTANGLE = 1.00*m
+                column.MAX_B_SQUARE = 0.80 * m
+                column.MAX_B_RECTANGLE = 1.00 * m
             elif self.num_storeys <= 9:
-                column.MAX_B_SQUARE = 0.80*m
-                column.MAX_B_RECTANGLE = 1.30*m
+                column.MAX_B_SQUARE = 0.80 * m
+                column.MAX_B_RECTANGLE = 1.30 * m
 
     def _change_materials(self) -> None:
         """The method used for changing materials in iterative design

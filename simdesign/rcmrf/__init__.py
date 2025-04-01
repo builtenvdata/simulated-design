@@ -15,7 +15,7 @@ from ..utils.misc import make_dir
 
 def generate(
     inputs: Dict[Literal['bcim', 'bnsm'], Dict], outdir: str | Path = None
-        ) -> Tuple[BCIM, List[BuildingBase | None], List[BNSM | None]]:
+) -> Tuple[BCIM, List[BuildingBase | None], List[BNSM | None]]:
     """Generates BCIM, BDIM and BNSM data by following complete workflow
     in bed framework for rcmrf systems.
 
@@ -148,7 +148,7 @@ def generate(
     for i, taxonomy in enumerate(bcim.taxonomy):
         print("----------------------------------------------------")
         print(f"Designing {taxonomy.design_class} building",
-              f"{i+1}/{len(bcim.taxonomy)} for beta={taxonomy.beta}g")
+              f"{i + 1}/{len(bcim.taxonomy)} for beta={taxonomy.beta}g")
         # Initialize BDIM
         bdim_ = BDIM(taxonomy)
         # To ensure the reproducibility of BDIM set the seed
@@ -162,17 +162,17 @@ def generate(
             bcim.concrete_grade[i] = bdim_.concrete_grade
             bcim.steel_grade[i] = bdim_.steel_grade
             # Export to csv
-            bdim_.to_csv(bdim_path / f'Building_{i+1}')
+            bdim_.to_csv(bdim_path / f'Building_{i + 1}')
             # Initialize BNSM
             bnsm_ = BNSM(bdim_, **bnsm_inputs)
             if lang == 'py':
                 # Export numerical models for OpenSeesPy
-                bnsm_.to_py(bnsm_path / f'Building_{i+1}')
+                bnsm_.to_py(bnsm_path / f'Building_{i + 1}')
             elif lang == 'tcl':
                 # Export numerical models for OpenSeesTcl
-                bnsm_.to_tcl(bnsm_path / f'Building_{i+1}')
+                bnsm_.to_tcl(bnsm_path / f'Building_{i + 1}')
             # Plot the model and save
-            bnsm_.plot_model(directory=bnsm_path / f'Building_{i+1}',
+            bnsm_.plot_model(directory=bnsm_path / f'Building_{i + 1}',
                              show=False)
             # Add to the BDIM and BNSM databases
             bdim.append(bdim_)

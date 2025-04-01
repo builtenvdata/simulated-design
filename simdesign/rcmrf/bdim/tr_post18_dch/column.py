@@ -125,34 +125,6 @@ class Column(ColumnBase):
         return 0.01
 
     @property
-    def rhoh_min(self) -> float:
-        """
-        Reference
-        ---------
-        Section 7.3.4.1 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Minimum transverse reinforcement ratio.
-        """
-        # Maximum axial load ratio
-        max_niu = max(
-            self.envelope_forces.N1_pos,
-            self.envelope_forces.N9_pos,
-            abs(self.envelope_forces.N1_neg),
-            abs(self.envelope_forces.N9_neg),
-        ) / (self.Ag * self.fck)
-
-        Ack = (self.bx - 2 * self.cover) * (self.by - 2 * self.cover)
-        ratio1 = 0.3 * (self.Ag / Ack - 1) * (self.fck / self.fsyk)
-        ratio2 = 0.075 * (self.fck / self.fsyk)
-        if max_niu > 0.20:
-            return max(ratio1, ratio2)
-        else:
-            return (2 / 3) * max(ratio1, ratio2)
-
-    @property
     def envelope_forces_overstrength_adjusted(self) -> ColumnEnvelopeForces:
         """
         Returns
@@ -259,10 +231,12 @@ class Column(ColumnBase):
         dy = 0.90 * self.by
 
         # Maximum acceptable shear force # Eq. 7.7 in TBEC-2018
-        Vrdx = 0.85 * np.sqrt(self.fck / MPa) * (self.by /
-                                                 mm) * (dx / mm) / 1000
-        Vrdy = 0.85 * np.sqrt(self.fck / MPa) * (self.bx /
-                                                 mm) * (dy / mm) / 1000
+        Vrdx = (
+            0.85 * np.sqrt(self.fck / MPa) * (self.by / mm) * (dx / mm) / 1000
+        )
+        Vrdy = (
+            0.85 * np.sqrt(self.fck / MPa) * (self.bx / mm) * (dy / mm) / 1000
+        )
 
         # Verify the adequacy of the section dimensions
         if (max_mu_y / 0.70) > ECONOMIC_MU or max_Vx > Vrdx:
@@ -307,11 +281,11 @@ class Column(ColumnBase):
             Asl_1_x, Asl_1_y = table.get_reinforcement(
                 N1d, Mx1d, My1d, self.fcd, self.fsyd, self.steel.fsyk,
                 self.bx, self.by
-                )
+            )
             Asl_9_x, Asl_9_y = table.get_reinforcement(
                 N9d, Mx9d, My9d, self.fcd, self.fsyd, self.steel.fsyk,
                 self.bx, self.by
-                )
+            )
 
             Asl_x = max(Asl_x, max(Asl_1_x, Asl_9_x))
             Asl_y = max(Asl_y, max(Asl_1_y, Asl_9_y))
@@ -326,50 +300,71 @@ class Column(ColumnBase):
         dx = (self.bx - 2 * self.cover - 0.008)
         dy = (self.by - 2 * self.cover - 0.008)
 
-        # Minimum transverse reinforcement area to spacing ratio
-        Ashx_sh_min = self.rhoh_min * dy
-        Ashy_sh_min = self.rhoh_min * dx
+        # Calculate the required transverse reinforcement area
+        Ashx_sbh_req = 0
+        Ashy_sbh_req = 0
+        for force in self.design_forces:
+            # Design forces
+            Vd_x = max(force.Vx1, force.Vx9)
+            Vd_y = max(force.Vy1, force.Vy9)
+            Nd = max(abs(force.N1), abs(force.N9))
+            niu = Nd / (self.Ag * self.fck)
 
-        # Design forces from envelopes
-        Vd_x = max(self.envelope_forces.Vx1, self.envelope_forces.Vx9)
-        Vd_y = max(self.envelope_forces.Vy1, self.envelope_forces.Vy9)
-        Nd = max(abs(self.envelope_forces.N1_neg),
-                 abs(self.envelope_forces.N9_neg))
+            # Shear force due to gravity loads
+            grav_forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
+            Vdx_gravity = max(abs(grav_forces.Vx1), abs(grav_forces.Vx9))
+            Vdy_gravity = max(abs(grav_forces.Vy1), abs(grav_forces.Vy9))
 
-        # Design shear forces
-        if self.Ve_x is not None and self.Ve_y is not None:
+            # Design shear forces
             Ve_x = self.Ve_x
             Ve_y = self.Ve_y
-        else:
-            Ve_x = Vd_x
-            Ve_y = Vd_y
 
-        # Shear force resisted by concrete, Eq.8.1 in TS500-2000
-        Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * \
-            (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
-        Vc_x = 0.8 * Vcr_x
-        Vcr_y = 0.65 * (self.fctd / MPa) * (self.bx / mm) * (dy / mm) * \
-            (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
-        Vc_y = 0.8 * Vcr_y
+            # Minimum transverse reinforcement. Section 7.3.4.1 in TBEC-2018
+            Ack = (self.bx - 2 * self.cover) * (self.by - 2 * self.cover)
+            ratio1 = 0.3 * (self.Ag / Ack - 1) * (self.fck / self.fsyk)
+            ratio2 = 0.075 * (self.fck / self.fsyk)
+            if niu > 0.20:
+                Ashx_sh_min = max(ratio1, ratio2) * dx
+                Ashy_sh_min = max(ratio1, ratio2) * dy
+            else:
+                Ashx_sh_min = (2 / 3) * max(ratio1, ratio2) * dx
+                Ashy_sh_min = (2 / 3) * max(ratio1, ratio2) * dy
 
-        # Transverse reinforcement computation, Section 7.3.7 in TBEC-2018
-        if Ve_x <= Vcr_x:
-            Ashx_sh = Ashx_sh_min
-        else:
-            if Ve_x > 0.5 * Vd_x and Nd <= 0.05 * self.Ag * self.fck:
-                Vc_x = 0
-            Vw = Ve_x - Vc_x
-            Ashx_sh = Vw / (self.fsyd * dx)
+            # Shear force resisted by concrete, Eq.8.1 in TS500-2000
+            Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * \
+                (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
+            Vc_x = 0.8 * Vcr_x
+            Vcr_y = 0.65 * (self.fctd / MPa) * (self.bx / mm) * (dy / mm) * \
+                (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
+            Vc_y = 0.8 * Vcr_y
 
-        if Ve_y <= Vcr_y:
-            Ashy_sh = Ashy_sh_min
-        else:
-            if Ve_y > 0.5 * Vd_y and Nd <= 0.05 * self.Ag * self.fck:
-                Vc_y = 0
-            Vw = Ve_y - Vc_y
-            Ashy_sh = Vw / (self.fsyd * dy)
+            # Transverse reinforcement computation, Section 7.3.7 in TBEC-2018
+            if Ve_x <= Vcr_x:
+                Ashx_sh = Ashx_sh_min
+            else:
+                if (
+                    Vd_x - Vdx_gravity
+                ) > 0.5 * Vd_x and Nd <= 0.05 * self.Ag * self.fck:
+                    Vc_x = 0
+                Vw = Ve_x - Vc_x
+                Ashx_sh = Vw / (self.fsyd * dx)
+
+            if Ve_y <= Vcr_y:
+                Ashy_sh = Ashy_sh_min
+            else:
+                if (
+                    Vd_y - Vdy_gravity
+                ) > 0.5 * Vd_y and Nd <= 0.05 * self.Ag * self.fck:
+                    Vc_y = 0
+                Vw = Ve_y - Vc_y
+                Ashy_sh = Vw / (self.fsyd * dy)
+
+            # Save the required ratio of transverse reinforcement area along
+            # x and y axes to the reinforcement spacing
+            Ashx_sbh_req = max(Ashx_sbh_req, Ashx_sh, Ashx_sh_min)
+            Ashy_sbh_req = max(Ashy_sbh_req, Ashy_sh, Ashy_sh_min)
 
         # Save the required ratio of transverse reinforcement area along
         # x and y axes to the reinforcement spacing
-        self.Ashx_sbh_req = max(Ashx_sh_min, Ashx_sh)
-        self.Ashy_sbh_req = max(Ashy_sh_min, Ashy_sh)
+        self.Ashx_sbh_req = Ashx_sbh_req
+        self.Ashy_sbh_req = Ashy_sbh_req

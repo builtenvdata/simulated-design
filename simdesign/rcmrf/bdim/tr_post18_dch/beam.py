@@ -297,13 +297,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
 
         # Round
         self.h = ceil(20 * self.h) / 20
@@ -342,8 +347,8 @@ class Beam(BeamBase):
 
         # Verify the adequacy of the section dimensions
         mu = Mmax / (self.fcd * self.b * d**2)  # For max. bending moment
-        Vrd_max = (0.85 * (self.b / mm) * (d / mm) *
-                   np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
+        Vrd_max = (0.85 * (self.b / mm) * (d / mm)
+                   * np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
 
         if mu < mu_economic and Vmax < Vrd_max:
             self.ok = True  # Ok
@@ -482,25 +487,16 @@ class Beam(BeamBase):
         start, mid, end.
         """
         # Shear forces due to gravity and earthquake loads
-        Vd = np.array(
-            [self.envelope_forces.V1, self.envelope_forces.V5,
-             self.envelope_forces.V9]
-        )
-        Vd_oa = np.array(
-            [
-                self.envelope_forces_overstrength_adjusted.V1,
-                self.envelope_forces_overstrength_adjusted.V5,
-                self.envelope_forces_overstrength_adjusted.V9,
-            ]
-        )
+        Vd = np.array([self.envelope_forces.V1, self.envelope_forces.V5,
+                       self.envelope_forces.V9])
 
         # Design shear force
         Ve = np.array([self.Ve1, self.envelope_forces.V5, self.Ve9])
-        Ve = np.minimum(Ve, Vd_oa)
 
         # Shear force due to gravity loads
-        forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
-        Vdy = np.array([abs(forces.V1), abs(forces.V5), abs(forces.V9)])
+        grav_forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
+        Vd_gravity = np.array([abs(grav_forces.V1), abs(grav_forces.V5),
+                               abs(grav_forces.V9)])
 
         # Shear force resisted by concrete, Eq.8.1 in TS500-2000
         Vcr = 0.65 * self.fctd * self.b * (0.9 * self.h)
@@ -508,13 +504,16 @@ class Beam(BeamBase):
 
         # Transverse reinforcement computation, Section 7.4.5 in TBEC-2018
         Ash_sbh = np.zeros(len(Ve))
+
+        # Ve <= Vcr case
         mask = Ve <= Vcr
         Ash_sbh[mask] = self.rhoh_min * self.b
-        shear_force_for_reinforcement = np.where(Ve - Vdy >= 0.5 * Vd, Ve,
-                                                 Ve - Vc)
-        Ash_sbh[~mask] = shear_force_for_reinforcement[~mask] / (
-            self.fsyd * (0.9 * self.h)
-        )
+
+        # Ve > Vcr case
+        shear_force_for_reinforcement = np.where((Vd - Vd_gravity) >= 0.5 * Vd,
+                                                 Ve, Ve - Vc)
+        Ash_sbh[~mask] = shear_force_for_reinforcement[~mask] / \
+            (self.fsyd * (0.9 * self.h))
 
         # Save required transverse reinforcement area to spacing ratio
         Ash_sbh_min = self.rhoh_min * self.b  # Min. transverse reinforcement

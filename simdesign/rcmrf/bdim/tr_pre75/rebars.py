@@ -53,12 +53,13 @@ class Rebars(RebarsBase):
         For beams, maximum distance between longitudinal bars within a section
         that can be considered to be confined with
     """
-    _data_path = Path(__file__).parent / 'data' / 'rebars.json'
+
+    _data_path = Path(__file__).parent / "data" / "rebars.json"
     """Path to the json file containing rebar data."""
-    beam_min_sbl: float = 40*mm
+    beam_min_sbl: float = 40 * mm
     """For beams, minimum spacing between longitudinal bars (reinforcement).
     Reference?"""
-    col_min_sbl: float = 35*mm
+    col_min_sbl: float = 35 * mm
     """For columns, minimum spacing between longitudinal bars (reinforcement).
     Reference?
     """
@@ -75,8 +76,8 @@ class Rebars(RebarsBase):
         float | np.ndarray
             Minimum transverse reinforcement diameter.
         """
-        dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        dbl = kwargs["dbl"]
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_min_col_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in columns.
@@ -90,8 +91,8 @@ class Rebars(RebarsBase):
         float | np.ndarray
             Minimum transverse reinforcement diameter.
         """
-        dbl = kwargs['dbl']
-        return np.maximum(dbl/4, 6*mm)
+        dbl = kwargs["dbl"]
+        return np.maximum(dbl / 4, 6 * mm)
 
     def _get_col_max_sbh(self, **kwargs) -> float | np.ndarray:
         """Gets maximum spacing between horizontal bars
@@ -103,12 +104,10 @@ class Rebars(RebarsBase):
             Maximum spacing between transverse reinforcement.
         """
         # maximum allowed spacing in current iteration
-        by = kwargs['by']  # column width along y
-        bx = kwargs['bx']  # column width along x
-        dbl = kwargs['dbl']  # long. reinf. diameter
-        max_sbh = np.minimum(
-            np.minimum(by, bx), 12*dbl
-        )
+        by = kwargs["by"]  # column width along y
+        bx = kwargs["bx"]  # column width along x
+        dbl = kwargs["dbl"]  # long. reinf. diameter
+        max_sbh = np.minimum(np.minimum(by, bx), 12 * dbl)
         return max_sbh
 
     def _get_beam_max_sbh(self, **kwargs) -> float | np.ndarray:
@@ -121,11 +120,10 @@ class Rebars(RebarsBase):
             Maximum spacing between transverse reinforcement.
         """
         # maximum allowed spacing in current iteration
-        h = kwargs['h']  # beam depth
-        dbh = kwargs['dbh']  # transverse reinf. diameter
-        dbl = kwargs['dbl']  # long. reinf. diameter
+        h = kwargs["h"]  # beam depth
+        dbh = kwargs["dbh"]  # transverse reinf. diameter
+        dbl = kwargs["dbl"]  # long. reinf. diameter
         max_sbh = np.minimum(
-            np.minimum(200*mm, h),
-            np.minimum(24*dbh, 12*dbl)
+            np.minimum(200 * mm, h), np.minimum(24 * dbh, 12 * dbl)
         )
         return max_sbh

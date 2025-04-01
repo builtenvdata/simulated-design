@@ -11,7 +11,7 @@
   "moderate": {
     "joint": "elastic",
     "bondslip_factor": 0.0,
-    "sigma_fck": 0.20,
+    "sigma_fck": 0.15,
     "sigma_fsyk": 0.025,
     "sigma_cover": 0.20,
     "uniform_low_sbh": 1.00,
@@ -20,7 +20,7 @@
   "low": {
     "joint": "elastic",
     "bondslip_factor": 0.00,
-    "sigma_fck": 0.30,
+    "sigma_fck": 0.20,
     "sigma_fsyk": 0.05,
     "sigma_cover": 0.30,
     "uniform_low_sbh": 1.00,

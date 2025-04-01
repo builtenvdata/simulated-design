@@ -537,7 +537,7 @@ class Quadrilateral(Polygon):
             self.points, key=lambda point: np.arctan2(
                 point.coordinates[0] - self.centroid[0],
                 point.coordinates[1] - self.centroid[1])
-            )
+        )
 
         line_points = [
             [self.points[0], self.points[1]],

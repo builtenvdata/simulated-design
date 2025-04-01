@@ -85,7 +85,7 @@ class ElasticModel(ElasticModelBase):
                     forces.case = combo_type
                     # Append the combined forces
                     beam.design_forces.append(forces)
-                else:  # seismic
+                elif combo_type == 'seismic':  # seismic
                     # Add the forces from seismic loading
                     forces_ov = BeamForces(*forces.__dict__.values())
                     ecc_forces = []  # forces due to eccentric loading
@@ -107,8 +107,8 @@ class ElasticModel(ElasticModelBase):
                                 else:
                                     tag_e = tag + f"/{ecc}ecc"
                                     tmp.append(fact * beam.forces[tag_e])
-                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR *
-                                                  fact * beam.forces[tag_e])
+                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR
+                                                  * fact * beam.forces[tag_e])
                             ecc_forces.append(tmp)
                             ecc_forces_ov.append(tmp_ov)
 
@@ -156,7 +156,7 @@ class ElasticModel(ElasticModelBase):
                     forces.case = combo_type
                     # Append the combined forces
                     column.design_forces.append(forces)
-                else:   # seismic
+                elif combo_type == 'seismic':
                     # Add the forces from seismic loading
                     forces_ov = ColumnForces(*forces.__dict__.values())
                     ecc_forces = []  # forces due to eccentric loading
@@ -180,8 +180,10 @@ class ElasticModel(ElasticModelBase):
                                 else:
                                     tag_e = tag + f"/{ecc}ecc"
                                     tmp.append(fact * column.forces[tag_e])
-                                    tmp_ov.append(self.OVERSTRENGTH_FACTOR *
-                                                  fact * column.forces[tag_e])
+                                    tmp_ov.append(
+                                        self.OVERSTRENGTH_FACTOR
+                                        * fact * column.forces[tag_e]
+                                    )
                             ecc_forces.append(tmp)
                             ecc_forces_ov.append(tmp_ov)
 

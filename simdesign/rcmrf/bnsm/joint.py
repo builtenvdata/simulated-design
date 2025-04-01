@@ -74,25 +74,25 @@ class StairsJoint:
         # Initialize rigid offsets nodes
         if self.design.bottom_column:  # bottom
             coords = ref_coords.copy()
-            coords[2] -= self.h/2
+            coords[2] -= self.h / 2
             self.bottom_node = Node(ref_tag + 20000, coords)
         else:
             self.bottom_node = None
         if self.design.right_beam:  # right
             coords = ref_coords.copy()
-            coords[0] += self.bx/2
+            coords[0] += self.bx / 2
             self.right_node = Node(ref_tag + 30000, coords)
         else:
             self.right_node = None
         if self.design.left_beam:  # left
             coords = ref_coords.copy()
-            coords[0] -= self.bx/2
+            coords[0] -= self.bx / 2
             self.left_node = Node(ref_tag + 50000, coords)
         else:
             self.left_node = None
         if self.design.top_column:  # top
             coords = ref_coords.copy()
-            coords[2] += self.h/2
+            coords[2] += self.h / 2
             self.top_node = Node(ref_tag + 70000, coords)
         else:
             self.top_node = None
@@ -379,13 +379,13 @@ class FloorJoint(StairsJoint):
         # Initialize rigid offsets (in Y) nodes
         if self.design.front_beam:  # front
             coords = self.ref_point.coordinates.copy()
-            coords[1] += self.by/2
+            coords[1] += self.by / 2
             self.front_node = Node(self.ref_point.tag + 40000, coords)
         else:
             self.front_node = None
         if self.design.rear_beam:  # rear
             coords = self.ref_point.coordinates.copy()
-            coords[1] -= self.by/2
+            coords[1] -= self.by / 2
             self.rear_node = Node(self.ref_point.tag + 60000, coords)
         else:
             self.rear_node = None
@@ -399,9 +399,9 @@ class FloorJoint(StairsJoint):
             # )
             # self.axial_load = -forces.N9
             self.axial_force = (
-                load_factors['G'] * self.design.bottom_column.hinge_Ng +
-                load_factors['Q'] * self.design.bottom_column.hinge_Nq
-                )
+                load_factors['G'] * self.design.bottom_column.hinge_Ng
+                + load_factors['Q'] * self.design.bottom_column.hinge_Nq
+            )
         else:
             raise ValueError(
                 "Bottom column is missing, joint model won't work here.")
@@ -504,10 +504,10 @@ class FloorJoint(StairsJoint):
                 krot_z, krot_y = self._get_elastic_joint_params()
                 content.append(
                     f"ops.uniaxialMaterial('Elastic', {mz_mat}, {krot_z})"
-                    )
+                )
                 content.append(
                     f"ops.uniaxialMaterial('Elastic', {my_mat}, {krot_y})"
-                    )
+                )
 
             elif self.flexibility_model == 'inelastic':  # Inelastic rotation
                 content.append("# Joint flexibility element: Inelastic")
@@ -516,10 +516,10 @@ class FloorJoint(StairsJoint):
                 rot_y = ', '.join([f"{item}" for item in inputs_rot_y])
                 content.append(
                     f"ops.uniaxialMaterial('Hysteretic', {mz_mat}, {rot_z})"
-                    )
+                )
                 content.append(
                     f"ops.uniaxialMaterial('Hysteretic', {my_mat}, {rot_y})"
-                    )
+                )
 
             # Define the new section with flexible rotation behaviour
             content.append(
@@ -583,10 +583,10 @@ class FloorJoint(StairsJoint):
                 krot_z, krot_y = self._get_elastic_joint_params()
                 content.append(
                     f"uniaxialMaterial Elastic {mz_mat} {krot_z}"
-                    )
+                )
                 content.append(
                     f"uniaxialMaterial Elastic {my_mat} {krot_y}"
-                    )
+                )
 
             elif self.flexibility_model == 'inelastic':  # Inelastic rotation
                 content.append("# Joint flexibility element: Inelastic")
@@ -595,10 +595,10 @@ class FloorJoint(StairsJoint):
                 rot_y = ' '.join([f"{item}" for item in inputs_rot_y])
                 content.append(
                     f"uniaxialMaterial Hysteretic {mz_mat} {rot_z}"
-                    )
+                )
                 content.append(
                     f"uniaxialMaterial Hysteretic {my_mat} {rot_y}"
-                    )
+                )
 
             # Define the new section with flexible rotation behaviour
             content.append(
@@ -859,14 +859,14 @@ class FloorJoint(StairsJoint):
         # Joint width definition Equation 2.48 (O'Reilly, 2016)
         # Y direction
         if self.bc_y >= self.bb_y:
-            bj_y = min(self.bc_y, self.bb_y + 0.5*self.hc_y)
+            bj_y = min(self.bc_y, self.bb_y + 0.5 * self.hc_y)
         else:
-            bj_y = min(self.bb_y, self.bc_y + 0.5*self.hc_y)
+            bj_y = min(self.bb_y, self.bc_y + 0.5 * self.hc_y)
         # X direction
         if self.bc_x >= self.bb_x:
-            bj_x = min(self.bc_x, self.bb_x + 0.5*self.hc_x)
+            bj_x = min(self.bc_x, self.bb_x + 0.5 * self.hc_x)
         else:
-            bj_x = min(self.bb_x, self.bc_x + 0.5*self.hc_x)
+            bj_x = min(self.bb_x, self.bc_x + 0.5 * self.hc_x)
 
         # Lever arm, i.e., distance between comp. and tens. forces
         jd_y = 0.9 * (0.9 * self.hb_y)
@@ -875,68 +875,100 @@ class FloorJoint(StairsJoint):
         # Stress and strain values for material around global-y
         if self.category_y == 'exterior':  # Exterior joint
             # Equation 2.33 (O'Reilly, 2016)
-            Mj_y = (pt_ext * bj_y * self.hc_y) * \
-                (self.hstorey * jd_y) / (self.hstorey - jd_y) * (
-                    (self.hb_y / (2*self.hc_y)) + (
-                        (self.hb_y / (2*self.hc_y))**2 +
-                        1 +
-                        (self.axial_force / (pt_ext * bj_y * self.hc_y))
-                    )**0.5
-                 )
+            Mj_y = (
+                (pt_ext * bj_y * self.hc_y)
+                * (self.hstorey * jd_y)
+                / (self.hstorey - jd_y)
+                * (
+                    (self.hb_y / (2 * self.hc_y))
+                    + (
+                        (self.hb_y / (2 * self.hc_y)) ** 2
+                        + 1
+                        + (self.axial_force / (pt_ext * bj_y * self.hc_y))
+                    )
+                    ** 0.5
+                )
+            )
             # Strain values
             gamma_y = gamma_ext.copy()
 
         elif self.category_y == 'interior':  # Interior joint
             # Equation 2.55 (O'Reilly, 2016)
-            Mj_y = (pt_int * bj_y * self.hc_y) * \
-                (self.hstorey * jd_y) / (self.hstorey - jd_y) * \
-                (1 + (self.axial_force / (pt_int * bj_y * self.hc_y)))**0.5
+            Mj_y = (
+                (pt_int * bj_y * self.hc_y)
+                * (self.hstorey * jd_y)
+                / (self.hstorey - jd_y)
+                * (1 + (self.axial_force / (pt_int * bj_y * self.hc_y))) ** 0.5
+            )
             # Strain values
             gamma_y = gamma_int.copy()
 
         elif self.category_y == 'roof':  # Roof joint
             # This equation comes from the model online.
-            Mj_y = 2 * (pt_roof * bj_y * self.hc_y) * jd_y * (
-                    (self.hb_y / (2*self.hc_y)) + (
-                        (self.hb_y / (2*self.hc_y))**2 +
-                        1 +
-                        (self.axial_force / (pt_roof * bj_y * self.hc_y))
-                    )**0.5
-                 )
+            Mj_y = (
+                2
+                * (pt_roof * bj_y * self.hc_y)
+                * jd_y
+                * (
+                    (self.hb_y / (2 * self.hc_y))
+                    + (
+                        (self.hb_y / (2 * self.hc_y)) ** 2
+                        + 1
+                        + (self.axial_force / (pt_roof * bj_y * self.hc_y))
+                    )
+                    ** 0.5
+                )
+            )
             # Strain values
             gamma_y = gamma_roof.copy()
 
         # Stress and strain values for material around global-x
         if self.category_x == 'exterior':  # Exterior joint
             # Equation 2.33 (O'Reilly, 2016)
-            Mj_x = (pt_ext * bj_x * self.hc_x) * \
-                (self.hstorey * jd_x) / (self.hstorey - jd_x) * (
-                    (self.hb_x / (2*self.hc_x)) + (
-                        (self.hb_x / (2*self.hc_x))**2 +
-                        1 +
-                        (self.axial_force / (pt_ext * bj_x * self.hc_x))
-                    )**0.5
-                 )
+            Mj_x = (
+                (pt_ext * bj_x * self.hc_x)
+                * (self.hstorey * jd_x)
+                / (self.hstorey - jd_x)
+                * (
+                    (self.hb_x / (2 * self.hc_x))
+                    + (
+                        (self.hb_x / (2 * self.hc_x)) ** 2
+                        + 1
+                        + (self.axial_force / (pt_ext * bj_x * self.hc_x))
+                    )
+                    ** 0.5
+                )
+            )
             # Strain values
             gamma_x = gamma_ext.copy()
 
         elif self.category_x == 'interior':  # Interior joint
             # Equation 2.55 (O'Reilly, 2016)
-            Mj_x = (pt_int * bj_x * self.hc_x) * \
-                (self.hstorey * jd_x) / (self.hstorey - jd_x) * \
-                (1 + (self.axial_force / (pt_int * bj_x * self.hc_x)))**0.5
+            Mj_x = (
+                (pt_int * bj_x * self.hc_x)
+                * (self.hstorey * jd_x)
+                / (self.hstorey - jd_x)
+                * (1 + (self.axial_force / (pt_int * bj_x * self.hc_x))) ** 0.5
+            )
             # Strain values
             gamma_x = gamma_int.copy()
 
         elif self.category_x == 'roof':  # Exterior joint
             # This equation comes from the model online.
-            Mj_x = 2 * (pt_roof * bj_x * self.hc_x) * jd_x * (
-                    (self.hb_x / (2*self.hc_x)) + (
-                        (self.hb_x / (2*self.hc_x))**2 +
-                        1 +
-                        (self.axial_force / (pt_roof * bj_x * self.hc_x))
-                    )**0.5
-                 )
+            Mj_x = (
+                2
+                * (pt_roof * bj_x * self.hc_x)
+                * jd_x
+                * (
+                    (self.hb_x / (2 * self.hc_x))
+                    + (
+                        (self.hb_x / (2 * self.hc_x)) ** 2
+                        + 1
+                        + (self.axial_force / (pt_roof * bj_x * self.hc_x))
+                    )
+                    ** 0.5
+                )
+            )
             # Strain values
             gamma_x = gamma_roof.copy()
 

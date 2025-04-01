@@ -1,5 +1,5 @@
 """
-Specific routines for defining tr_post18_dch construction quality adjusments.
+Specific routines for defining tr_post18_dch construction quality adjustments.
 """
 # Imports from installed packages
 from pathlib import Path

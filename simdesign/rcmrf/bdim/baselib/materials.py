@@ -173,7 +173,7 @@ class ConcreteBase(BaseModel, ABC):
             if instance.fcm is None:
                 raise ValidationError(
                     "Cannot calculate Young's modulus (E) without fcm.")
-            instance.Ecm = 9.5 * (instance.fcm ** (1/3)) * GPa
+            instance.Ecm = 9.5 * (instance.fcm ** (1 / 3)) * GPa
 
         if instance.Ecd is None:
             if instance.fcd is None:

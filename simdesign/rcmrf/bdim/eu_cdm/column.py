@@ -13,11 +13,6 @@ REBAP (1983) Regulamento de Estruturas de Betão Armado e PréEsforçado.
 Decreto-Lei N.° 349-C/83, Lisbon, Portugal
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-
-TODO
-----
-Discuss the default constants.
-Add specific reference pages for design equations.
 """
 
 # Imports from installed packages
@@ -101,18 +96,18 @@ class Column(ColumnBase):
         min_area = self.pre_Nd / self.fcd
         # Determine initial dimensions
         if self.section == 1:  # Square section
-            self.bx = (min_area**0.5)
-            self.by = (min_area**0.5)
+            self.bx = min_area**0.5
+            self.by = min_area**0.5
         elif self.section == 2:  # Rectangular section
-            if self.orient == 'x':  # Longer dimension is bx
-                self.bx = (2*min_area)**0.5
-                self.by = 0.5*self.bx
-            elif self.orient == 'y':  # Longer dimension is by
-                self.by = (2*min_area)**0.5
-                self.bx = 0.5*self.by
+            if self.orient == "x":  # Longer dimension is bx
+                self.bx = (2 * min_area) ** 0.5
+                self.by = 0.5 * self.bx
+            elif self.orient == "y":  # Longer dimension is by
+                self.by = (2 * min_area) ** 0.5
+                self.bx = 0.5 * self.by
         # Check against minimum dimensions
-        self.bx = max(ceil(20*self.bx)/20, self.min_b)
-        self.by = max(ceil(20*self.by)/20, self.min_b)
+        self.bx = max(ceil(20 * self.bx) / 20, self.min_b)
+        self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def verify_section_adequacy(self) -> None:
         """Verifies the adequacy of section dimensions for design forces.
@@ -184,8 +179,8 @@ class Column(ColumnBase):
         Asly_req = 0.000226195 * m**2  # 2 bars with diam of 12mm
         for force in self.design_forces:
             # Dimensionless design force quantities
-            niu_1 = (-1*force.N1) / (self.Ag * self.fcd)
-            niu_9 = (-1*force.N9) / (self.Ag * self.fcd)
+            niu_1 = (-force.N1) / (self.Ag * self.fcd)
+            niu_9 = (-force.N9) / (self.Ag * self.fcd)
             mu_x1 = abs(force.Mx1) / ((self.bx * self.by**2) * self.fcd)
             mu_y1 = abs(force.My1) / ((self.by * self.bx**2) * self.fcd)
             mu_x9 = abs(force.Mx9) / ((self.bx * self.by**2) * self.fcd)
@@ -201,25 +196,25 @@ class Column(ColumnBase):
             # Start section
             if niu_1 < 0.0:  # Axial force is tensile
                 # REBAP (1983), pp. 48, eqn. 22
-                omega_x1 = mu_x1 / (lambda_y*beta1) - niu_1
-                omega_y1 = mu_y1 / (lambda_x*beta1) - niu_1
+                omega_x1 = mu_x1 / (lambda_y * beta1) - niu_1
+                omega_y1 = mu_y1 / (lambda_x * beta1) - niu_1
             elif niu_1 <= 0.85:
-                omega_x1 = (mu_x1 + 0.55*niu_1*niuc_1) / (lambda_y*beta1)
-                omega_y1 = (mu_y1 + 0.55*niu_1*niuc_1) / (lambda_x*beta1)
+                omega_x1 = (mu_x1 + 0.55 * niu_1 * niuc_1) / (lambda_y * beta1)
+                omega_y1 = (mu_y1 + 0.55 * niu_1 * niuc_1) / (lambda_x * beta1)
             else:
-                omega_x1 = mu_x1 / (lambda_y*beta1) + niuc_1
-                omega_y1 = mu_y1 / (lambda_x*beta1) + niuc_1
+                omega_x1 = mu_x1 / (lambda_y * beta1) + niuc_1
+                omega_y1 = mu_y1 / (lambda_x * beta1) + niuc_1
             # End section
             if niu_9 < 0.0:  # Axial force is tensile
                 # REBAP (1983), pp. 48, eqn. 22
-                omega_x9 = mu_x9 / (lambda_y*beta9) - niu_9
-                omega_y9 = mu_y9 / (lambda_x*beta9) - niu_9
+                omega_x9 = mu_x9 / (lambda_y * beta9) - niu_9
+                omega_y9 = mu_y9 / (lambda_x * beta9) - niu_9
             elif niu_9 <= 0.85:
-                omega_x9 = (mu_x9 + 0.55*niu_9*niuc_9) / (lambda_y*beta9)
-                omega_y9 = (mu_y9 + 0.55*niu_9*niuc_9) / (lambda_x*beta9)
+                omega_x9 = (mu_x9 + 0.55 * niu_9 * niuc_9) / (lambda_y * beta9)
+                omega_y9 = (mu_y9 + 0.55 * niu_9 * niuc_9) / (lambda_x * beta9)
             else:
-                omega_x9 = mu_x9 / (lambda_y*beta9) + niuc_9
-                omega_y9 = mu_y9 / (lambda_x*beta9) + niuc_9
+                omega_x9 = mu_x9 / (lambda_y * beta9) + niuc_9
+                omega_y9 = mu_y9 / (lambda_x * beta9) + niuc_9
             # Compute required reinforcement area on two sides
             omega_x = max(omega_x1, omega_x9)
             omega_y = max(omega_y1, omega_y9)

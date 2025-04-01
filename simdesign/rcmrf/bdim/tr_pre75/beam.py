@@ -15,11 +15,6 @@ RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
 Decreto-Lei N.° 41658, Lisbon, Portugal
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-
-TODO
-----
-Discuss the default constants.
-Add specific reference pages for design equations.
 """
 
 # Imports from installed packages
@@ -134,13 +129,18 @@ class Beam(BeamBase):
                 self.b = self.min_b  # Use minimum dimension
             else:  # Primary gravity beams
                 # Set width based on economic mu value and minimum allowed
-                self.b = max(self.min_b,
-                             (Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2))
-                             )
-                while (self.b > self.max_b or
-                       self.b / self.h > self.MAX_ASPECT_RATIO_WB):
+                self.b = max(
+                    self.min_b,
+                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
+                )
+                while (
+                    self.b > self.max_b
+                    or self.b / self.h > self.MAX_ASPECT_RATIO_WB
+                ):
                     self.h += self.H_INCR_WB
-                    self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
+                    self.b = Md / (
+                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
+                    )
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20
@@ -175,7 +175,7 @@ class Beam(BeamBase):
             abs(self.envelope_forces.M1_neg),
             abs(self.envelope_forces.M5_neg),
             abs(self.envelope_forces.M9_neg)
-            )
+        )
         # Verify the adequacy of the section dimensions
         tau = max_shear / (self.b * z)  # for max. shear force
         mu = max_moment / (self.fcd * self.b * d**2)  # for max. bending moment
@@ -242,11 +242,11 @@ class Beam(BeamBase):
         # Total tension reinforcement reinforcement (doubly reinforced beam)
         Asl_top[~mask1] = Asl1 + Asl2
         # Maximum stress of the compression reinforcement (doubly reinforced)
-        fsyd_prime = min(fsyd,
-                         (2*fsyd*(x_bal - d_prime)) / (d - x_bal))
+        fsyd_prime = min(fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal))
         # Compression reinforcement (doubly reinforced beam)
         Asl_bot[~mask1] = (2 * n * Mexcess) / (
-            fsyd_prime * (2*n - 1) * (d - d_prime))
+            fsyd_prime * (2 * n - 1) * (d - d_prime)
+        )
 
         # 2) Calculate longitudinal steel area for positive moment envelope (+)
         mask2 = moment_pos <= M_bal  # Identify singly reinforced beams
@@ -256,7 +256,7 @@ class Beam(BeamBase):
         Asl_bot[mask2] = np.maximum(
             Asl_bot[mask2],
             moment_pos[mask2] / (fsyd * (d - x_bal / 3))
-            )
+        )
         # As1 (doubly reinforced beam)
         Asl1 = moment_pos[~mask2] / (fsyd * (d - x_bal / 3))
         # As2 (doubly reinforced beam) --> Corrected
@@ -264,12 +264,12 @@ class Beam(BeamBase):
         # Total tension reinforcement reinforcement (doubly reinforced beam)
         Asl_bot[~mask2] = np.maximum(Asl1 + Asl2, Asl_bot[~mask2])
         # Maximum stress of the compression reinforcement (doubly reinforced)
-        fsyd_prime = min(fsyd,
-                         (2*fsyd*(x_bal - d_prime)) / (d - x_bal))
+        fsyd_prime = min(fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal))
         # Compression reinforcement (doubly reinforced beam)
         Asl_top[~mask2] = np.maximum(
-            (2*n*Mexcess) / (fsyd_prime * (2*n - 1) * (d - d_prime)),
-            Asl_top[~mask2])
+            (2 * n * Mexcess) / (fsyd_prime * (2 * n - 1) * (d - d_prime)),
+            Asl_top[~mask2],
+        )
         # Save required longitudinal reinforcement area
         self.Asl_top_req = Asl_top
         self.Asl_bot_req = Asl_bot
@@ -307,7 +307,9 @@ class Beam(BeamBase):
         # Check this expression because it can result in negative reinf.
         # Added minimum reinforcement to avoid negative reinf. situation.
         Vcd = tau_c * self.b * d
-        mask = z*fsyd*np.maximum(Asl_top, Asl_bot) < shear*d  # Article 35
+        mask = (
+            z * fsyd * np.maximum(Asl_top, Asl_bot) < shear * d
+        )  # Article 35
         Ash_sbh = shear / (fsyd * d)
         Ash_sbh[~mask] = (shear[~mask] - Vcd) / (fsyd * d)
         Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)

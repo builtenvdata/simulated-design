@@ -41,7 +41,7 @@
     },
   "construction_quality":
     {
-      "probability": [0.60, 0.30, 0.10]
+      "probability": [0.10, 0.30, 0.60]
     },
   "slab_typology":
     {

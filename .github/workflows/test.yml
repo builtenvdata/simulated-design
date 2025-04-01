@@ -1,0 +1,78 @@
+name: SimDesign
+
+on:
+  workflow_dispatch:
+    inputs:
+      git-ref:
+        description: Git Ref
+        default: main
+        required: true
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-py311:
+    name: Test on Python 3.11
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo (main)
+        if: github.event.inputs.git-ref == ''
+        uses: actions/checkout@v3
+      - name: Checkout repo (custom)
+        if: github.event.inputs.git-ref != ''
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.git-ref }}
+      - name: Install Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Update pip
+        run: python -m pip install --upgrade pip
+      - name: Replace pyproject.toml for 3.11
+        run: Copy-Item -Path config/pyproject/poetry311.toml -Destination pyproject.toml -Force
+      - name: Install poetry
+        run: pip install poetry
+      - name: Lock poetry
+        run: poetry lock
+      - name: Install dependencies
+        run: poetry install --with dev --no-root
+      - name: Lint code
+        run: poetry run flake8 simdesign
+      - name: Run tests
+        run: poetry run pytest --disable-warnings -k "not zip"
+
+  test-py312:
+    name: Test on Python 3.12
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo (main)
+        if: github.event.inputs.git-ref == ''
+        uses: actions/checkout@v3
+      - name: Checkout repo (custom)
+        if: github.event.inputs.git-ref != ''
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.git-ref }}
+      - name: Install Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+      - name: Update pip
+        run: python -m pip install --upgrade pip
+      - name: Replace pyproject.toml for 3.12
+        run: Copy-Item -Path config/pyproject/poetry312.toml -Destination pyproject.toml -Force
+      - name: Install poetry
+        run: pip install poetry
+      - name: Lock poetry
+        run: poetry lock
+      - name: Install dependencies
+        run: poetry install --with dev --no-root
+      - name: Lint code
+        run: poetry run flake8 simdesign
+      - name: Run tests
+        run: poetry run pytest --disable-warnings -k "not zip"

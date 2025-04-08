@@ -67,6 +67,8 @@ class TaxonomyData:
     """Design lateral load factor."""
     design_class: str
     """Building design class selected."""
+    beta_v: Optional[float] = None
+    """Vertical load factor."""
     staircase_slab_depth: Optional[float] = None
     """Depth of the staircase slabs."""
     slab_thickness: Optional[float] = None

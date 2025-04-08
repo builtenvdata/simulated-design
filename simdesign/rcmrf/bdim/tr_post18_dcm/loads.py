@@ -1,6 +1,12 @@
 """
 Pydantic models for defining loads in tr_post18_dcm buildings.
+
+NOTES
+-----
+1- "modify_seismic_load_combos" method were created to include
+vertical load effect into the seismic combinations.
 """
+
 # Imports from installed packages
 from pathlib import Path
 from typing import List, Type
@@ -130,3 +136,19 @@ class Loads(LoadsBase):
         """
         self._data_model = LoadsData
         super().__init__()
+
+    def modify_seismic_load_combos(self, beta_v: float) -> None:
+        """Modify load combinations containing seismic loading for
+        vertical load effect.
+
+        Returns
+        -------
+        None
+        """
+        seismic_strs = ["E+X", "E-X", "E+Y", "E-Y"]
+        for combo in self.combinations:
+            if any(item in seismic_strs for item in combo.loads.keys()):
+                if combo.loads.get("G") == 1.0:
+                    combo.loads["G"] = round(1.0 + 0.3 * (2/3) * beta_v, 2)
+                elif combo.loads.get("G") == 0.9:
+                    combo.loads["G"] = round(0.9 - 0.3 * (2/3) * beta_v, 2)

@@ -241,6 +241,8 @@ class InputData(BaseModel):
         layouts.
     beta : float
         Design lateral load factor.
+    beta_v : float | None
+        Vertical load factor.
     num_storeys : int
         Number of storeys in the building.
     design_class : str
@@ -275,6 +277,8 @@ class InputData(BaseModel):
     It can be either "all" or a list of specific layout."""
     beta: float
     """Design lateral load factor."""
+    beta_v: Optional[float] = None
+    """Vertical load factor."""
     num_storeys: int
     """Number of storeys."""
     design_class: str

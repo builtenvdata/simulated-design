@@ -301,6 +301,8 @@ class BCIM:
         Ratio of longer to shorter floor widths in floor layout.
     beta: List[float]
         Design lateral load factor.
+    beta_v: List[float | None]
+        Vertical load factor.
     num_storeys: List[int]
         Number of storeys.
     design_class: List[float]
@@ -356,7 +358,7 @@ class BCIM:
     1: Two-way solid slab (SS2).
     2: One-way solid slab (SS1).
     3: Composite slabs with pre-fabricated joists and ceramic blocks (HS)."""
-    staircase_slab_dept: List[float | None]
+    staircase_slab_depth: List[float | None]
     """Depth of the staircase slabs."""
     beam_type: List[Literal[1, 2]]
     """Beam typology
@@ -387,6 +389,8 @@ class BCIM:
     """Ratio of longer to shorter floor widths in floor layout."""
     beta: List[float]
     """Design lateral load factor."""
+    beta_v: List[float | None]
+    """Vertical load factor."""
     num_storeys: List[int]
     """Number of storeys."""
     design_class: List[float]
@@ -515,6 +519,8 @@ class BCIM:
         # Add the rest
         self.beta = \
             [self.inputs.beta] * self.inputs.sample_size
+        self.beta_v = \
+            [self.inputs.beta_v] * self.inputs.sample_size
         self.num_storeys = \
             [self.inputs.num_storeys] * self.inputs.sample_size
         self.design_class = \
@@ -663,7 +669,7 @@ class BCIM:
         names = ['slab_thickness', 'slab_type',
                  'staircase_slab_depth', 'beam_type', 'column_section',
                  'geometry', 'steel_grade', 'concrete_grade', 'quality',
-                 'beta', 'design_class']
+                 'beta', 'beta_v', 'design_class']
         taxonomy_list = []
         for i in range(self.inputs.sample_size):
             data = {name: getattr(self, name)[i] for name in names}

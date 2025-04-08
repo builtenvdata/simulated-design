@@ -2,6 +2,12 @@
 Specific routines for defining and designing tr_post18_dcm buildings.
 
 Basic units are kN, m, sec
+
+NOTES
+-----
+1- Seismic load combinations are modified to include vertical loads effect.
+2- _change_beam_type method is overwritten to change slab type along with
+beam type.
 """
 
 # Imports from installed packages
@@ -78,6 +84,7 @@ class Building(BuildingBase):
         self.materials = Materials()
         # Set the design loads and combinations
         self.loads = Loads()
+        self.loads.modify_seismic_load_combos(taxonomy.beta_v)
         # Set the rebar options considered for detailing
         self.rebars = Rebars()
         # Set the quality models considered for structural property adjusments

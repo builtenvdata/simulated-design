@@ -2,6 +2,11 @@
 Specific routines for defining and designing tr_7599 buildings.
 
 Basic units are kN, m, sec
+
+NOTES
+-----
+1- _change_beam_type method is overwritten to change slab type along
+with beam type.
 """
 
 # Imports from installed packages

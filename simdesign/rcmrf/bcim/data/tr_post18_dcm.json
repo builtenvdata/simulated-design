@@ -26,7 +26,7 @@
   "steel":
     {
       "grade": ["B420C", "B500C"],
-      "probability": [0.60, 0.40]
+      "probability": [0.80, 0.20]
     },
   "concrete":
     {
@@ -52,6 +52,7 @@
   "square_column_prob": 0.05,
   "layout": "all",
   "beta": 0.08,
+  "beta_v": 0.55,
   "num_storeys": 5,
   "design_class": "tr_post18_dcm",
   "seed": 1994,

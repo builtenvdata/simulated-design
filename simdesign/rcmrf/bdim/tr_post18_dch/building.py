@@ -17,6 +17,7 @@ case for RCMRF buildings with high ductility in case of DTS1 and DTS2.
 the rules are different in TBEC-2018 compared to EN 1998-1:2004. Beam capacity
 shear forces are also adjusted with the overstrength value of 3 , which is the
 case for RCMRF buildings with high ductility in case of DTS1 and DTS2.
+4. Seismic load combinations are modified to include vertical loads effect.
 """
 
 # Imports from installed packages
@@ -101,6 +102,7 @@ class Building(BuildingBase):
         self.materials = Materials()
         # Set the design loads and combinations
         self.loads = Loads()
+        self.loads.modify_seismic_load_combos(taxonomy.beta_v)
         # Set the rebar options considered for detailing
         self.rebars = Rebars()
         # Set the quality models considered for structural property adjusments

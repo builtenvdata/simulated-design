@@ -525,15 +525,34 @@ class BuildingBase(ABC):
             Flag indicating whether it is possible to increase section
             dimensions or not.
         """
+        return all((self.dim_change_column, self.dim_change_beam))
+
+    @property
+    def dim_change_column(self) -> bool:
+        """
+        Returns
+        -------
+        bool
+            Flag indicating whether it is possible to increase column section
+            dimensions or not.
+        """
+        return all(max(col.bx, col.by) <= col.max_b for col in self.columns)
+
+    @property
+    def dim_change_beam(self) -> bool:
+        """
+        Returns
+        -------
+        bool
+            Flag indicating whether it is possible to increase column section
+            dimensions or not.
+        """
         # Beam breadth
         bool1 = all(beam.b <= beam.max_b for beam in self.beams)
         # Beam height
         bool2 = all(beam.h <= beam.max_h for beam in self.beams)
-        # Column dimensions
-        bool3 = all(max(col.bx, col.by) <= col.max_b for col in self.columns)
 
-        # Return
-        return all((bool1, bool2, bool3))
+        return all((bool1, bool2))
 
     @property
     def mat_change(self) -> bool:
@@ -2254,19 +2273,26 @@ class BuildingBase(ABC):
         while not self.ok and counter <= self.ITER_MAX:  # Iteration loop
             if counter == 0:  # Preliminary design stage
                 self._predesign()  # Make a preliminary design
-            elif self.dim_change:  # Try increasing beam and column dimensions
-                if self.beams_fail:  # If beams fail to pass
+            elif self.beams_fail:  # If beams fail to pass design checks
+                if self.dim_change_beam:  # Try increasing beam dimensions
                     self._increase_beam_dimensions()  # Increase beams
                     self._uniformize_beam_geometry()  # Uniformize beams
-                elif self.columns_fail:  # If columns fail to pass
-                    self._increase_column_dimensions()  # Increase columns
-                    self._uniformize_columns_geometry()  # Uniformize columns
-            elif self.beams_fail:  # If beams fail to pass design checks
-                if self.beam_change:  # Try changing beam type
+                elif self.beam_change:  # Try changing beam type
                     self._change_beam_type()  # Can be overwritten
                     self._restore_materials()  # Restore initial dimensions
                     self._restore_dimensions()  # Restore initial dimensions
                     self._predesign()  # Preliminary design with new settings
+                elif self.mat_change:  # Try changing materials
+                    self._change_materials()  # Can be overwritten
+                    self._update_element_materials()  # Update materials
+                    self._restore_dimensions()  # Restore initial dimensions
+                    self._predesign()  # Preliminary design with new settings
+                else:  # Tried everything
+                    break  # No design solution is found, it is time to stop
+            elif self.columns_fail:  # If columns fail to pass design checks
+                if self.dim_change_column:  # Try increasing column dimensions
+                    self._increase_column_dimensions()  # Increase columns
+                    self._uniformize_columns_geometry()  # Uniformize columns
                 elif self.mat_change:  # Try changing materials
                     self._change_materials()  # Can be overwritten
                     self._update_element_materials()  # Update materials
@@ -2279,21 +2305,6 @@ class BuildingBase(ABC):
                     self._predesign()  # Preliminary design with new settings
                 else:  # Tried everything
                     break  # No design solution is found, it is time to stop
-            elif self.columns_fail:  # If columns fail to pass design checks
-                if self.mat_change:  # Try changing materials
-                    self._change_materials()  # Can be overwritten
-                    self._update_element_materials()  # Update materials
-                    self._restore_dimensions()  # Restore initial dimensions
-                    self._predesign()  # Preliminary design with new settings
-                elif self.column_change:  # Try changing column section type
-                    self._change_column_section()  # Can be overwritten
-                    self._restore_materials()  # Restore initial dimensions
-                    self._restore_dimensions()  # Restore initial dimensions
-                    self._predesign()  # Preliminary design with new settings
-                else:  # Tried everything
-                    break  # No design solution is found, it is time to stop
-            else:
-                break  # This will never be triggered
 
             # Perform all necessary structural analysis
             self._perform_structural_analyses()

@@ -30,7 +30,7 @@ class ElasticModel(ElasticModelBase):
     """Column objects of the building."""
     OVERSTRENGTH_FACTOR = 3
 
-    def build_ops_model_seismic(self) -> None:
+    def _build_ops_model_seismic(self) -> None:
         """Builds the model for load cases of seismic load combos.
         """
         self._init_ops_model()

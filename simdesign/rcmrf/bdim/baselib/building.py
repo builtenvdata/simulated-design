@@ -118,9 +118,9 @@ class BuildingBase(ABC):
     ElasticModelClass: Type[ElasticModelBase]
     ok: bool
     """Decision flag for determining whether design is ok or not."""
-    ITER_MAX: int = 100
+    ITER_MAX: int = 200
     """Maximum number of iterations in the iterative design routine.
-    By default 100."""
+    By default 200."""
     COLUMN_UNIFORMIZATION_STEP: Optional[int] = None
     """Step size considered for section uniformization in column. For
     example, if equals to 2, the same column section might be varied at
@@ -2255,10 +2255,12 @@ class BuildingBase(ABC):
             if counter == 0:  # Preliminary design stage
                 self._predesign()  # Make a preliminary design
             elif self.dim_change:  # Try increasing beam and column dimensions
-                self._increase_beam_dimensions()  # Increase beams
-                self._uniformize_beam_geometry()  # Uniformize beams
-                self._increase_column_dimensions()  # Increase columns
-                self._uniformize_columns_geometry()  # Uniformize columns
+                if self.beams_fail:  # If beams fail to pass
+                    self._increase_beam_dimensions()  # Increase beams
+                    self._uniformize_beam_geometry()  # Uniformize beams
+                elif self.columns_fail:  # If columns fail to pass
+                    self._increase_column_dimensions()  # Increase columns
+                    self._uniformize_columns_geometry()  # Uniformize columns
             elif self.beams_fail:  # If beams fail to pass design checks
                 if self.beam_change:  # Try changing beam type
                     self._change_beam_type()  # Can be overwritten
@@ -2270,6 +2272,13 @@ class BuildingBase(ABC):
                     self._update_element_materials()  # Update materials
                     self._restore_dimensions()  # Restore initial dimensions
                     self._predesign()  # Preliminary design with new settings
+                elif self.column_change:  # Try changing column section type
+                    self._change_column_section()  # Can be overwritten
+                    self._restore_materials()  # Restore initial dimensions
+                    self._restore_dimensions()  # Restore initial dimensions
+                    self._predesign()  # Preliminary design with new settings
+                else:  # Tried everything
+                    break  # No design solution is found, it is time to stop
             elif self.columns_fail:  # If columns fail to pass design checks
                 if self.mat_change:  # Try changing materials
                     self._change_materials()  # Can be overwritten
@@ -2281,8 +2290,10 @@ class BuildingBase(ABC):
                     self._restore_materials()  # Restore initial dimensions
                     self._restore_dimensions()  # Restore initial dimensions
                     self._predesign()  # Preliminary design with new settings
-            else:  # Tried everything
-                break  # No design solution is found, it is time to stop
+                else:  # Tried everything
+                    break  # No design solution is found, it is time to stop
+            else:
+                break  # This will never be triggered
 
             # Perform all necessary structural analysis
             self._perform_structural_analyses()

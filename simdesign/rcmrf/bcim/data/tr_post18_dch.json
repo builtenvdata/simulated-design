@@ -41,7 +41,7 @@
     },
   "construction_quality":
     {
-      "probability": [0.60, 0.30, 0.10]
+      "probability": [0.80, 0.10, 0.10]
     },
   "slab_typology":
     {
@@ -52,7 +52,7 @@
   "wb_prob_given_hs": 1.0,
   "square_column_prob": 0.05,
   "layout": "all",
-  "beta": 0.125,
+  "beta": 0.09,
   "beta_v": 1.32,
   "num_storeys": 5,
   "design_class": "tr_post18_dch",

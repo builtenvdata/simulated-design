@@ -586,7 +586,7 @@ class BNSM:
         # Set some analysis parameters
         max_disp = self.max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)
         dincr = self.dincr
-        tol_init = 1.0e-6
+        tol_init = 1.0e-5
         iter_init = 20
         ops.wipeAnalysis()
         ops.system('UmfPack')
@@ -603,31 +603,27 @@ class BNSM:
         ok = 0
         cont = True
         while ok == 0 and cont:
-            # Perform the analysis for a single step with initial settings
-            ops.test('NormDispIncr', tol_init, iter_init)
-            ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
-            ok = ops.algorithm('Newton', '-initialThenCurrent')
-            # Try other algorithms with more iterations
-            if ok != 0:
-                ok = self.__set_nspa_algorithm(ok, tol_init)
+            # Perform the analysis for a single step with current settings
+            ok = ops.analyze(1)
+            if ok != 0:  # Try other algorithms with more iterations
+                ok = self.__set_nspa_algorithm(
+                    tol_init, ctrl_node, ctrl_dof, dincr)
             # Reduce dincr to an half
             if ok != 0:
-                ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5 * dincr
-                )
-                ok = self.__set_nspa_algorithm(ok, tol_init)
+                ok = self.__set_nspa_algorithm(
+                    tol_init, ctrl_node, ctrl_dof, 0.5 * dincr)
             # Reduce dincr to a quarter
             if ok != 0:
-                ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.25 * dincr
-                )
-                ok = self.__set_nspa_algorithm(ok, tol_init)
+                ok = self.__set_nspa_algorithm(
+                    tol_init, ctrl_node, ctrl_dof, 0.25 * dincr)
             # Increase tolerance by factor of 10
             if ok != 0:
-                ok = self.__set_nspa_algorithm(ok, 10 * tol_init)
+                ok = self.__set_nspa_algorithm(
+                    10 * tol_init, ctrl_node, ctrl_dof, 0.25 * dincr)
             # increase tolerance by factor of 100
             if ok != 0:
-                ok = self.__set_nspa_algorithm(ok, 100 * tol_init)
+                ok = self.__set_nspa_algorithm(
+                    100 * tol_init, ctrl_node, ctrl_dof, 0.25 * dincr)
 
             # Get the base shear force
             ops.reactions()
@@ -655,16 +651,22 @@ class BNSM:
         # Return base shear and control node displacement history
         return ctrl_disp, base_shear, ok
 
-    def __set_nspa_algorithm(self, ok: int, tol: float,
-                             iter: int = 100) -> None:
+    def __set_nspa_algorithm(
+        self, tol: float, ctrl_node: int, ctrl_dof: int, dincr: float,
+        iter: int = 100
+    ) -> None:
         """Sets the solution algorithm for NSPA in ops domain.
 
         Parameters
         ----------
-        ok : int
-            Result of the last analysis step in OpenSees.
         tol : float
             The tolerance criteria used to check for convergence.
+        ctrl_node : int
+            Tag of control node.
+        ctrl_dof : int
+            Tag of control degrees of freedom, i.e., 1 or 2.
+        dincr : float
+            The displacement increment considered during analysis.
         iter : int, optional
             The max number of iterations to check before returning failure.
             By default 100.
@@ -674,24 +676,22 @@ class BNSM:
         int
             Result of the new analysis step in OpenSees.
         """
+        # Set testing and control procedures
+        ops.test('NormDispIncr', tol, iter)
+        ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
         # Try KrylovNewton
-        if ok != 0:
-            ops.test('NormDispIncr', tol, iter)
-            ops.algorithm('KrylovNewton')
-            ok = ops.analyze(1)
+        ops.algorithm('KrylovNewton')
+        ok = ops.analyze(1)
         # Try NewtonLineSearch algorithm
         if ok != 0:
-            ops.test('NormDispIncr', tol, iter)
             ops.algorithm('NewtonLineSearch', '-InitialInterpolated', 0.8)
             ok = ops.analyze(1)
         # Try Broyden algorithm
         if ok != 0:
-            ops.test('NormDispIncr', tol, iter)
-            ops.algorithm('Broyden')
+            ops.algorithm('Broyden', 50)
             ok = ops.analyze(1)
         # Try Broyden–Fletcher–Goldfarb–Shanno (BFGS) algorithm
         if ok != 0:
-            ops.test('NormDispIncr', tol, iter)
             ops.algorithm('BFGS')
             ok = ops.analyze(1)
         # Return the analysis result
@@ -1361,7 +1361,7 @@ class BNSM:
         content.append(
             "max_disp = max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)"
         )
-        content.append("tol_init = 1.0e-6")
+        content.append("tol_init = 1.0e-5")
         content.append("iter_init = 20")
         content.append("ops.wipeAnalysis()")
         content.append("ops.system('UmfPack')")
@@ -1380,27 +1380,26 @@ class BNSM:
         content.append("ok = 0")
         content.append("cont = True")
         content.append("while ok == 0 and cont:")
-        content.append("    ops.test('NormDispIncr', tol_init, iter_init)")
-        content.append("    ops.integrator('DisplacementControl', ctrl_node, "
-                       "ctrl_dof, dincr)")
-        content.append("    ops.algorithm('Newton', '-initialThenCurrent')")
+        content.append("    # Perform the analysis for a single step with "
+                       "current settings")
         content.append("    ok = ops.analyze(1)")
         content.append("    if ok != 0:  # try other algorithms")
-        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("        ok = _set_algorithm(tol_init, ctrl_node,"
+                       " ctrl_dof, dincr)")
         content.append("    if ok != 0:  # reduce dincr to an half")
-        content.append("        ops.integrator('DisplacementControl', "
-                       "ctrl_node, ctrl_dof, 0.5*dincr)")
-        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("        ok = _set_algorithm(tol_init, ctrl_node,"
+                       " ctrl_dof, 0.5 * dincr)")
         content.append("    if ok != 0:  # reduce dincr to a quarter")
-        content.append("        ops.integrator('DisplacementControl', "
-                       "ctrl_node, ctrl_dof, 0.25*dincr)")
-        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("        ok = _set_algorithm(tol_init, ctrl_node,"
+                       " ctrl_dof, 0.25 * dincr)")
         content.append("    if ok != 0:  # increase tolerance by factor of 10")
-        content.append("        ok = _set_algorithm(ok, 10*tol_init)")
+        content.append("        ok = _set_algorithm(10 * tol_init, ctrl_node,"
+                       " ctrl_dof, 0.25 * dincr)")
         content.append(
             "    if ok != 0:  # increase tolerance by factor of 100"
         )
-        content.append("        ok = _set_algorithm(ok, 100*tol_init)")
+        content.append("        ok = _set_algorithm(100 * tol_init, ctrl_node,"
+                       " ctrl_dof, 0.25 * dincr)")
         content.append("")
         content.append("    # Get the base shear force")
         content.append("    ops.reactions()")
@@ -1452,14 +1451,18 @@ class BNSM:
             "",
             "Parameters",
             "----------",
-            "ok : int",
-            "    Result of the last analysis step in OpenSees.",
             "tol : float",
             "    The tolerance criteria used to check for convergence.",
+            "ctrl_node : int",
+            "    Tag of control node.",
+            "ctrl_dof : int",
+            "    Tag of control degrees of freedom, i.e., 1 or 2.",
+            "dincr : float",
+            "    The displacement increment considered during analysis.",
             "iter : int, optional",
             "    The max number of iterations to check before returning "
             "failure.",
-            "    By default 100."
+            "    By default 100.",
             "",
             "Return",
             "------",
@@ -1468,26 +1471,27 @@ class BNSM:
             '"""'
         ]
         # Add lines for setting nspa algorithm
+        content.append("# Set testing and control procedures")
+        content.append("ops.test('NormDispIncr', tol, iter)")
+        content.append(
+            "ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)"
+        )
         content.append("# Try KrylovNewton")
-        content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', tol, iter)")
-        content.append("    ops.algorithm('KrylovNewton')")
-        content.append("    ok = ops.analyze(1)")
+        content.append("ops.algorithm('KrylovNewton')")
+        content.append("ok = ops.analyze(1)")
         content.append("# Try NewtonLineSearch algorithm")
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', tol, iter)")
-        content.append("    ops.algorithm('NewtonLineSearch')")
+        content.append("    ops.algorithm('NewtonLineSearch', "
+                       "'-InitialInterpolated', 0.8)")
         content.append("    ok = ops.analyze(1)")
         content.append("# Try Broyden algorithm")
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('Broyden', 50)")
         content.append("    ok = ops.analyze(1)")
         content.append(
             "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm"
         )
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('BFGS')")
         content.append("    ok = ops.analyze(1)")
         content.append("# Return the analysis result")
@@ -1500,7 +1504,8 @@ class BNSM:
                    for item in content]
         # Add method definition
         method = [
-            "def _set_algorithm(ok: int, tol: float, iter: int = 100) -> None:"
+            "def _set_algorithm(tol: float, ctrl_node: int, ctrl_dof: int,"
+            " dincr: float, iter: int = 100) -> None:"
         ]
         content = method + content
 
@@ -1932,7 +1937,7 @@ class BNSM:
             "set max_disp "
             "[expr {$max_drift * [nodeCoord $ctrl_node 3] - $base_level}]"
         )
-        content.append("set tol_init 1.0e-6")
+        content.append("set tol_init 1.0e-5")
         content.append("set iter_init 20")
         content.append("wipeAnalysis")
         content.append("system UmfPack")
@@ -1952,36 +1957,33 @@ class BNSM:
         content.append("set base_shear [list 0.0]")
         content.append("set ctrl_disp [list 0.0]")
         content.append("while { $ok == 0 && $cont == 1 } {")
-        content.append("    test NormDispIncr $tol_init $iter_init")
-        content.append("    integrator DisplacementControl $ctrl_node "
-                       "$ctrl_dof $dincr")
-        content.append("    algorithm Newton -initialThenCurrent")
+        content.append("    # Perform the analysis for a single step with "
+                       "current settings")
         content.append("    set ok [analyze 1]")
         content.append("    # try other algorithms")
         content.append("    if { $ok != 0 } {")
-        content.append("        set ok [_set_algorithm $ok $tol_init]")
+        content.append("        set ok [_set_algorithm $tol_init $ctrl_node "
+                       "$ctrl_dof $dincr]")
         content.append("    }")
         content.append("    # reduce dincr to an half")
         content.append("    if { $ok != 0 } {")
-        content.append("        integrator DisplacementControl $ctrl_node "
-                       "$ctrl_dof [expr 0.5 * $dincr]")
-        content.append("        set ok [_set_algorithm $ok $tol_init]")
+        content.append("        set ok [_set_algorithm $tol_init $ctrl_node "
+                       "$ctrl_dof [expr 0.5 * $dincr]]")
         content.append("    }")
         content.append("    # reduce dincr to a quarter")
         content.append("    if { $ok != 0 } {")
-        content.append("        integrator DisplacementControl $ctrl_node "
-                       "$ctrl_dof [expr 0.25 * $dincr]")
-        content.append("        set ok [_set_algorithm $ok $tol_init]")
+        content.append("        set ok [_set_algorithm $tol_init $ctrl_node "
+                       "$ctrl_dof [expr 0.25 * $dincr]]")
         content.append("    }")
         content.append("    # increase tolerance by factor of 10")
         content.append("    if { $ok != 0 } {")
-        content.append("        set ok [_set_algorithm $ok "
-                       "[expr 10 * $tol_init]]")
+        content.append("        set ok [_set_algorithm [expr 10 * $tol_init] "
+                       "$ctrl_node $ctrl_dof [expr 0.25 * $dincr]]")
         content.append("    }")
         content.append("    # increase tolerance by factor of 100")
         content.append("    if { $ok != 0 } {")
-        content.append("        set ok [_set_algorithm $ok "
-                       "[expr 100 * $tol_init]]")
+        content.append("        set ok [_set_algorithm [expr 100 * $tol_init] "
+                       "$ctrl_node $ctrl_dof [expr 0.25 * $dincr]]")
         content.append("    }")
         content.append("")
         content.append("    # Get the base shear force")
@@ -2050,10 +2052,14 @@ class BNSM:
             "#",
             "# Parameters",
             "# ----------",
-            "# ok : int",
-            "#     Result of the last analysis step in OpenSees.",
             "# tol : float",
             "#     The tolerance criteria used to check for convergence.",
+            "# ctrl_node : int",
+            "#     Tag of control node.",
+            "# ctrl_dof : int",
+            "#     Tag of control degrees of freedom, i.e., 1 or 2.",
+            "# dincr : float",
+            "#     The displacement increment considered during analysis.",
             "# iter : float",
             "#     The max number of iterations to check before returning "
             "failure.",
@@ -2064,27 +2070,25 @@ class BNSM:
             "# int",
             "#     Result of the new analysis step in OpenSees.",
             "",
+            ""
+            "# Set testing and control procedures",
+            "test NormDispIncr $tol $iter",
+            "integrator DisplacementControl $ctrl_node $ctrl_dof $dincr",
             "# Try KrylovNewton",
-            "if { $ok != 0 } {",
-            "    test NormDispIncr $tol $iter",
-            "    algorithm KrylovNewton",
-            "    set ok [analyze 1]",
-            "}",
+            "algorithm KrylovNewton",
+            "set ok [analyze 1]",
             "# Try NewtonLineSearch algorithm",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $tol $iter",
-            "    algorithm NewtonLineSearch",
+            "    algorithm NewtonLineSearch -InitialInterpolated 0.8",
             "    set ok [analyze 1]",
             "}",
             "# Try Broyden algorithm",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $tol 10",
             "    algorithm Broyden 50",
             "    set ok [analyze 1]",
             "}",
             "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $tol 10",
             "    algorithm BFGS",
             "    set ok [analyze 1]",
             "}",
@@ -2096,7 +2100,8 @@ class BNSM:
                    else item
                    for item in content]
         # Add method definition
-        method = ["proc _set_algorithm { ok tol {iter 100} } {"]
+        method = ["proc _set_algorithm { tol ctrl_node ctrl_dof dincr "
+                  "{iter 100} } {"]
         content = method + content
         # Add method closure bracket
         content = content + ["}", ""]

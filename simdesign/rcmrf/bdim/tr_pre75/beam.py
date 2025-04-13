@@ -9,10 +9,9 @@ Material qualities are higher compared CDN.
 
 References
 ----------
-RBA (1935) Regulamento para o Emprego de Betão Armado. Decreto-Lei N.° 4036,
-Lisbon, Portugal
 RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal
+Decreto-Lei N.° 41658, Lisbon, Portugal.
+REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
 d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
 de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 """
@@ -56,26 +55,6 @@ class Beam(BeamBase):
     """Concrete material."""
     ag: float
     """Peak ground acceleration value considered in design."""
-
-    @property
-    def fcd_eq(self) -> float:
-        """
-        Returns
-        -------
-        float
-            Seismic design concrete compressive strength (in base units).
-        """
-        return self.concrete.fcd_eq * MPa
-
-    @property
-    def fsyd_eq(self) -> float:
-        """
-        Returns
-        -------
-        float
-            Seismic design steel yield strength (in base units).
-        """
-        return self.steel.fsyd_eq * MPa
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
         """Does preliminary design of beam.

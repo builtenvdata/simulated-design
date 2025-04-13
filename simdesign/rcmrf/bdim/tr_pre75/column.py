@@ -144,26 +144,6 @@ class Column(ColumnBase):
     """Concrete material."""
 
     @property
-    def fcd_eq(self) -> float:
-        """
-        Returns
-        -------
-        float
-            Seismic design concrete compressive strength (in base units).
-        """
-        return self.concrete.fcd_eq * MPa
-
-    @property
-    def fsyd_eq(self) -> float:
-        """
-        Returns
-        -------
-        float
-            Seismic design steel yield strength (in base units).
-        """
-        return self.steel.fsyd_eq * MPa
-
-    @property
     def rhol_max(self) -> float:
         """
         Returns

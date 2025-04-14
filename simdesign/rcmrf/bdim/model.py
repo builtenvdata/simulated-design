@@ -1,5 +1,5 @@
 from .baselib.building import TaxonomyData, BuildingBase
-from .eu_cdn.building import Building as EUCDN
+from .eu_cdn.building import Building as EuCDN
 from .eu_cdl.building import Building as EuCDL
 from .eu_cdm.building import Building as EuCDM
 from .eu_cdh.building import Building as EuCDH
@@ -18,7 +18,7 @@ class BDIM:
     """
 
     _design_classes = {
-        "eu_cdn": EUCDN,
+        "eu_cdn": EuCDN,
         "eu_cdl": EuCDL,
         "eu_cdm": EuCDM,
         "eu_cdh": EuCDH,

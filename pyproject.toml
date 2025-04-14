@@ -28,11 +28,11 @@ dependencies = [
     "openseespywin==3.7.1.2; sys_platform == 'win32' and python_version == '3.12'",
     "openseespy==3.6.0.3; sys_platform == 'win32' and python_version == '3.11'",
     "openseespywin==3.6.0.3; sys_platform == 'win32' and python_version == '3.11'",
-    "openseespy==3.7.1.2; sys_platform == 'linux' and python_version == '3.12'",
-    "openseespylinux==3.7.1.2; sys_platform == 'linux' and python_version == '3.12'",
-    "openseespy==3.6.0.3; sys_platform == 'linux' and python_version == '3.11'",
-    "openseespylinux==3.6.0.3; sys_platform == 'linux' and python_version == '3.11'",
-    "openseespy==3.7.1.2; sys_platform == 'darwin' and python_version == '3.11'",
+    "openseespy==3.7.0.1; sys_platform == 'linux' and python_version == '3.12'",
+    "openseespylinux==3.7.0.1; sys_platform == 'linux' and python_version == '3.12'",
+    "openseespy==3.7.0.1; sys_platform == 'linux' and python_version == '3.11'",
+    "openseespylinux==3.7.0.1; sys_platform == 'linux' and python_version == '3.11'",
+    "openseespy==3.7.0.1; sys_platform == 'darwin' and python_version == '3.11'",
     "openseespymac==3.4.0.2; sys_platform == 'darwin' and python_version == '3.11'"
 ]
 

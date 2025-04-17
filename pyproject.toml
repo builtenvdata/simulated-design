@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simdesign"
-version = "0.4.0"
+version = "0.5.0"
 description = "A collaborative framework for the simulated design of buildings following past and current seismic design procedures in Europe."
 authors = [
     { name = "Volkan Ozsarac", email = "ozsarac.volkan@eucentre.it" }

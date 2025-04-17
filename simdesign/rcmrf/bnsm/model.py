@@ -476,7 +476,8 @@ class BNSM:
         if out_dir:
             # Create the output directory
             out_dir = Path(out_dir)
-            make_dir(out_dir)
+            if not Path.exists(out_dir):
+                make_dir(out_dir)
             # Modal properties directory
             modal_path = (out_dir / 'ModalProperties.txt').as_posix()
             # Save eigen vectors for retained floor nodes
@@ -511,6 +512,7 @@ class BNSM:
     def do_nspa(
         self, ctrl_dof: Literal[1, 2],
         out_dir: Optional[str | Path] = None,
+        use_recorder: bool = False
     ) -> Tuple[List[float], List[float]]:
         """Performs nonlinear static pushover analysis (NSPA).
 
@@ -520,10 +522,10 @@ class BNSM:
             Control degrees of freedom for loading.
             1: X-direction.
             2: Y-direction.
-        out_dir : bool, optional
-            Output directory to save the modal properties and eigen vectors
-            for the floor retained nodes. If None, these are not saved.
-            By default None.
+        out_dir : str | Path, optional
+            Directory to save outputs. If None, no output is saved.
+        use_recorder : bool, default=False
+            If True, OpenSees recorders are used.
 
         Return
         ------
@@ -531,57 +533,50 @@ class BNSM:
             Displacement values of control node.
         base_shear : List[float]
             Base shear value obtained as sum of the reaction forces.
+        ok : int
+            Final analysis return code.
         """
 
         # Get NSPA loading parameters
-        nodes, loads, ctrl_node = \
-            self.__get_nspa_loading_parameters(ctrl_dof)
+        nodes, loads, ctrl_node = self.__get_nspa_loading_parameters(ctrl_dof)
+        direction = 'x' if ctrl_dof == 1 else 'y'
 
         # Add NSPA time-series and load pattern to ops domain
         ops.timeSeries('Linear', NSPA_TS_TAG)
         ops.pattern('Plain', NSPA_P_TAG, NSPA_TS_TAG)
+
         # Add lateral nspa loads to ops domain
         for node, load_values in zip(nodes, loads):
             ops.load(node, *load_values)
 
-        # Set foundation nodes
-        supports = [
-            found.foundation_node.tag for found in self.foundations
-        ]
-        # Set floor nodes
+        # Set foundation and floor nodes
+        supports = [found.foundation_node.tag for found in self.foundations]
         floors = [floor.rnode.tag for floor in self.floors]
-        # Base level coordinate
-        base_level = min([ops.nodeCoord(node, 3) for node in supports])
 
-        # Set the recorders
+        # Get the base level and storey heights
+        base_level = min([ops.nodeCoord(node, 3) for node in supports])
+        storey_heights = [round(ops.nodeCoord(node, 3) - base_level, 1) for
+                          node in floors]
+
+        # Output directory is provided, save stuff
         if out_dir:
-            # Create the output directory
             out_dir = Path(out_dir)
-            make_dir(out_dir)
-            # Directions per dof
-            if ctrl_dof == 1:
-                direction = 'x'
-            elif ctrl_dof == 2:
-                direction = 'y'
+            # Create the output directory if needed
             if not Path.exists(out_dir):
-                Path.mkdir(out_dir)
-            reaction_file_path = (
-                out_dir / f'support_reactions_{direction}.out'
-            ).as_posix()
-            disp_file_path = (
-                out_dir / f'storey_displacements_{direction}.out'
-            ).as_posix()
-            storey_heights_file_path = (
-                out_dir / f'storey_heights_{direction}.out'
-            ).as_posix()
-            ops.recorder('Node', '-file', disp_file_path, '-node', *floors,
-                         '-dof', ctrl_dof, 'disp')
-            ops.recorder('Node', '-file', reaction_file_path, '-node',
-                         *supports, '-dof', ctrl_dof, 'reaction')
-            # Save storey heights
-            with open(storey_heights_file_path, 'w') as file:
-                for node in floors:
-                    file.write(f'{ops.nodeCoord(node, 3) - base_level}\n')
+                make_dir(out_dir)
+            # Save the storey heights
+            np.savetxt(out_dir / 'storey_heights.out',
+                       storey_heights, fmt="%.3f")
+            # Set the recorder for storey displacements and support reactions
+            if use_recorder:
+                ops.recorder(
+                    'Node', '-file',
+                    str(out_dir / f'storey_displacements_{direction}.out'),
+                    '-node', *floors, '-dof', ctrl_dof, 'disp')
+                ops.recorder(
+                    'Node', '-file',
+                    str(out_dir / f'support_reactions_{direction}.out'),
+                    '-node', *supports, '-dof', ctrl_dof, 'reaction')
 
         # Set some analysis parameters
         max_disp = self.max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)
@@ -600,6 +595,8 @@ class BNSM:
         # Start performing the analysis
         ctrl_disp = [0]
         base_shear = [0]
+        storey_displacements = [[0] * len(floors)]
+        support_reactions = [[0] * len(supports)]
         ok = 0
         cont = True
         while ok == 0 and cont:
@@ -627,24 +624,41 @@ class BNSM:
 
             # Get the base shear force
             ops.reactions()
-            current_disp = ops.nodeDisp(ctrl_node, ctrl_dof)
-            current_shear = abs(sum(
-                [ops.nodeReaction(found.foundation_node.tag, ctrl_dof)
-                    for found in self.foundations]))
-            # current_shear = ops.getTime()
+            current_ctrl_disp = ops.nodeDisp(ctrl_node, ctrl_dof)
+            current_reactions = [
+                ops.nodeReaction(node, ctrl_dof) for node in supports
+            ]
+            current_base_shear = abs(sum(current_reactions))
+
             # Set continue flag
-            cont = (current_disp < max_disp
-                    and current_shear < 50000
-                    and current_shear >= 0.2 * max(base_shear))
-            # Append base shear and control node displacement
+            cont = (current_ctrl_disp < max_disp and
+                    current_base_shear < 50000 and
+                    current_base_shear >= 0.2 * max(base_shear))
+
+            # Append the results
             if ok == 0 and cont:
-                base_shear.append(current_shear)
-                ctrl_disp.append(current_disp)
+                ctrl_disp.append(current_ctrl_disp)
+                base_shear.append(current_base_shear)
+                storey_displacements.append(
+                    [ops.nodeDisp(node, ctrl_dof) for node in floors]
+                )
+                support_reactions.append(current_reactions)
             elif (
                 max(base_shear) == 0.0  # Analysis did not even start
                 or base_shear[-1] / max(base_shear) > 0.8  # Not good enough
             ):
                 ok = -1
+
+        if out_dir:  # Output directory is provided, save stuff
+            np.savetxt(out_dir / f'ctrl_disp_{direction}.out',
+                       ctrl_disp, delimiter=' ', fmt="%.8f")
+            np.savetxt(out_dir / f'base_shear_{direction}.out',
+                       base_shear, delimiter=' ', fmt="%.8f")
+            if not use_recorder:  # Recorders are not used
+                np.savetxt(out_dir / f'storey_displacements_{direction}.out',
+                           storey_displacements, delimiter=' ', fmt="%.8f")
+                np.savetxt(out_dir / f'support_reactions_{direction}.out',
+                           support_reactions, delimiter=' ', fmt="%.8f")
 
         # Wipe the numerical model
         ops.wipe()
@@ -784,7 +798,8 @@ class BNSM:
         """
         # Create output directory
         directory = Path(directory)
-        make_dir(directory)
+        if not Path.exists(directory):
+            make_dir(directory)
         # Get each function as list of strings
         build_list = self.__get_build_py()
         foundations_list = self.__get_foundations_py()
@@ -840,7 +855,8 @@ class BNSM:
         """
         # Create output directory
         directory = Path(directory)
-        make_dir(directory)
+        if not Path.exists(directory):
+            make_dir(directory)
         # Get each function as list of strings
         build_list = self.__get_build_tcl()
         foundations_list = self.__get_foundations_tcl()
@@ -2190,6 +2206,8 @@ class BNSM:
         # Path to the file (without the file extension)
         if directory:
             filename = str(Path(directory) / 'model_view.html')
+            if not Path.exists(Path(directory)):
+                make_dir(directory)
         else:
             filename = None
         # Plot the model
@@ -2231,6 +2249,8 @@ class BNSM:
         # Path to the file
         if directory:
             filename = str(Path(directory) / f'mode_{mode_number}_shape.html')
+            if not Path.exists(Path(directory)):
+                make_dir(directory)
         else:
             filename = None
         # Plot the mode shape

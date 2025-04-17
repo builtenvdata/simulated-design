@@ -1,5 +1,12 @@
 """
 Pydantic models for defining materials in tr_pre75 buildings.
+
+
+Notes
+-----
+Both ABYYHY-1968 and ABYYHY-1961 states that material safety stresses
+can be increased by 50% in the case of analysis for earthquake loads.
+Hence, better to have {`fcd`, `fcd_eq`} and {`fsyd`, `fsyd_eq`}.
 """
 
 # Imports from installed packages
@@ -20,21 +27,27 @@ class Steel(SteelBase):
         Grade of the steel material.
     fsyk : float
         Characteristic value of steel yield strength (in MPa).
-    fsym : float
-        Mean value of steel yield strength (in MPa).
+    fsyd_eq : float
+        Design value of steel yield strength considered for seismic design
+        (in MPa).
     fsyd: float
         Design value of steel yield strength (in MPa).
+    fsym : float
+        Mean value of steel yield strength (in MPa).
     E : float
         Steel elastic youngs' modulus (in base units, kPa),
         by default 200 * GPa.
     PARTIAL_FACTOR : float
         Partial factor for steel, by default 1.0.
     """
+    fsyd_eq: float
+    """Design value of steel yield strength considered for seismic design
+    (in MPa)."""
 
 
 class Concrete(ConcreteBase):
-    """Pydantic model representing concrete materials for design
-    class tr_pre75.
+    """Pydantic model representing concrete materials for
+    design class tr_pre75.
 
     Attributes
     ----------
@@ -46,6 +59,9 @@ class Concrete(ConcreteBase):
     fck_cube : float
         Characteristic value of the compressive strength of concrete cubes
          (in MPa).
+    fcd_eq : float
+        Design value of the concrete compressive strength considered for
+        seismic design (in MPa).
     fcd : float
         Design value of concrete compressive strength (in MPa).
     fcm : float
@@ -62,6 +78,9 @@ class Concrete(ConcreteBase):
     fck_cube: float
     """Characteristic value of the compressive strength of concrete
     cylinders (in MPa)."""
+    fcd_eq: float
+    """Design value of the concrete compressive strength considered for
+    seismic design (in MPa)."""
 
 
 class MaterialData(MaterialDataBase):

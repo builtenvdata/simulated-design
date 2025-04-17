@@ -36,10 +36,16 @@ class ModelData(BaseModel):
     """Joint modelling option considered in nonlinear models."""
     bondslip_factor: float
     """Bondslip factor considered for nonlinear beam-column elements."""
+    theta_fck: float = 1.0
+    """Median concrete strength ratio, by default 1.0."""
     sigma_fck: float
     """Logarithmic standard deviation of concrete strength ratio."""
+    theta_fsyk: float = 1.0
+    """Median steel yield strength ratio, by default 1.0."""
     sigma_fsyk: float
     """Logarithmic standard deviation of steel yield strength ratio."""
+    theta_cover: float = 1.0
+    """Median concrete cover ratio, by default 1.0."""
     sigma_cover: float
     """Logarithmic standard deviation of concrete cover ratio."""
     uniform_low_sbh: float
@@ -169,52 +175,48 @@ class QualityBase(ABC):
             List of columns whose properties will be adjusted.
         """
         # Initialize some parameters
+        theta_fck = self.model.theta_fck
         sigma_fck = self.model.sigma_fck
+        theta_fsyk = self.model.theta_fsyk
         sigma_fsyk = self.model.sigma_fsyk
+        theta_cover = self.model.theta_cover
         sigma_cover = self.model.sigma_cover
         uniform_low_sbh = self.model.uniform_low_sbh
         uniform_up_sbh = self.model.uniform_up_sbh
         num_columns = len(columns)
         num_beams = len(beams)
-        # Mean concrete compressive strength ratio
-        """
-        TODO: Why do we use randomised mean ratio?
-        Shouldn't we lower the mean_fc_ratio maybe?
-        Based on the quality? Or just use 1.0?
-        """
-        # 1. Compute property modifiers (ratio of design value to in-situ)
-        mu = np.log(1.0)  # (Logarithmic mean of ratio values)
+
+        # NOTE: Mean strength ratio is also randomised*
+        theta_fck = lognorm.ppf(np.random.rand(), s=sigma_fck, scale=theta_fck)
+
         # Concrete compressive strength
-        mu_fc = np.log(lognorm.ppf(np.random.rand(),
-                                   s=sigma_fck,
-                                   scale=np.exp(mu)))
         col_fc_ratio = lognorm.ppf(np.random.rand(num_columns),
                                    s=sigma_fck,
-                                   scale=np.exp(mu_fc))
+                                   scale=theta_fck)
         beam_fc_ratio = lognorm.ppf(np.random.rand(num_beams),
                                     s=sigma_fck,
-                                    scale=np.exp(mu_fc))
+                                    scale=theta_fck)
         # Longitudinal steel yield strength
         col_fsyl_ratio = lognorm.ppf(np.random.rand(num_columns),
                                      s=sigma_fsyk,
-                                     scale=np.exp(mu))
+                                     scale=theta_fsyk)
         beam_fsyl_ratio = lognorm.ppf(np.random.rand(num_beams),
                                       s=sigma_fsyk,
-                                      scale=np.exp(mu))
+                                      scale=theta_fsyk)
         # Transverse steel yield strength
         col_fsyh_ratio = lognorm.ppf(np.random.rand(num_columns),
                                      s=sigma_fsyk,
-                                     scale=np.exp(mu))
+                                     scale=theta_fsyk)
         beam_fsyh_ratio = lognorm.ppf(np.random.rand(num_beams),
                                       s=sigma_fsyk,
-                                      scale=np.exp(mu))
+                                      scale=theta_fsyk)
         # Concrete cover
         col_cover_ratio = lognorm.ppf(np.random.rand(num_columns),
                                       s=sigma_cover,
-                                      scale=np.exp(mu))
+                                      scale=theta_cover)
         beam_cover_ratio = lognorm.ppf(np.random.rand(num_beams),
                                        s=sigma_cover,
-                                       scale=np.exp(mu))
+                                       scale=theta_cover)
         # Stirrup spacing
         col_sbh_ratio = uniform.ppf(
             np.random.rand(num_columns),

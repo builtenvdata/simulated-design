@@ -2335,9 +2335,10 @@ class BuildingBase(ABC):
         if not self.ok:
             return
 
-        # Create the output directory
+        # Create the output directory if needed
         directory = Path(directory)
-        make_dir(directory)
+        if not Path.exists(directory):
+            make_dir(directory)
 
         # Set the paths for .csv files
         joints_path = directory / 'joints.csv'

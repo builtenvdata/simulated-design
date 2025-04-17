@@ -66,9 +66,9 @@ if __name__ == '__main__':
         bnsm.plot_mode_shape(mode_number=2, contour='y', show=True,
                              directory=outdir_building)
         # Perform the pushover directly
-        push_dir = outdir_building / 'NSPA-Results-X'
+        push_dir = outdir_building / 'NSPA-Results'
         dx, vx, _ = bnsm.do_nspa(ctrl_dof=1, out_dir=push_dir)
-        push_dir = outdir_building / 'NSPA-Results-Y'
+        push_dir = outdir_building / 'NSPA-Results'
         dy, vy, _ = bnsm.do_nspa(ctrl_dof=2, out_dir=push_dir)
         plt.plot(dx, vx, label='X-dir')
         plt.plot(dy, vy, label='Y-dir')

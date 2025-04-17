@@ -14,8 +14,7 @@ from ..baselib.column import ColumnForces
 """
 Notes
 -----
-1- Cracked stiffness has been considered in design since 2018.
-2- The method named "analyze_for_all" has been overwritten here
+1- The method named "analyze_for_all" has been overwritten here
 to include an overstrength factor of 3, which is the value for
 RCMRF buildings with high ductility in the case of DTS1 and DTS2.
 """
@@ -29,15 +28,6 @@ class ElasticModel(ElasticModelBase):
     columns: List[Column]
     """Column objects of the building."""
     OVERSTRENGTH_FACTOR = 3
-
-    def _build_ops_model_seismic(self) -> None:
-        """Builds the model for load cases of seismic load combos.
-        """
-        self._init_ops_model()
-        self._add_ops_nodes()
-        self._add_ops_beam_column_elements(True)
-        self._add_ops_sp_constraints()
-        self._add_ops_mp_constraints()
 
     def analyze_for_all(self):
         """Analyzes the building all load cases and combinations.
@@ -85,7 +75,7 @@ class ElasticModel(ElasticModelBase):
                     forces.case = combo_type
                     # Append the combined forces
                     beam.design_forces.append(forces)
-                elif combo_type == 'seismic':  # seismic
+                elif combo_type == 'seismic' and self.beta > 0.0:
                     # Add the forces from seismic loading
                     forces_ov = BeamForces(*forces.__dict__.values())
                     ecc_forces = []  # forces due to eccentric loading
@@ -128,6 +118,11 @@ class ElasticModel(ElasticModelBase):
                         beam.design_forces_overstrength_adjusted.append(
                             forces_ov_)
 
+            if len(beam.design_forces_overstrength_adjusted) == 0:
+                beam.design_forces_overstrength_adjusted.append(
+                    BeamForces(0, 0, 0, 0, 0, 0)
+                )
+
         # Start combining forces for COLUMNS
         for column in self.columns:
             # Restart combo forces
@@ -156,7 +151,7 @@ class ElasticModel(ElasticModelBase):
                     forces.case = combo_type
                     # Append the combined forces
                     column.design_forces.append(forces)
-                elif combo_type == 'seismic':
+                elif combo_type == 'seismic' and self.beta > 0.0:
                     # Add the forces from seismic loading
                     forces_ov = ColumnForces(*forces.__dict__.values())
                     ecc_forces = []  # forces due to eccentric loading
@@ -202,3 +197,8 @@ class ElasticModel(ElasticModelBase):
                         column.design_forces.append(forces_)
                         column.design_forces_overstrength_adjusted.append(
                             forces_ov_)
+
+            if len(column.design_forces_overstrength_adjusted) == 0:
+                column.design_forces_overstrength_adjusted.append(
+                    ColumnForces(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+                )

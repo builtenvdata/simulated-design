@@ -1,5 +1,5 @@
 """
-Specific routines for defining eu_cdm construction quality adjusments.
+Specific routines for defining eu_cdm construction quality adjustments.
 """
 # Imports from installed packages
 from pathlib import Path

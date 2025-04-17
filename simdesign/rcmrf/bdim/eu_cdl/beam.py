@@ -12,8 +12,6 @@ References
 RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
 Decreto-Lei N.° 41658, Lisbon, Portugal.
 REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 """
 
 # Imports from installed packages
@@ -53,8 +51,6 @@ class Beam(BeamBase):
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
-    ag: float
-    """Peak ground acceleration value considered in design."""
 
     @property
     def fcd_eq(self) -> float:
@@ -144,19 +140,13 @@ class Beam(BeamBase):
 
     def verify_section_adequacy(self) -> None:
         """Verifies the beam section dimensions for design forces.
-
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
         """
+        # Design strength mapper
+        fcd_map = {'gravity': self.fcd,
+                   'seismic': self.fcd_eq}
         # Allowable shear stress that can be carried by the beam
         tau_max = np.interp(self.concrete.fck_cube,
                             FCK_CUBE_VECT, TAU_MAX_VECT)
-        # Concrete design strength
-        if self.ag > 0.05:
-            fcd = self.fcd_eq  # seismic loading is significant
-        else:
-            fcd = self.fcd  # seismic loading is not significant
         # Economic mu values (dimensionless)
         if self.typology == 1:
             mu_economic = ECONOMIC_MU_WB
@@ -170,17 +160,17 @@ class Beam(BeamBase):
         # Maximum of envelope forces
         max_shear = max(self.envelope_forces.V1, self.envelope_forces.V5,
                         self.envelope_forces.V9)
-        max_moment = max(
-            self.envelope_forces.M1_pos,
-            self.envelope_forces.M5_pos,
-            self.envelope_forces.M9_pos,
-            abs(self.envelope_forces.M1_neg),
-            abs(self.envelope_forces.M5_neg),
-            abs(self.envelope_forces.M9_neg)
-        )
         # Verify the adequacy of the section dimensions
         tau = max_shear / (self.b * z)  # for max. shear force
-        mu = max_moment / (fcd * self.b * d**2)  # for max. bending moment
+        mu = 0.0  # for max. bending moment
+        for forces in self.design_forces:
+            # Design moments
+            env_pos = max(forces.M1, forces.M5, forces.M9, 0.0)
+            env_neg = min(forces.M1, forces.M5, forces.M9, 0.0)
+            max_moment = max(env_pos, abs(env_neg))
+            # Design strength
+            fcd = fcd_map.get(forces.case)
+            mu = max(mu, max_moment / (fcd * self.b * d**2))
         if mu < mu_economic and tau < tau_max:
             self.ok = True  # Ok
         else:
@@ -206,79 +196,88 @@ class Beam(BeamBase):
         ----------
         https://mathalino.com/reviewer/reinforced-concrete-design/design-steel-reinforcement-concrete-beams-wsd-method
         """
-        # Design strength of materials
-        if self.ag > 0.05:
-            fcd = self.fcd_eq
-            fsyd = self.fsyd_eq
-        else:
-            fcd = self.fcd
-            fsyd = self.fsyd_eq
+        # Design strength mappers
+        fcd_map = {'gravity': self.fcd,
+                   'seismic': self.fcd_eq}
+        fsyd_map = {'gravity': self.fsyd,
+                    'seismic': self.fsyd_eq}
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h
         d_prime = 0.1 * self.h
         # Alternatively, this can be directly computed.
         n = MODULAR_RATIO  # Modular ratio
-        # Design forces
-        moment_pos = np.array([self.envelope_forces.M1_pos,
-                               self.envelope_forces.M5_pos,
-                               self.envelope_forces.M9_pos])
-        moment_neg = np.array([self.envelope_forces.M1_neg,
-                               self.envelope_forces.M5_neg,
-                               self.envelope_forces.M9_neg])
-        moment_neg = np.abs(moment_neg)  # No need for the sign
-        # Balanced moment capacity
-        x_bal = (fcd * d) / (fcd + fsyd / n)
-        C_bal = 0.50 * fcd * self.b * x_bal
-        M_bal = C_bal * (d - x_bal / 3)
-        # Initialize long. steel area at start, mid and end sections
-        Asl_top = np.zeros(3)  # Required steel area at top
-        Asl_bot = np.zeros(3)  # Required steel area at bottom
-        # 1) Calculate longitudinal steel area for negative moment envelope (-)
-        mask1 = moment_neg <= M_bal  # Identify singly reinforced beams
-        # Excessive moment (doubly reinforced beam case)
-        Mexcess = moment_neg[~mask1] - M_bal
-        # Tension reinforcement (singly reinforced beam)
-        Asl_top[mask1] = moment_neg[mask1] / (
-            fsyd * (d - x_bal / 3))
-        # As1 (Doubly reinforced beam)
-        Asl1 = moment_neg[~mask1] / (fsyd * (d - x_bal / 3))
-        # As2 (doubly reinforced beam) --> Corrected
-        Asl2 = Mexcess / (fsyd * (d - d_prime))
-        # Total tension reinforcement reinforcement (doubly reinforced beam)
-        Asl_top[~mask1] = Asl1 + Asl2
-        # Maximum stress of the compression reinforcement (doubly reinforced)
-        fsyd_prime = min(fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal))
-        # Compression reinforcement (doubly reinforced beam)
-        Asl_bot[~mask1] = (2 * n * Mexcess) / (
-            fsyd_prime * (2 * n - 1) * (d - d_prime)
-        )
+        self.Asl_top_req = np.zeros(3)  # Required steel area at top
+        self.Asl_bot_req = np.zeros(3)  # Required steel area at bottom
+        # Loop through each case because strength depends on the load case
+        for forces in self.design_forces:
+            # Design strength of materials
+            fcd = fcd_map.get(forces.case)
+            fsyd = fsyd_map.get(forces.case)
+            # Design forces
+            moment_pos = np.array(
+                [max(forces.M1, 0.0), max(forces.M5, 0.0), max(forces.M9, 0.0)]
+            )
+            moment_neg = np.array(
+                [min(forces.M1, 0.0), min(forces.M5, 0.0), min(forces.M9, 0.0)]
+            )
+            moment_neg = np.abs(moment_neg)  # No need for the sign
+            # Balanced moment capacity
+            x_bal = (fcd * d) / (fcd + fsyd / n)
+            C_bal = 0.50 * fcd * self.b * x_bal
+            M_bal = C_bal * (d - x_bal / 3)
+            # Initialize long. steel area at start, mid and end sections
+            Asl_top = np.zeros(3)  # Required steel area at top
+            Asl_bot = np.zeros(3)  # Required steel area at bottom
+            # 1) Calculate longitudinal steel area for negative envelope (-)
+            mask1 = moment_neg <= M_bal  # Identify singly reinforced beams
+            # Excessive moment (doubly reinforced beam case)
+            Mexcess = moment_neg[~mask1] - M_bal
+            # Tension reinforcement (singly reinforced beam)
+            Asl_top[mask1] = moment_neg[mask1] / (
+                fsyd * (d - x_bal / 3))
+            # As1 (Doubly reinforced beam)
+            Asl1 = moment_neg[~mask1] / (fsyd * (d - x_bal / 3))
+            # As2 (doubly reinforced beam) --> Corrected
+            Asl2 = Mexcess / (fsyd * (d - d_prime))
+            # Total tension reinforcement (doubly reinforced beam)
+            Asl_top[~mask1] = Asl1 + Asl2
+            # Maximum stress of the compression reinforcement (doubly)
+            fsyd_prime = min(
+                fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal)
+            )
+            # Compression reinforcement (doubly reinforced beam)
+            Asl_bot[~mask1] = (2 * n * Mexcess) / (
+                fsyd_prime * (2 * n - 1) * (d - d_prime)
+            )
 
-        # 2) Calculate longitudinal steel area for positive moment envelope (+)
-        mask2 = moment_pos <= M_bal  # Identify singly reinforced beams
-        # Excessive moment (doubly reinforced beam case)
-        Mexcess = moment_pos[~mask2] - M_bal
-        # Tension reinforcement (singly reinforced beam)
-        Asl_bot[mask2] = np.maximum(
-            Asl_bot[mask2],
-            moment_pos[mask2] / (fsyd * (d - x_bal / 3))
-        )
-        # As1 (doubly reinforced beam)
-        Asl1 = moment_pos[~mask2] / (fsyd * (d - x_bal / 3))
-        # As2 (doubly reinforced beam) --> Corrected
-        Asl2 = Mexcess / (fsyd * (d - d_prime))
-        # Total tension reinforcement reinforcement (doubly reinforced beam)
-        Asl_bot[~mask2] = np.maximum(Asl1 + Asl2, Asl_bot[~mask2])
-        # Maximum stress of the compression reinforcement (doubly reinforced)
-        fsyd_prime = min(fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal))
-        # Compression reinforcement (doubly reinforced beam)
-        Asl_top[~mask2] = np.maximum(
-            (2 * n * Mexcess) / (fsyd_prime * (2 * n - 1) * (d - d_prime)),
-            Asl_top[~mask2],
-        )
-        # Save required longitudinal reinforcement area
-        self.Asl_top_req = Asl_top
-        self.Asl_bot_req = Asl_bot
+            # 2) Calculate longitudinal steel area for positive envelope (+)
+            mask2 = moment_pos <= M_bal  # Identify singly reinforced beams
+            # Excessive moment (doubly reinforced beam case)
+            Mexcess = moment_pos[~mask2] - M_bal
+            # Tension reinforcement (singly reinforced beam)
+            Asl_bot[mask2] = np.maximum(
+                Asl_bot[mask2],
+                moment_pos[mask2] / (fsyd * (d - x_bal / 3))
+            )
+            # As1 (doubly reinforced beam)
+            Asl1 = moment_pos[~mask2] / (fsyd * (d - x_bal / 3))
+            # As2 (doubly reinforced beam) --> Corrected
+            Asl2 = Mexcess / (fsyd * (d - d_prime))
+            # Total tension reinforcement (doubly reinforced beam)
+            Asl_bot[~mask2] = np.maximum(Asl1 + Asl2, Asl_bot[~mask2])
+            # Maximum stress of the compression reinforcement (doubly)
+            fsyd_prime = min(
+                fsyd, (2 * fsyd * (x_bal - d_prime)) / (d - x_bal)
+            )
+            # Compression reinforcement (doubly reinforced beam)
+            Asl_top[~mask2] = np.maximum(
+                (2 * n * Mexcess) / (fsyd_prime * (2 * n - 1) * (d - d_prime)),
+                Asl_top[~mask2],
+            )
+            # Update required longitudinal reinforcement area
+            self.Asl_top_req = np.maximum(self.Asl_top_req, Asl_top)
+            self.Asl_bot_req = np.maximum(self.Asl_bot_req, Asl_bot)
 
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces.
@@ -288,11 +287,9 @@ class Beam(BeamBase):
         1. Required reinforcement is computed at different sections:
         start, mid, end.
         """
-        # Design strength of materials
-        if self.ag > 0.05:
-            fsyd = self.fsyd_eq
-        else:
-            fsyd = self.fsyd_eq
+        # Design strength mappers
+        fsyd_map = {'gravity': self.fsyd,
+                    'seismic': self.fsyd_eq}
         # Allowable shear stress that can be carried by the beam
         tau_c = np.interp(self.concrete.fck_cube,
                           FCK_CUBE_VECT, TAU_C_VECT)
@@ -301,26 +298,30 @@ class Beam(BeamBase):
         d = 0.9 * self.h
         # Lever arm, i.e., distance between comp. and tens. forces
         z = 0.9 * d
-        # Design forces
-        shear = np.array([self.envelope_forces.V1,
-                          self.envelope_forces.V5,
-                          self.envelope_forces.V9])
-        # Changed this to the available long. reinforcement.
-        Asl_top = self.rhol_top * self.Ag
-        Asl_bot = self.rhol_bot * self.Ag
-        # Calculate the minimum shear reinforcement
+        # The minimum shear reinforcement
         sbh = 0.5  # stirrup spacing
         dbh = 0.006  # stirrup diameter
         nlegs = 2  # number of legs
         Ash_sbh_min = nlegs * (np.pi * 0.25 * dbh**2) / sbh
-        # Check this expression because it can result in negative reinf.
-        # Added minimum reinforcement to avoid negative reinf. situation.
-        Vcd = tau_c * self.b * d
-        mask = (
-            z * fsyd * np.maximum(Asl_top, Asl_bot) < shear * d
-        )  # Article 35
-        Ash_sbh = shear / (fsyd * d)
-        Ash_sbh[~mask] = (shear[~mask] - Vcd) / (fsyd * d)
-        Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
-        # Save the required transverse reinforcement area to spacing
-        self.Ash_sbh_req = Ash_sbh
+        # The required transverse reinforcement area to spacing at each section
+        self.Ash_sbh_req = np.zeros(3)
+        # Loop through each case because strength depends on the load case
+        for forces in self.design_forces:
+            # Design strength of materials
+            fsyd = fsyd_map.get(forces.case)
+            # Design forces
+            shear = np.array([abs(forces.V1), abs(forces.V5), abs(forces.V9)])
+            # Changed this to the available long. reinforcement.
+            Asl_top = self.rhol_top * self.Ag
+            Asl_bot = self.rhol_bot * self.Ag
+            # Check this expression because it can result in negative reinf.
+            # Added minimum reinforcement to avoid negative reinf. situation.
+            Vcd = tau_c * self.b * d
+            mask = (
+                z * fsyd * np.maximum(Asl_top, Asl_bot) < shear * d
+            )  # Article 35
+            Ash_sbh = shear / (fsyd * d)
+            Ash_sbh[~mask] = (shear[~mask] - Vcd) / (fsyd * d)
+            Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
+            # Save the required transverse reinforcement area to spacing
+            self.Ash_sbh_req = np.maximum(self.Ash_sbh_req, Ash_sbh)

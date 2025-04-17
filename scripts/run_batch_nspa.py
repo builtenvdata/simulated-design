@@ -80,9 +80,9 @@ for design_class in design_classes:
             bnsm.plot_mode_shape(mode_number=2, contour='y', show=False,
                                  directory=outdir_building)
             # Perform the pushover directly
-            push_dir = outdir_building / 'NSPA-Results-X'
+            push_dir = outdir_building / 'NSPA-Results'
             dx, vx, ok_x = bnsm.do_nspa(ctrl_dof=1, out_dir=push_dir)
-            push_dir = outdir_building / 'NSPA-Results-Y'
+            push_dir = outdir_building / 'NSPA-Results'
             dy, vy, ok_y = bnsm.do_nspa(ctrl_dof=2, out_dir=push_dir)
             dincr_x = 1e-3
             dincr_y = 1e-3
@@ -90,25 +90,25 @@ for design_class in design_classes:
                 bnsm = rcmrf.BNSM(
                     bdim, scheme='FMP', dincr=1e-4, max_drift=0.1)
                 # Perform the pushover directly
-                push_dir = outdir_building / 'NSPA-Results-X'
+                push_dir = outdir_building / 'NSPA-Results'
                 dx, vx, ok_x = bnsm.do_nspa(ctrl_dof=1, out_dir=push_dir)
                 dincr_x = 1e-4
             if ok_x != 0:
                 bnsm = rcmrf.BNSM(
                     bdim, scheme='FMP', dincr=1e-5, max_drift=0.1)
-                push_dir = outdir_building / 'NSPA-Results-X'
+                push_dir = outdir_building / 'NSPA-Results'
                 dx, vx, ok_x = bnsm.do_nspa(ctrl_dof=1, out_dir=push_dir)
                 dincr_x = 1e-5
             if ok_y != 0:
                 bnsm = rcmrf.BNSM(
                     bdim, scheme='FMP', dincr=1e-4, max_drift=0.1)
-                push_dir = outdir_building / 'NSPA-Results-Y'
+                push_dir = outdir_building / 'NSPA-Results'
                 dy, vy, ok_y = bnsm.do_nspa(ctrl_dof=2, out_dir=push_dir)
                 dincr_y = 1e-4
             if ok_y != 0:
                 bnsm = rcmrf.BNSM(
                     bdim, scheme='FMP', dincr=1e-5, max_drift=0.1)
-                push_dir = outdir_building / 'NSPA-Results-Y'
+                push_dir = outdir_building / 'NSPA-Results'
                 dy, vy, ok_y = bnsm.do_nspa(ctrl_dof=2, out_dir=push_dir)
                 dincr_y = 1e-5
             # Restart BNSM with the dincr which worked for both

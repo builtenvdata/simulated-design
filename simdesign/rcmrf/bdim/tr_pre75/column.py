@@ -14,8 +14,8 @@ RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
 Decreto-Lei N.° 41658, Lisbon, Portugal
 André Guerrin (1966) Traité de béton armé. Dunod, Paris.
 REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
+Traité de béton armé by A Guerrin, Dunod, Paris, 1966. pp 146.
+TS500 (1975) Betonarme Yapilarin Tasarim ve Kurallari. Ankara, Turkey.
 """
 
 # Imports from installed packages
@@ -36,15 +36,17 @@ from ....utils.units import MPa
 # CONSTANTS
 ECONOMIC_MU = 0.25
 """Maximum mu value considered for the economic column design."""
-MAX_NIU = 1.0
+MAX_NIU = 0.9
 """Maximum allowed value of axial load ratio."""
-TAU_C_VECT = np.array([0.4, 0.45, 0.50, 0.55, 0.60]) * MPa
+TAU_C_VECT = np.array([0.6, 0.7, 0.8]) * MPa
 """Vector of allowable shear stresses that carried by the concrete or
-vector of the design shear strength values of concrete."""
-TAU_MAX_VECT = np.array([2.4, 2.7, 3.0, 3.3, 3.6]) * MPa
+vector of the design shear strength values of concrete.
+TS500-1975, Table 5, row 26."""
+TAU_MAX_VECT = np.array([1.6, 1.8, 2.0]) * MPa
 """Vector of allowable shear stresses that can be carried by
-the column section."""
-FCK_CUBE_VECT = np.array([180, 225, 300, 350, 400])
+the column section.
+TS500-1975, Table 5, row 27."""
+FCK_CUBE_VECT = np.array([160, 225, 300])
 """Vector of cubic concrete compressive strength values (kg/cm2)."""
 MODULAR_RATIO = 15
 """Assumed steel to concrete elastic modular ratio for reinf. computation."""
@@ -144,16 +146,41 @@ class Column(ColumnBase):
     """Concrete material."""
 
     @property
+    def fcd_eq(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Seismic design concrete compressive strength (in base units).
+        """
+        return self.concrete.fcd_eq * MPa
+
+    @property
+    def fsyd_eq(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Seismic design steel yield strength (in base units).
+        """
+        return self.steel.fsyd_eq * MPa
+
+    @property
     def rhol_max(self) -> float:
         """
         Returns
         -------
         float
             Maximum longitudinal reinforcement ratio.
+
+        References
+        ----------
+        TS-500 (1975) Betonarme Yapilarin Tasarim ve Kurallari. Ankara, Turkey.
+        Based on Table 13.
         """
-        if self.concrete.fck_cube <= 180:
+        if self.concrete.fck_cube <= 160:
             return 0.03
-        elif 180 < self.concrete.fck_cube <= 225:
+        elif 160 < self.concrete.fck_cube <= 225:
             return 0.04
         elif 225 < self.concrete.fck_cube <= 300:
             return 0.05
@@ -170,10 +197,11 @@ class Column(ColumnBase):
 
         References
         ----------
-        REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal
+        TS-500 (1975) Betonarme Yapilarin Tasarim ve Kurallari. Ankara, Turkey.
+        Based on Table 12.
         """
-        # Assuming the area of core concrete = 80% total area of the section
-        return 0.01 * 0.66
+        lambda_ = self.line.length / min(self.bx / 2, self.by / 2)
+        return np.interp(lambda_, [15, 30], [0.005, 0.008])
 
     def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
@@ -182,7 +210,7 @@ class Column(ColumnBase):
 
         Notes
         -----
-        It is overwritten for eu_cdl design class with following changes:
+        It is overwritten for tr_pre75 design class with following changes:
         - It retrieves design concrete strength from concrete attributes.
         - In case of the rectangular sections, the longer dimension does no
         longer need to be twice of shorter one.
@@ -194,7 +222,7 @@ class Column(ColumnBase):
             self.bx = (min_area**0.5)
             self.by = (min_area**0.5)
         elif self.section == 2:  # Rectangular section
-            if self.orient == "x":  # Longer dimension is bx
+            if self.orient == 'x':  # Longer dimension is bx
                 self.by = self.min_b
                 self.bx = min_area / self.min_b
             elif self.orient == "y":  # Longer dimension is by
@@ -212,7 +240,7 @@ class Column(ColumnBase):
 
         Notes
         -----
-        It is overwritten for eu_cdl design class with following changes:
+        It is overwritten for tr_pre75 design class with following changes:
         - In case of the rectangular sections, the longer dimension does no
         longer need to be twice of shorter one.
         """
@@ -242,14 +270,18 @@ class Column(ColumnBase):
         max_mu_y = 0.0
         max_tau_x = 0.0
         max_tau_y = 0.0
+        # fc to use for calculations
+        fcd_map = {'gravity': self.fcd,
+                   'seismic': self.fcd_eq}
         for force in self.design_forces:
             # Other force related quantities (normalized)
-            niu_1 = abs(force.N1 / (self.Ag * self.fcd))
-            niu_9 = abs(force.N9 / (self.Ag * self.fcd))
-            mu_x1 = abs(force.Mx1 / ((self.bx * self.by**2) * self.fcd))
-            mu_y1 = abs(force.My1 / ((self.by * self.bx**2) * self.fcd))
-            mu_x9 = abs(force.Mx9 / ((self.bx * self.by**2) * self.fcd))
-            mu_y9 = abs(force.My9 / ((self.by * self.bx**2) * self.fcd))
+            fcd = fcd_map.get(force.case)
+            niu_1 = abs(force.N1 / (self.Ag * fcd))
+            niu_9 = abs(force.N9 / (self.Ag * fcd))
+            mu_x1 = abs(force.Mx1 / ((self.bx * self.by**2) * fcd))
+            mu_y1 = abs(force.My1 / ((self.by * self.bx**2) * fcd))
+            mu_x9 = abs(force.Mx9 / ((self.bx * self.by**2) * fcd))
+            mu_y9 = abs(force.My9 / ((self.by * self.bx**2) * fcd))
             tau_x1 = abs(force.Vx1 / (self.by * zx))
             tau_y1 = abs(force.Vy1 / (self.bx * zy))
             tau_x9 = abs(force.Vx9 / (self.by * zx))
@@ -283,13 +315,18 @@ class Column(ColumnBase):
     def compute_required_longitudinal_reinforcement(self) -> None:
         """Computes the required longitudinal reinforcement for design forces.
         """
-        # Design strength of materials
-        fcd = self.fcd
-        fsyd = self.fsyd
+        # fc and fsy to use for calculations
+        fcd_map = {'gravity': self.fcd,
+                   'seismic': self.fcd_eq}
+        fsyd_map = {'gravity': self.fsyd,
+                    'seismic': self.fsyd_eq}
         # Initial longitudinal reinforcement area
         Aslx_req = 0.0
         Asly_req = 0.0
         for force in self.design_forces:
+            # Design strength values considered for this combo
+            fcd = fcd_map.get(force.case)
+            fsyd = fsyd_map.get(force.case)
             # Dimensionless design force quantities
             niu_1 = (-force.N1) / (self.Ag * fcd)
             niu_9 = (-force.N9) / (self.Ag * fcd)
@@ -314,14 +351,17 @@ class Column(ColumnBase):
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces.
         """
-        # Design yield strength
-        fsyd = self.fsyd
+        # fsy to use for calculations
+        fsyd_map = {'gravity': self.fsyd,
+                    'seismic': self.fsyd_eq}
         # Allowable shear stress that can be carried by the beam
         tau_c = np.interp(self.concrete.fck_cube, FCK_CUBE_VECT, TAU_C_VECT)
         # Initial transverse reinforcement area to spacing ratio
         Ashx_sh_req = 0.0  # along X
         Ashy_sh_req = 0.0  # along Y
         for force in self.design_forces:
+            # Design strength values considered for this combo
+            fsyd = fsyd_map.get(force.case)
             # Available longitudinal reinforcement
             Abl_cor = (np.pi * self.dbl_int**2) / 4
             Abl_int = (np.pi * self.dbl_int**2) / 4

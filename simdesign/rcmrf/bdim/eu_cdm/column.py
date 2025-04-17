@@ -115,10 +115,6 @@ class Column(ColumnBase):
         Notes
         -----
         The original code does not enforce checks for axial load ratio.
-
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
         """
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = 0.9 * self.bx

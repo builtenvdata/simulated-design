@@ -444,16 +444,10 @@ class ElasticModelBase(ABC):
 
     def _build_ops_model_seismic(self) -> None:
         """Builds the model for load cases of seismic load combos.
-
-        If the design lateral load factor is above the threshold value (0.01g),
-        use cracked section properties.
         """
         self._init_ops_model()
         self._add_ops_nodes()
-        if self.beta > 0.01:
-            self._add_ops_beam_column_elements(True)
-        else:
-            self._add_ops_beam_column_elements()
+        self._add_ops_beam_column_elements(True)
         self._add_ops_sp_constraints()
         self._add_ops_mp_constraints()
 
@@ -651,7 +645,7 @@ class ElasticModelBase(ABC):
                     # Append the combined forces
                     beam.design_forces.append(forces)
                 # Add the forces from seismic loading
-                elif combo_type == 'seismic':
+                elif combo_type == 'seismic' and self.beta > 0.0:
                     # Add the forces from seismic loading
                     ecc_forces = []  # forces due to eccentric loading
                     gfactor = combo.masses['G']  # permanent loads factor
@@ -678,10 +672,6 @@ class ElasticModelBase(ABC):
                         forces_.case = combo_type
                         # Append the combined forces
                         beam.design_forces.append(forces_)
-                # Set the loading case (type)
-                forces.case = combo_type
-                # Append the combined forces
-                beam.design_forces.append(forces)
 
         # Start combining forces for COLUMNS
         for column in self.columns:
@@ -716,7 +706,7 @@ class ElasticModelBase(ABC):
                     # Append the combined forces
                     column.design_forces.append(forces)
                 # Add the forces from seismic loading
-                elif combo_type == 'seismic':
+                elif combo_type == 'seismic' and self.beta > 0.0:
                     # Add the forces from seismic loading
                     ecc_forces = []  # forces due to eccentric loading
                     gfactor = combo.masses['G']  # permanent loads factor

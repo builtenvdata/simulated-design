@@ -555,7 +555,7 @@ class BeamBase(ABC):
         float
             Moment of inertia around y-axis of the beam.
         """
-        return 0.5 * self.Iy
+        return self.Iy
 
     @property
     def Ix_eff(self) -> float:
@@ -565,7 +565,7 @@ class BeamBase(ABC):
         float
             Moment of inertia around x-axis of the beam.
         """
-        return 0.5 * self.Ix
+        return self.Ix
 
     @property
     def J(self) -> float:

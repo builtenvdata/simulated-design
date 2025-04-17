@@ -14,8 +14,7 @@ RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
 Decreto-Lei N.° 41658, Lisbon, Portugal
 André Guerrin (1966) Traité de béton armé. Dunod, Paris.
 REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
+Traité de béton armé by A Guerrin, Dunod, Paris, 1966. pp 146.
 """
 
 # Imports from installed packages

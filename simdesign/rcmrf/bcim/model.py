@@ -21,6 +21,9 @@ from ..bdim.baselib.building import TaxonomyData
 # Imports from geometry library
 from ..geometry import StandardFrame
 
+# Imports from utils library
+from ...utils.misc import make_dir
+
 
 class Archetypes:
     """Controls the building archetypes data loaded from layouts file.
@@ -697,4 +700,8 @@ class BCIM:
                  'design_class', 'staircase_span_length_y']
         data = {name: getattr(self, name) for name in names}
         data = pd.DataFrame(data)
+        # Create the output directory if needed
+        path = Path(path)
+        if not Path.exists(path.parent):
+            make_dir(path.parent)
         data.to_csv(path, index=False, float_format='%g')

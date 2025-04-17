@@ -31,7 +31,7 @@
   "concrete":
     {
       "grade": ["C14", "C16", "C18", "C20", "C25"],
-      "probability": [0.3, 0.3, 0.30, 0.075, 0.025]
+      "probability": [0.35, 0.30, 0.20, 0.10, 0.05]
     },
   "ground_storey_height":
     {
@@ -52,7 +52,7 @@
   "square_column_prob": 0.05,
   "layout": "all",
   "beta": 0.064,
-  "num_storeys": 5,
+  "num_storeys": 4,
   "design_class": "tr_7599",
   "seed": 1994,
   "sample_size": 150

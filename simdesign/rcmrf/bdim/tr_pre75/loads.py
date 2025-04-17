@@ -1,11 +1,9 @@
 """
 Pydantic models for defining loads in tr_pre75 buildings.
 """
-
 # Imports from installed packages
-import numpy as np
 from pathlib import Path
-from typing import Tuple, List, Type
+from typing import List, Type
 
 # Imports from bdim base library
 from ..baselib.loads import VariableBase, PermanentBase
@@ -115,6 +113,17 @@ class Loads(LoadsBase):
         Path to the file containing loads data.
     _data_model : LoadsData
         Pydantic model used for loading data format.
+
+    Notes
+    -----
+    - ABYYHY-1968, Equation (6) is considered for seismc force distributions.
+    The default method `get_seismic_loads` implements the same equation.
+    - ABYYHY-1961 could be used as well, force distribution is uniform. It is
+    the same as the one in `eu_cdl`. However, beta coefficient depends on
+    the building height. beta = C0*n1*n2
+        - n1: {0.8, 0.9, 1.0} (depends on soil)
+        - n2: {1.0, 0.6} (depends on eq zone)
+        - C0: {0.06, 0.07, 0.08, 0.09, 0.1} for heights: {16, 22, 28, 34, 40} m
     """
     variable: Variable
     """Object representing variable (live) loads."""
@@ -131,34 +140,3 @@ class Loads(LoadsBase):
         """
         self._data_model = LoadsData
         super().__init__()
-
-    def get_seismic_loads(self, **kwargs: float | np.ndarray
-                          ) -> Tuple[np.float64, np.ndarray]:
-        """Calculate and return seismic loads (E).
-
-        Parameters
-        ----------
-        **kwargs : dict[float | np.ndarray]
-            Additional keywoard arguments.
-            beta : float
-                Design lateral load factor (in g).
-            weights : np.ndarray
-                Array of weights.
-
-        Returns
-        -------
-        Tuple[np.float64, np.ndarray]
-            Base shear and seismic forces acting at each mass.
-
-        Note
-        ----
-        **kwargs are used instead of keyword arguments, in order
-        to avoid overriting analysis.ElasticModel.run_seismic_load_cases
-        method.
-        """
-        beta = kwargs['beta']
-        weights = kwargs['weights']
-        base_shear = np.sum(beta * weights)
-        forces = base_shear * (weights) / np.sum(weights)
-
-        return base_shear, forces

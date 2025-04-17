@@ -19,6 +19,7 @@ de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
 # Imports from installed packages
 from math import ceil
 import numpy as np
+from typing import Literal
 
 # Imports from the design class (eu_cdh) library
 from .materials import Steel, Concrete
@@ -43,28 +44,30 @@ class Beam(BeamBase):
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
-    ag: float
-    """Peak ground acceleration value considered in design."""
     MIN_B_EB: float = 0.25 * m
     """The default minimum breadth (width) of emergent beams."""
     # NOTE: EC8 5.5.1.2.1(1)P says minimum width is 200mm.
     # TODO: Max aspect ratio based on EN 1992-1-1:2004 5.9(3) eqn 5.40a?
 
     @property
-    def rhol_min_tens(self) -> float:
+    def Iy_eff(self) -> float:
         """
         Returns
         -------
         float
-            Minimum longitudinal reinforcement ratio in tension zone
+            Moment of inertia around y-axis of the beam.
         """
-        fctm = (0.3 * (self.fck / MPa) ** (2 / 3)) * MPa
-        if self.ag > 0.05:  # Moderate to high seismic loads
-            # EN 1998-1:2004, Eqn. 5.12
-            return 0.50 * (fctm / self.fsyk)
-        else:  # Low to negligible seismic loads
-            # EN 1992-1-1:2004, Eqn. 9.1N
-            return max(0.26 * (fctm / self.fsyk), 0.0013)
+        return 0.5 * self.Iy
+
+    @property
+    def Ix_eff(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Moment of inertia around x-axis of the beam.
+        """
+        return 0.5 * self.Ix
 
     @property
     def rhol_max_tens(self) -> float:
@@ -87,6 +90,21 @@ class Beam(BeamBase):
         """
         # EN 1992-1-1:2004, 9.2.2(5), Eqn. 9.5N
         return 0.08 * ((self.fck / MPa) ** 0.5) / (self.fsyk / MPa)
+
+    def get_rhol_min_tens(self, case: Literal['seismic', 'gravity']) -> float:
+        """
+        Returns
+        -------
+        float
+            Minimum longitudinal reinforcement ratio in tension zone
+        """
+        fctm = (0.3 * (self.fck / MPa) ** (2 / 3)) * MPa
+        if case == 'seismic':
+            # EN 1998-1:2004, Eqn. 5.12
+            return 0.50 * (fctm / self.fsyk)
+        else:
+            # EN 1992-1-1:2004, Eqn. 9.1N
+            return max(0.26 * (fctm / self.fsyk), 0.0013)
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
         """Does preliminary design of beam.
@@ -232,15 +250,18 @@ class Beam(BeamBase):
         # Dimensionless limit values
         mu_lim = 0.37  # mu limit defined in REBAP book
         omega_lim = 0.41  # omega limit defined in REBAP book
-
+        combo_types = [forces.case for forces in self.design_forces]
+        if "seismic" in combo_types:
+            rhol_min_tens = self.get_rhol_min_tens("seismic")
+        else:
+            rhol_min_tens = self.get_rhol_min_tens("gravity")
         # Design forces
         moment_pos = np.array([self.envelope_forces.M1_pos,
                                self.envelope_forces.M5_pos,
                                self.envelope_forces.M9_pos])
-        moment_neg = np.array([self.envelope_forces.M1_neg,
-                               self.envelope_forces.M5_neg,
-                               self.envelope_forces.M9_neg])
-        moment_neg = np.abs(moment_neg)
+        moment_neg = np.array([abs(self.envelope_forces.M1_neg),
+                               abs(self.envelope_forces.M5_neg),
+                               abs(self.envelope_forces.M9_neg)])
         # Reinforcement computation for positive moment envelope (+)
         # REBAP pp. 33
         mu_pos = moment_pos / (self.fcd * self.b * d**2)
@@ -252,7 +273,7 @@ class Beam(BeamBase):
         omega_pos = omega_lim + omega_pos_prime
         # REBAP pp. 35, eq 10
         omega_pos[mu_pos <= mu_lim] = (
-            mu_pos[mu_pos <= mu_lim] * (1 + 0.75 * mu_pos[mu_pos <= mu_lim]))
+            mu_pos[mu_pos <= mu_lim] * (1 + 0.75*mu_pos[mu_pos <= mu_lim]))
         # Reinforcement computation for negative moment envelope (-)
         # REBAP pp. 33
         mu_neg = moment_neg / (self.fcd * self.b * d**2)
@@ -264,7 +285,7 @@ class Beam(BeamBase):
         omega_neg = omega_lim + omega_neg_prime
         # REBAP pp. 35, eq 10
         omega_neg[mu_neg <= mu_lim] = (
-            mu_neg[mu_neg <= mu_lim] * (1 + 0.75 * mu_neg[mu_neg <= mu_lim]))
+            mu_neg[mu_neg <= mu_lim] * (1 + 0.75*mu_neg[mu_neg <= mu_lim]))
         # Prime is used for compression reinforcement.
         # It can be both at top and bottom due to seismic loading
         omega_pos = np.maximum(omega_pos, omega_neg_prime)
@@ -273,17 +294,17 @@ class Beam(BeamBase):
         Asl_top = omega_neg * self.b * d * self.fcd / self.fsyd
         Asl_bot = omega_pos * self.b * d * self.fcd / self.fsyd
         # Check against minimum longitudinal reinforcement area
-        Asl_min_tens = self.rhol_min_tens * self.b * d
+        Asl_min_tens = rhol_min_tens * self.b * d
         Asl_top = np.maximum(Asl_top, Asl_min_tens)
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
         # EC 8-1 / 5.4.3.1.2 (4a) Detailing for local ductility
         # Compression to tension reinf. ratio must be greater than 0.5
-        mask1 = Asl_top / Asl_bot < 0.5
+        mask1 = Asl_top/Asl_bot < 0.5
         if np.any(mask1):
-            Asl_top[mask1] = 0.5 * Asl_bot[mask1]
-        mask1 = Asl_bot / Asl_top < 0.5
+            Asl_top[mask1] = 0.5*Asl_bot[mask1]
+        mask1 = Asl_bot/Asl_top < 0.5
         if np.any(mask1):
-            Asl_bot[mask1] = 0.5 * Asl_top[mask1]
+            Asl_bot[mask1] = 0.5*Asl_top[mask1]
         # Save required longitudinal steel area at top and bottom
         self.Asl_top_req = Asl_top
         self.Asl_bot_req = Asl_bot

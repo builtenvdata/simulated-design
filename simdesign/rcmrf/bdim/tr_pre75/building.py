@@ -27,8 +27,8 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: tr_pre75."""
-
+    """Building object for design class: tr_pre75.
+    """
     beams: List[Beam]
     """List of beam instances."""
     columns: List[Column]
@@ -57,7 +57,7 @@ class Building(BuildingBase):
     SlabClass: Type[Slab]
     StairsClass: Type[Stairs]
     ElasticModelClass: Type[ElasticModel]
-    COLUMN_UNIFORMIZATION_STEP = None
+    COLUMN_UNIFORMIZATION_STEP = 2
     """Step size considered for section uniformization in column. For
     example, if equals to 2, the same column section might be varied at
     every two storeys from bottom to top. If None, a constant section is
@@ -94,8 +94,6 @@ class Building(BuildingBase):
         super().__init__(taxonomy=taxonomy)
         # Set the maximum column dimensions for full design routine
         self._set_maximum_column_dimensions()
-        # Define ag values in beams
-        self._assign_ag_to_beams()
 
     def _set_maximum_column_dimensions(self) -> None:
         """Sets the maximum column dimensions based on number of storeys
@@ -109,21 +107,21 @@ class Building(BuildingBase):
         """
         for column in self.columns:
             if self.num_storeys <= 3:
-                if self.beta <= 0.20:
+                if self.beta < 0.20:
                     column.MAX_B_SQUARE = 0.45 * m
                     column.MAX_B_RECTANGLE = 0.70 * m
                 else:
                     column.MAX_B_SQUARE = 0.60 * m
                     column.MAX_B_RECTANGLE = 0.80 * m
             elif self.num_storeys <= 6:
-                if self.beta <= 0.20:
+                if self.beta < 0.20:
                     column.MAX_B_SQUARE = 0.60 * m
                     column.MAX_B_RECTANGLE = 1.00 * m
                 else:
                     column.MAX_B_SQUARE = 0.80 * m
                     column.MAX_B_RECTANGLE = 1.20 * m
             elif self.num_storeys <= 9:
-                if self.beta <= 0.20:
+                if self.beta < 0.20:
                     column.MAX_B_SQUARE = 0.80 * m
                     column.MAX_B_RECTANGLE = 1.20 * m
                 else:
@@ -136,23 +134,16 @@ class Building(BuildingBase):
 
         Notes
         -----
-        It is overwritten for tr_pre75 design class with following changes:
+        It is overwritten for eu_cdm design class with following changes:
         - The method is modified such that steel and concrete materials
         is not updated simultaneously in the same iteration. Instead,
         they were updated following a specific order based on the current
         concrete or steel material.
         """
-        if self.steel.grade == "S220":
-            self.steel = self.next_steel
-        elif self.concrete.grade == "C10":
-            self.concrete = self.next_concrete
-        elif self.concrete.grade == "C14":
-            self.concrete = self.next_concrete
-        elif self.concrete.grade == "C16":
-            self.concrete = self.next_concrete
 
-    def _assign_ag_to_beams(self):
-        """Defines ag values in beams, required for material properties
-        in case of seismic loading."""
-        for beam in self.beams:
-            beam.ag = self.beta
+        if self.concrete.grade == 'B160':
+            self.concrete = self.next_concrete
+        elif self.concrete.grade == 'B225':
+            self.concrete = self.next_concrete
+        elif self.steel.grade == 'S220':
+            self.steel = self.next_steel

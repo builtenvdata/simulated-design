@@ -52,6 +52,26 @@ class Column(ColumnBase):
     """Concrete material."""
 
     @property
+    def Ix_eff(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Effective column moment of inertia around x-axis.
+        """
+        return 0.5 * self.Ix
+
+    @property
+    def Iy_eff(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Effective column moment of inertia around y-axis.
+        """
+        return 0.5 * self.Iy
+
+    @property
     def rhol_max(self) -> float:
         """
         Returns

@@ -53,7 +53,7 @@
   "layout": "all",
   "beta": 0.09,
   "beta_v": 0.55,
-  "num_storeys": 5,
+  "num_storeys": 4,
   "design_class": "tr_post18_dcm",
   "seed": 1994,
   "sample_size": 150

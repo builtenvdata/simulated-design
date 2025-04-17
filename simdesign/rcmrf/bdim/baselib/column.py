@@ -559,7 +559,7 @@ class ColumnBase(ABC):
         float
             Effective column moment of inertia around x-axis.
         """
-        return 0.5 * self.Ix
+        return self.Ix
 
     @property
     def Iy_eff(self) -> float:
@@ -569,7 +569,7 @@ class ColumnBase(ABC):
         float
             Effective column moment of inertia around y-axis.
         """
-        return 0.5 * self.Iy
+        return self.Iy
 
     @property
     def H(self) -> float:

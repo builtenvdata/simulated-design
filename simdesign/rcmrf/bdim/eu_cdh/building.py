@@ -104,8 +104,6 @@ class Building(BuildingBase):
         super().__init__(taxonomy=taxonomy)
         # Set the maximum column dimensions for full design routine
         self._set_maximum_column_dimensions()
-        # Define ag values in beams
-        self._assign_ag_to_beams()
 
     def _set_maximum_column_dimensions(self) -> None:
         """Sets the maximum column dimensions based on number of storeys.
@@ -143,9 +141,3 @@ class Building(BuildingBase):
             self.concrete = self.next_concrete
         elif self.next_steel:
             self.steel = self.next_steel
-
-    def _assign_ag_to_beams(self) -> None:
-        """Defines ag values in beams, required for material properties
-        in case of seismic loading."""
-        for beam in self.beams:
-            beam.ag = self.beta

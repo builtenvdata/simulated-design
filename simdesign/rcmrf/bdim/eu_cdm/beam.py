@@ -182,10 +182,6 @@ class Beam(BeamBase):
 
     def verify_section_adequacy(self) -> None:
         """Verifies the beam section dimensions for design forces.
-
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
         """
         # Allowable shear stress that can be carried by the beam
         tau_max = np.interp(self.concrete.fck,
@@ -244,10 +240,9 @@ class Beam(BeamBase):
         moment_pos = np.array([self.envelope_forces.M1_pos,
                                self.envelope_forces.M5_pos,
                                self.envelope_forces.M9_pos])
-        moment_neg = np.array([self.envelope_forces.M1_neg,
-                               self.envelope_forces.M5_neg,
-                               self.envelope_forces.M9_neg])
-        moment_neg = np.abs(moment_neg)
+        moment_neg = np.array([abs(self.envelope_forces.M1_neg),
+                               abs(self.envelope_forces.M5_neg),
+                               abs(self.envelope_forces.M9_neg)])
         # Reinforcement area computation for positive moment envelope (+)
         # REBAP pp. 33
         mu_pos = moment_pos / (self.fcd * self.b * d**2)

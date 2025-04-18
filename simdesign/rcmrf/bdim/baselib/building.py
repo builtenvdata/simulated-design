@@ -2273,6 +2273,11 @@ class BuildingBase(ABC):
         while not self.ok and counter <= self.ITER_MAX:  # Iteration loop
             if counter == 0:  # Preliminary design stage
                 self._predesign()  # Make a preliminary design
+            elif self.dim_change:  # Try increasing beam and column dimensions
+                self._increase_beam_dimensions()  # Increase beams
+                self._uniformize_beam_geometry()  # Uniformize beams
+                self._increase_column_dimensions()  # Increase columns
+                self._uniformize_columns_geometry()  # Uniformize columns
             elif self.beams_fail:  # If beams fail to pass design checks
                 if self.dim_change_beam:  # Try increasing beam dimensions
                     self._increase_beam_dimensions()  # Increase beams

@@ -3,7 +3,7 @@
     "variable": {
         "floor": 2.0,
         "staircase": 3.5,
-        "roof": 0.5
+        "roof": 1.5
     },
     "permanent": {
         "floor": 1.5,

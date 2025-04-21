@@ -31,7 +31,7 @@
   "concrete":
     {
       "grade": ["B160", "B225", "B300"],
-      "probability": [0.60, 0.30, 0.10]
+      "probability": [0.80, 0.15, 0.05]
     },
   "ground_storey_height":
     {

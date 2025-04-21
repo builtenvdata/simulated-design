@@ -1,9 +1,9 @@
 {
     "concrete" :
     [   
-        {"grade": "B160", "fck": 14.0, "fck_cube": 160, "fcd": 7.0, "fcd_eq": 10.5, "fcm": 10},
-        {"grade": "B225", "fck": 19.5, "fck_cube": 225, "fcd": 9.0, "fcd_eq": 13.5, "fcm": 20},
-        {"grade": "B300", "fck": 24.0, "fck_cube": 300, "fcd": 11.0, "fcd_eq": 16.5, "fcm": 30}
+        {"grade": "B160", "fck": 14.0, "fck_cube": 160, "fcd": 7.0, "fcd_eq": 10.5, "fcm": 9},
+        {"grade": "B225", "fck": 19.5, "fck_cube": 225, "fcd": 9.0, "fcd_eq": 13.5, "fcm": 15},
+        {"grade": "B300", "fck": 24.0, "fck_cube": 300, "fcd": 11.0, "fcd_eq": 16.5, "fcm": 20}
     ],
     "steel" :
     [

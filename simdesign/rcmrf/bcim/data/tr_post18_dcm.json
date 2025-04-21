@@ -26,7 +26,7 @@
   "steel":
     {
       "grade": ["B420C", "B500C"],
-      "probability": [0.80, 0.20]
+      "probability": [0.90, 0.10]
     },
   "concrete":
     {

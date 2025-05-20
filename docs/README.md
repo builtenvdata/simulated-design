@@ -102,7 +102,7 @@ Contributions are welcome! If you’d like to contribute, follow these steps:
 8. Open a pull request.
 
 ## References
-Ozsarac V., Pereira N., Mohamed H., Romão X., and O'Reilly G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. *Manuscript submitted for publication*.
+Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics. https://doi.org/10.1002/eqe.4378
 
 ## License
 This project is licensed under the AGPL-3.0 license. See the LICENSE file for details.

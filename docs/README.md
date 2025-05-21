@@ -102,6 +102,8 @@ Contributions are welcome! If you’d like to contribute, follow these steps:
 8. Open a pull request.
 
 ## References
+If you use the SimDesign tool, please be sure to cite the reference publication:
+
 Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics. https://doi.org/10.1002/eqe.4378
 
 ## License

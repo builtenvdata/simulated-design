@@ -106,5 +106,7 @@ If you use the SimDesign tool, please be sure to cite the reference publication:
 
 Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics. https://doi.org/10.1002/eqe.4378
 
+Hasanoğlu, S., Ozsarac, V., & O’Reilly, G. J. (2025). A model for the simulated design of Turkish RC frame buildings in seismic vulnerability analysis. Bulletin of Earthquake Engineering. https://doi.org/10.1007/s10518-025-02301-y
+
 ## License
 This project is licensed under the AGPL-3.0 license. See the LICENSE file for details.

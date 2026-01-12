@@ -81,7 +81,7 @@ class SlabTypology(BaseModel):
     1. SS2 refers to solid two-way cast-in-situ slabs.
     2. SS1 refers to solid one-way cast-in-situ slabs.
     3. HS refers to composite slabs with pre-fabricated joists and ceramic
-    blocks.
+       blocks.
     """
     ss1_prob_given_ss1_or_hs: float
     """Probability of having SS1 type slab given that the slab type

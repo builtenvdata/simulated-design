@@ -1,56 +1,61 @@
 # Built Environmenta Data (BED) - SimDesign Framework
 
 [![Documentation](https://img.shields.io/badge/docs-builtenvdata.github.io-blue)](https://builtenvdata.github.io/simulated-design/)
+[![PyPI](https://img.shields.io/pypi/v/simdesign)](https://pypi.org/project/simdesign/)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31210/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
 [![DOI](https://img.shields.io/badge/DOI-10.1002%2Feqe.4378-blue)](https://doi.org/10.1002/eqe.4378)
 
 A Python package for the modeling the seismic vulnerability of buildings using the simulated design. Currently, it focuses on Reinforced Concrete (RC) Moment Resisting Frames (MRFs), but the workflow is adaptable to other structural systems. To ensure modularity and scalability for future extensions, the **rcmrf** framework is integrated within the broader **simdesign** library. The framework can accommodate the design of buildings using both historical and modern seismic design procedures and regulations, while capturing building-to-building variability. It generates Building Class Information Models (BCIM), Building Design Information Models (BDIM), and Building Nonlinear Structural Models (BNSM) that are analyzable in OpenSees.
-![Service](./source/_static/images/Workflow.svg)
+![Service](https://raw.githubusercontent.com/builtenvdata/simulated-design/refs/heads/main/docs/source/_static/images/Workflow.svg)
+
 ## Installation
 
-Follow the steps below to install the `simdesign` package:
+Follow the steps below to install the ``simdesign`` package.
 
-### 1. Clone the Repository
-   Open your terminal and run:
-   ```bash
-   git clone https://github.com/builtenvdata/simulated-design.git
-   cd simulated-design
-   ```
+**Note:** Python 3.12 is required. Ensure that correct version is installed:
+```bash
+python --version  # should be 3.12.x
+```
 
-### 2. Set Up a Virtual Environment (Recommended)
-   Create a virtual environment to manage dependencies:
-   ```bash
-   python -m venv .venv
-   ```
-   Activate the virtual environment:
-   ```bash
-   .venv\Scripts\activate     # On Windows
-   source .venv/bin/activate  # Linux / macOS
-   ```
+### Create a Virtual Environment (Recommended)
 
-### 3. Install Dependencies
-   Install the dependencies using requirements file:
+Create a virtual environment to manage dependencies:
+```bash
+python -m venv .venv
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+Activate the virtual environment:
+```bash
+.venv\Scripts\activate     # On Windows
+source .venv/bin/activate  # Linux / macOS
+```
 
-**Note**: *Python 3.12* is required. Ensure that correct version is installed:
-   ```bash
-   python --version  # should be 3.12.x
-   ```
+### Option 1: Install via PyPI 
 
-### 4. Install the Package
-   Install the `simdesign` package:
-   ```bash
-   pip install .
-   ```
+Open the terminal and simply run:
+```bash
+pip install simdesign
+```
 
-   Alternatively, to install in editable mode (useful for development), run:
-   ```bash
-   pip install -e .
-   ```
+### Option 2: Install from Source
+
+Clone the repository:
+```bash
+git clone https://github.com/builtenvdata/simulated-design.git
+cd simulated-design
+```
+
+Install the `simdesign` package:
+```bash
+pip install .
+```
+
+Alternatively, to install in editable mode (useful for development), run:
+```bash
+pip install -e .
+```
+
 
 ## Usage
 

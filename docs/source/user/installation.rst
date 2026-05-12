@@ -3,19 +3,14 @@ Installation
 
 Follow the steps below to install the ``simdesign`` package.
 
+.. note:: *Python 3.12* is required. Ensure that correct version is installed.
+   
 
-**1. Clone the repository**
+   .. code-block:: console
 
-Open your terminal and run:
+      python --version  # should be 3.12.x
 
-.. code-block:: console
-
-   git clone https://github.com/builtenvdata/simulated-design.git
-   cd simulated-design
-
-
-
-**2. Set up a virtual environment (recommended)**
+**Create a Virtual Environment (Recommended)**
 
 Create a virtual environment to manage dependencies:
 
@@ -31,17 +26,28 @@ Activate the virtual environment:
    .venv\Scripts\activate     # On Windows
    source .venv/bin/activate  # Linux / macOS
 
+**Option 1: Install via PyPI**
 
+Open the terminal and simply run:
 
-**3. Install dependencies**
+.. code-block:: console
+
+   pip install simdesign
+
+**Option 2: Install from Source**
+
+Clone the repository:
+
+.. code-block:: console
+
+   git clone https://github.com/builtenvdata/simulated-design.git
+   cd simulated-design
 
 Install the dependencies using requirements file:
 
 .. code-block:: console
 
    pip install -r requirements.txt
-
-**4. Install the Package**
 
 Install the ``simdesign`` package:
 
@@ -55,11 +61,3 @@ Alternatively, to install in editable mode (useful for development):
 .. code-block:: console
 
    pip install -e .
-
-
-.. note:: *Python 3.12* is required. Ensure that correct version is installed.
-   
-
-   .. code-block:: console
-
-      python --version  # should be 3.12.x

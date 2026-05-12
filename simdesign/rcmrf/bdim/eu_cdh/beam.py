@@ -1,23 +1,7 @@
+"""This module provides the beam class implementation for the ``eu_cdh``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdh beams.
-
-Notes
------
-Design based on limit state design.
-Material qualities are higher compared CDM.
-
-References
-----------
-CEN (2004) Eurocode 2: Design of concrete structures - Part 1-1:
-General rules and rules for buildings. Brussels, Belgium
-CEN (2004) Eurocode 8: Design of structures for earthquake resistance - Part 1:
-General rules, seismic actions and rules for buildings. Brussels, Belgium
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-"""
-
 # Imports from installed packages
-from math import ceil
 import numpy as np
 from typing import Literal
 
@@ -28,7 +12,7 @@ from .materials import Steel, Concrete
 from ..baselib.beam import BeamBase
 
 # Imports from units library
-from ....utils.units import kN, MPa, m
+from ....utils.units import MPa, m
 
 # Constants
 ECONOMIC_MU_EB: float = 0.25
@@ -38,16 +22,50 @@ ECONOMIC_MU_WB: float = 0.25
 
 
 class Beam(BeamBase):
-    """Beam object for design class: eu_cdh.
+    """Beam implementation for design class ``eu_cdh``.
+
+    This class extends ``BeamBase`` by narrowing the attribute types
+    and overriding design methods per Eurocodes 2 and 8.
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdh.materials.Steel
+        Steel material assigned to the beam.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdh.materials.Concrete
+        Concrete material assigned to the beam.
+    MIN_B_EB: float : float
+        The default minimum breadth (width) of emergent beams.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.beam.BeamBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    Comité Européen de Normalisation, CEN (2004). Eurocode 2: Design of
+    Concrete Structures — Part 1-1: General Rules and Rules for Buildings.
+    European Committee for Standardization, Brussels, Belgium.
+
+    Comité Européen de Normalisation, CEN (2004). Eurocode 8: Design of
+    Structures for Earthquake Resistance — Part 1: General Rules,
+    Seismic Actions and Rules for Buildings.
+    European Committee for Standardization, Brussels, Belgium.
+
+    d'Arga e Lima, J., Monteiro, V., Mun, M. (2005).
+    Betão armado: esforços normais e de flexão: REBAP-83.
+    Laboratório Nacional de Engenharia Civil, Lisboa.
+
+    Notes
+    -----
+    - Max aspect ratio indicated in EN 1992-1-1:2004 5.9(3) eqn. 5.40a is
+      ignored for now.
+    - EC8 5.5.1.2.1(1)P states the minimum width as 200mm, smaller than the
+      default 250 mm.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
     MIN_B_EB: float = 0.25 * m
-    """The default minimum breadth (width) of emergent beams."""
-    # NOTE: EC8 5.5.1.2.1(1)P says minimum width is 200mm.
-    # TODO: Max aspect ratio based on EN 1992-1-1:2004 5.9(3) eqn 5.40a?
 
     @property
     def Iy_eff(self) -> float:
@@ -57,17 +75,17 @@ class Beam(BeamBase):
         float
             Moment of inertia around y-axis of the beam.
         """
-        return 0.5 * self.Iy
+        return 0.5 * self.Iy  # EN 1998-1:2004 4.3.1(7)
 
     @property
-    def Ix_eff(self) -> float:
+    def Iz_eff(self) -> float:
         """
         Returns
         -------
         float
-            Moment of inertia around x-axis of the beam.
+            Moment of inertia around z-axis of the beam.
         """
-        return 0.5 * self.Ix
+        return 0.5 * self.Iz  # EN 1998-1:2004 4.3.1(7)
 
     @property
     def rhol_max_tens(self) -> float:
@@ -75,7 +93,8 @@ class Beam(BeamBase):
         Returns
         -------
         float
-            Maximum longitudinal reinforcement ratio in tens. and comp. zones
+            Maximum longitudinal reinforcement ratio in tension
+            and compression zones.
         """
         # EN 1992-1-1:2004, 9.2.1.1(3)
         return 0.04
@@ -86,7 +105,7 @@ class Beam(BeamBase):
         Returns
         -------
         float
-            Minimum transverse reinforcement ratio
+            Minimum transverse reinforcement ratio.
         """
         # EN 1992-1-1:2004, 9.2.2(5), Eqn. 9.5N
         return 0.08 * ((self.fck / MPa) ** 0.5) / (self.fsyk / MPa)
@@ -96,7 +115,7 @@ class Beam(BeamBase):
         Returns
         -------
         float
-            Minimum longitudinal reinforcement ratio in tension zone
+            Minimum longitudinal reinforcement ratio in tension zone.
         """
         fctm = (0.3 * (self.fck / MPa) ** (2 / 3)) * MPa
         if case == 'seismic':
@@ -106,86 +125,15 @@ class Beam(BeamBase):
             # EN 1992-1-1:2004, Eqn. 9.1N
             return max(0.26 * (fctm / self.fsyk), 0.0013)
 
-    def predesign_section_dimensions(self, slab_h: float) -> None:
-        """Does preliminary design of beam.
-
-        This method makes initial guess for section dimensions.
-
-        Parameters
-        ----------
-        slab_h : float
-            Slab thickness.
-
-        Notes
-        -----
-        It is overwritten for eu_cdh design class with following changes:
-        - Allows different constants.
-        - It retrieves design concrete strength from concrete attributes.
-        """
-        # Unit conversions
-        Md = self.pre_Md * kN * m
-        # Emergent beam cases
-        bool1 = self.typology == 2
-        bool2 = self.exterior
-        bool3 = self.stairs_wg != 0.0
-        if bool1 or bool2 or bool3:
-            # Set section breadth to minimum
-            self.b = self.min_b
-            # Compute height for economic section, assuming d = 0.1h
-            mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd * self.b))**0.5) / 0.9
-            # Compute height to control deformations
-            if self.stairs_wg != 0.0 or sum(self.slab_wg) != 0.0:
-                # The beam carries a slab (stairs or floor slab)
-                def_h = self.L / 12
-            else:  # The beam is secondary gravity beam
-                def_h = self.L / (0.9 * 18)
-            # Get the maximum slab computed from all
-            self.h = max(self.min_h, slab_h, mu_h, def_h)
-            # Iterate for aspect ratio consideration
-            while self.h / self.b > self.MAX_ASPECT_RATIO_EB:
-                # Increase breadth
-                self.b += self.B_INCR_EB
-                # Compute height for economic section, assuming d = 0.1h
-                mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd * self.b))**0.5) / 0.9
-                # Compute height to control deformations
-                if self.stairs_wg != 0.0 or sum(self.slab_wg) != 0.0:
-                    # The beam carries a slab (stairs or floor slab)
-                    def_h = self.L / 12
-                else:  # The beam is secondary gravity beam
-                    def_h = self.L / (0.9 * 18)
-                # Get the maximum slab computed from all
-                self.h = max(self.min_h, slab_h, mu_h, def_h)
-        # Wide beam cases
-        else:
-            # Set section height (slab thickness or minimum)
-            self.h = max(slab_h, self.min_h)
-            # Section widths
-            if sum(self.slab_wg) == 0.0:  # Secondary gravity beams
-                self.b = self.min_b  # Use minimum dimension
-            else:  # Primary gravity beams
-                # Set width based on economic mu value and minimum allowed
-                self.b = max(
-                    self.min_b,
-                    (Md / (ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2)),
-                )
-                while (self.b > self.max_b
-                       or self.b / self.h > self.MAX_ASPECT_RATIO_WB):
-                    self.h += self.H_INCR_WB
-                    self.b = Md / (
-                        ECONOMIC_MU_WB * self.fcd * (0.9 * self.h) ** 2
-                    )
-        # Round
-        self.h = ceil(20 * self.h) / 20
-        self.b = ceil(20 * self.b) / 20
-
     def verify_section_adequacy(self) -> None:
-        """Verifies the beam section dimensions for design forces.
+        """Verify the beam section dimensions for design forces.
         """
-        # mu values (dimensionless) for economic section (eng. practice)
-        if self.typology == 1:
-            mu_economic = ECONOMIC_MU_WB
-        elif self.typology == 2:
-            mu_economic = ECONOMIC_MU_EB
+        # Dimensionless mu values for economic section from REBAP book
+        # This can be considered as an engineering practice
+        if self.typology == 1:  # Wide Beam
+            mu_max = ECONOMIC_MU_WB
+        elif self.typology == 2:  # Emergent Beam
+            mu_max = ECONOMIC_MU_EB
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h
@@ -223,26 +171,29 @@ class Beam(BeamBase):
         )
         # Verify the adequacy of the section dimensions
         mu = Mmax / (self.fcd * self.b * d**2)  # for max. bending moment
-        if mu < mu_economic and Vmax < Vrd_max:
+        if mu < mu_max and Vmax < Vrd_max:
             self.ok = True  # Ok
         else:
             self.ok = False  # Not ok
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
         Notes
         -----
-        1. Top reinforcement is calculated as the maximum of required
-        reinforcement in tension for maximum of negative bending moments
-        and required reinforcement in compression for maximum of positive
-        bending moments.
-        2. Bottom reinforcement is calculated as the maximum of required
-        reinforcement in compression for maximum of negative bending moments
-        and required reinforcement in tension for maximum of positive
-        bending moments.
-        3. Required reinforcement is computed at different sections:
-        start, mid, end.
+        - Top reinforcement is calculated as the maximum of required
+          reinforcement in tension for maximum of negative bending moments
+          and required reinforcement in compression for maximum of positive
+          bending moments.
+
+        - Bottom reinforcement is calculated as the maximum of required
+          reinforcement in compression for maximum of negative bending moments
+          and required reinforcement in tension for maximum of positive
+          bending moments.
+
+        - Required reinforcement is computed at three different sections:
+          start, middle, end.rcement is computed at different sections:
+          start, mid, end.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
@@ -310,12 +261,11 @@ class Beam(BeamBase):
         self.Asl_bot_req = Asl_bot
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
 
         Notes
         -----
-        1. Required reinforcement is computed at different sections:
-        start, mid, end.
+        Reinforcement is computed at three sections: start, mid, and end.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.

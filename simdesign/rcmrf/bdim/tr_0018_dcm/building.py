@@ -1,14 +1,6 @@
+"""This module provides the Building Design Information Model (BDIM)
+implementation for the ``tr_0018_dcm`` design class.
 """
-Specific routines for defining and designing tr_0018_dcm buildings.
-
-Basic units are kN, m, sec
-
-NOTES
------
-1- _change_beam_type method is overwritten to change slab type along
-with beam type.
-"""
-
 # Imports from installed packages
 from typing import List, Type
 
@@ -23,6 +15,7 @@ from .loads import Loads
 from .rebars import Rebars
 from .slab import Slab
 from .stairs import Stairs
+from .infill import Infill
 
 # Imports from bdim base library
 from ..baselib.building import BuildingBase, TaxonomyData
@@ -32,39 +25,81 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: tr_0018_dcm."""
+    """BDIM implementation for design class ``tr_0018_dcm``.
 
+    This class extends ``BuildingBase`` by narrowing the attribute types
+    to the ``tr_0018_dcm`` implementations and overriding design class-specific
+    methods.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.tr_0018_dcm.beam.Beam]
+        List of beam instances.
+    columns : List[~simdesign.rcmrf.bdim.tr_0018_dcm.column.Column]
+        List of column instances.
+    joints : List[~simdesign.rcmrf.bdim.tr_0018_dcm.joint.Joint]
+        List of joint instances.
+    slabs : List[~simdesign.rcmrf.bdim.tr_0018_dcm.slab.Slab]
+        List of slab instances.
+    stairs : List[~simdesign.rcmrf.bdim.tr_0018_dcm.stairs.Stairs]
+        List of stairs instances.
+    infills : List[~simdesign.rcmrf.bdim.tr_0018_dcm.infill.Infill]
+        List of infill wall instances.
+    steel : ~simdesign.rcmrf.bdim.tr_0018_dcm.materials.Steel
+        Steel material instance used in the design of beams and columns.
+    concrete : ~simdesign.rcmrf.bdim.tr_0018_dcm.materials.Concrete
+        Concrete material instance used in the design of beams and columns.
+    loads : ~simdesign.rcmrf.bdim.tr_0018_dcm.loads.Loads
+        Loads instance used to apply building loads.
+    materials : ~simdesign.rcmrf.bdim.tr_0018_dcm.materials.Materials
+        Materials instance used to set building materials.
+    rebars : ~simdesign.rcmrf.bdim.tr_0018_dcm.rebars.Rebars
+        Rebars instance used to determine reinforcement arrangement.
+    quality : ~simdesign.rcmrf.bdim.tr_0018_dcm.quality.Quality
+        Quality instance used to adjust properties of structural elements.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.building.BuildingBase`
+        Base class defining the core behaviour and configuration.
+
+    Notes
+    -----
+    - Design follows limit state design approach.
+    - Main reference building code is TBEC-2007 (high ductility class).
+    - Basic units are kN, m, sec
+    - Overrides :meth:`_change_beam_type` method to update slab type
+      together with beam type.
+    - Overrides :meth:`_set_maximum_column_dimensions` method to set
+      design-class specific maximum column dimensions.
+
+    References
+    ----------
+    TBEC (2007). *Deprem Bölgelerinde Yapılacak Binalar Hakkında Esaslar*.
+    Resmi Gazete, Ankara, Türkiye.
+    """
     beams: List[Beam]
-    """List of beam instances."""
     columns: List[Column]
-    """List of column instances."""
     joints: List[Joint]
-    """List of joint instances."""
     slabs: List[Slab]
-    """List of slab instances."""
     stairs: List[Stairs]
-    """List of stairs instances."""
+    infills: List[Infill]
     steel: Steel
-    """Steel material instance considered in design of beams and columns."""
     concrete: Concrete
-    """Concrete material instance considered in design of beams and columns."""
     loads: Loads
-    """Loads instance used to apply building loads."""
     materials: Materials
-    """Materials instance used to set building materials."""
     rebars: Rebars
-    """Rebars instance used to determine reinforcement arrangement."""
     quality: Quality
-    """Quality instance used to adjust properties of structural elements."""
     ColumnClass: Type[Column]
     BeamClass: Type[Beam]
     JointClass: Type[Joint]
     SlabClass: Type[Slab]
     StairsClass: Type[Stairs]
+    InfillClass: Type[Infill]
     ElasticModelClass: Type[ElasticModel]
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
-        """Initializes building object.
+        """Initialize the Building object.
 
         Parameters
         ----------
@@ -77,6 +112,7 @@ class Building(BuildingBase):
         self.JointClass = Joint
         self.SlabClass = Slab
         self.StairsClass = Stairs
+        self.InfillClass = Infill
         self.ElasticModelClass = ElasticModel
         # Set the available materials
         self.materials = Materials()
@@ -92,7 +128,7 @@ class Building(BuildingBase):
         self._set_maximum_column_dimensions()
 
     def _set_maximum_column_dimensions(self) -> None:
-        """Sets the maximum column dimensions based on number of storeys.
+        """Set the maximum column dimensions based on number of storeys.
 
         Notes
         -----
@@ -113,7 +149,10 @@ class Building(BuildingBase):
 
     def _change_beam_type(self) -> None:
         """The method used for changing beam types.
-        Can be overwritten for each design class.
+
+        Notes
+        -----
+        Slab type is also updated together with beam type.
         """
         # change from wide beam to emergent beam
         self.beam_type = 2

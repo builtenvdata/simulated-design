@@ -1,27 +1,11 @@
+"""This module provides the base class for representing slabs in the BDIM
+layer.
 """
-Base module for defining slabs in buildings.
-
-Plan view of mesh objects (rectangle) representing slabs.
-
-y
-|__x
-                l2(p2,p3)
-   p2(x2,y2,z2) o------>o p3(x3,y3,z3)
-                ^       ^
-      l1(p1,p2) |       | l3(p4,p3)
-                |       |
-   p1(x1,y1,z1) o------>o p4(x4,y4,z4)
-                l4(p1,p4)
-pi: i'th Point
-li: i'th Line
-xi, yi, zi: Coordinates of i'th Point
-"""
-
 # Imports from installed packages
 import numpy as np
 from abc import ABC
 from scipy.interpolate import interp1d
-from typing import Literal, List
+from typing import Literal, List, Optional
 
 # Imports from bdim base library
 from .loads import PermanentBase, VariableBase
@@ -35,56 +19,101 @@ from ....utils.misc import PRECISION
 
 class SlabBase(ABC):
     """
-    Abstract base class for slabs.
+    Abstract base class for floor slab elements.
 
-    Must be inherited by design class specific slabs.
+    It provides geometry definition, thickness estimation, load transfer,
+    and load assignment behaviour. It must be inherited by design-class-
+    specific slab implementations.
+
+    Attributes
+    ----------
+    rectangle : ~simdesign.rcmrf.geometry.base.Rectangle
+        Geometric mesh representation of the slab (tag, points, lines).
+    typology : Literal[1, 2, 3]
+        Slab typology.
+            1: Solid two-way cast-in-situ slabs (SS2).
+            2: Solid one-way cast-in-situ slabs (SS1).
+            3: One-way composite slab with ceramic blocks and RC joists or
+            pre-stressed beams (HS).
+    gamma_rc : float
+        Unit weight of reinforced concrete [kN/m^3].
+    pg : float
+        Total permanent load per unit area [kN/m^2].
+        Set via ``set_loads``.
+    pq : float
+        Variable load per unit area [kN/m^2].
+        Set via ``set_loads``.
+    roof : bool
+        Whether the slab is located at roof level.
+
+    MAX_THICKNESS : float
+        Maximum allowable slab thickness, by default 0.85 m.
+
+    _thickness : float | None
+        Default floor slab thickness. If None, thickness is estimated
+        from span length when accessed via ``t``.
+    _orientation : Literal[1, 2, 3] | None
+        Default floor slab load-transfer orientation. If None, orientation is
+        inferred from typology and span ratio when accessed via
+        ``orientation``.
+
+    Notes
+    -----
+    Plan view of mesh objects (rectangle) representing slabs::
+
+        y
+        |__x
+                      l2(p2,p3)
+         p2(x2,y2,z2) o------>o p3(x3,y3,z3)
+                      ^       ^
+            l1(p1,p2) |       | l3(p4,p3)
+                      |       |
+         p1(x1,y1,z1) o------>o p4(x4,y4,z4)
+                      l4(p1,p4)
+
+    pi is the i-th ``Point`` representing a corner point.
+
+    li is the i-th surrounding ``Line``.
+
+    xi, yi, and zi are the coordinates of the i-th ``Point``.
     """
     rectangle: Rectangle
-    """Geometric mesh representation of the slab (tag, points, lines)."""
     typology: Literal[1, 2, 3]
-    """Slab typology
-    1: Two-way solid slab.
-    2: One-way solid slab.
-    3: One-way composite slab with ceramic blocks and RC joists or
-    pre-stressed beams."""
-    _orientation: Literal[1, 2, 3]
-    """Private attribute for slab unloading orientation."""
-    _thickness: float
-    """Private attribute for slab thickness (depth)."""
     gamma_rc: float
-    """Unit weight of reinforced concrete."""
     pg: float
-    """Permanent loads on unit slab area."""
     pq: float
-    """Variable loads on unit slab area."""
     roof: bool
-    """Flag for checking if located at roof level or not."""
     MAX_THICKNESS: float = 0.85
-    """Maximum possible slab thickness, by default 0.85 m."""
+    _orientation: Optional[Literal[1, 2, 3]]
+    _thickness: Optional[float]
 
     def __init__(
         self, rectangle: Rectangle, typology: Literal[1, 2, 3],
-        thickness: float = None, orientation: Literal[1, 2, 3] = None
+        thickness: Optional[float] = None,
+        orientation: Optional[Literal[1, 2, 3]] = None
     ) -> None:
-        """Initializes slab object.
+        """Initialize the Slab object.
 
         Parameters
         ----------
-        rectangle : Rectangle
+        rectangle : ~simdesign.rcmrf.geometry.base.Rectangle
             Geometric mesh representation of the slab (tag, points, lines).
         typology : Literal[1, 2, 3]
-            Slab typology
-            1: Solid two-way cast-in-situ slabs (SS2)
-            2: Solid one-way cast-in-situ slabs (SS1)
-            3: Composite slabs with pre-fabricated joists and ceramic blocks
-            (HS)
-        thickness : float
+            Slab typology.
+            1: Solid two-way cast-in-situ slabs (SS2).
+            2: Solid one-way cast-in-situ slabs (SS1).
+            3: One-way composite slab with ceramic blocks and RC joists or
+            pre-stressed beams (HS).
+        thickness : float, optional
             Slab thickness (depth), by default None.
+            If None, thickness is estimated from span length; see :attr:`t`.
         orientation : Literal[1, 2, 3], optional
             Orientation of slab load transfer to beams, by default None.
-            1: Unloading in beams along X direction.
-            2: Unloading in beams along Y direction.
-            3: Unloading in beams along both directions.
+            1: Load is transferred to beams along the X direction.
+            2: Load is transferred to beams along the Y direction.
+            3: Load is transferred to beams along both directions.
+            If None, orientation is inferred from typology and span ratio;
+            see :attr:`orientation`.
         """
         self.rectangle = rectangle
         self.typology = typology
@@ -93,47 +122,67 @@ class SlabBase(ABC):
 
     @property
     def lx(self) -> float:
-        """
+        """Slab length along the global X-axis.
+
+        This corresponds to the length of ``rectangle.lines[1]``.
+
         Returns
         -------
         float
-            Slab length along global X-axis.
+            Slab length along the global X-axis [m].
         """
         return self.rectangle.lines[1].length
 
     @property
     def ly(self) -> float:
-        """
+        """Slab length along the global Y-axis.
+
+        This corresponds to the length of ``rectangle.lines[0]``.
+
         Returns
         -------
         float
-            Slab length along global Y-axis.
+            Slab length along the global Y-axis [m].
         """
         return self.rectangle.lines[0].length
 
     @property
     def area(self) -> float:
-        """
+        """Slab plan area.
+
+        This corresponds to ``rectangle.area``.
+
         Returns
         -------
         float
-            Total slab area.
+            Slab plan area [m^2].
         """
         return self.rectangle.area
 
     @property
     def pself(self) -> float:
         """
+        Slab self-weight per unit area.
+
         Returns
         -------
         float
-            Slab self-weight per unit area.
+            Slab self-weight per unit area [kN/m^2].
 
-        Note
-        ----
-        The equation used for calculating the self-weight of HS slab is
-        is obtained through regression analysis using the data provided
-        by the manufacturers.
+        Notes
+        -----
+        For solid cast-in-situ slabs (typology 1 or 2), self-weight is
+        computed as:
+
+            pself = gamma_rc * t
+
+        For composite slabs with pre-fabricated joists and ceramic blocks
+        (typology 3), a logarithmic regression fit to manufacturer data is
+        used:
+
+            pself = 2.20 * ln(t) + 6.50
+
+        where t is the slab thickness in metres.
 
         References
         ----------
@@ -150,10 +199,17 @@ class SlabBase(ABC):
     @property
     def beam_alpha_coeffs(self) -> List[float]:
         """
+        Alpha coefficients for the four beams surrounding the slab.
+
+        Alpha coefficients convert triangular or trapezoidal slab loads into
+        equivalent uniformly distributed loads on each beam; see
+        :meth:`_get_alpha`. For one-way orientations, all coefficients are 1.0.
+
         Returns
         -------
-        List[float]
-            Alpha coefficients of four beams surrounding the slab.
+        list[float]
+            Alpha coefficients of four beams surrounding the slab,
+            ordered [l1, l2, l3, l4] following the plan-view convention.
         """
         if self.orientation == 3:
             long = max(self.lx, self.ly)
@@ -173,19 +229,24 @@ class SlabBase(ABC):
     @property
     def orientation(self) -> Literal[1, 2, 3]:
         """
+        Slab load-transfer orientation.
+
         Returns
         -------
         Literal[1, 2, 3]
-            Slab unloading orientation.
-            1: Unloading in beams along X direction.
-            2: Unloading in beams along Y direction.
-            3: Unloading in beams along both directions.
+            Slab load-transfer orientation.
+            1: Load is transferred to beams along the X direction.
+            2: Load is transferred to beams along the Y direction.
+            3: Load is transferred to beams along both directions.
 
         Notes
         -----
-        One-way slab directions are always in the direction of the longer span.
+        When orientation is not explicitly set, it is inferred as follows:
+        For two-way slabs (typology 1) ``orientation = 3``. For one-way slabs,
+        load transfer is oriented along the longer span axis:
+        ``orientation = 1`` if lx > ly, ``orientation = 2`` otherwise.
         """
-        if not self._orientation:
+        if self._orientation is None:
             if self.typology == 1:
                 return 3
             elif self.lx / self.ly > 1.0:
@@ -195,30 +256,47 @@ class SlabBase(ABC):
         return self._orientation
 
     @orientation.setter
-    def orientation(self, value=None) -> None:
-        """Setter."""
+    def orientation(self, value: Optional[Literal[1, 2, 3]] = None) -> None:
+        """Setter for orientation.
+
+        If ``value`` is None, the orientation will be inferred from typology
+        and span ratio when next accessed; see :attr:`orientation`.
+        """
         self._orientation = value
 
     @property
     def t(self) -> float:
         """
+        Slab thickness (depth).
+
         Returns
         -------
         float
-            Slab thickness (depth).
+            Slab thickness (depth) [m].
 
-        Note
-        ----
-        The equation used for calculating the thickness of HS slab is
-        is obtained through regression analysis using the data provided
-        by the manufacturers.
+        Notes
+        -----
+        When thickness is not explicitly set, it is estimated from the shorter
+        span length ``min(lx, ly)``.
+
+        For solid cast-in-situ slabs (typology 1 or 2), a span-to-depth ratio
+        of 30 is assumed:
+
+            t = round(min_span / 30, 2)
+
+        For composite slabs with pre-fabricated joists and ceramic blocks
+        (typology 3), a linear regression fit to manufacturer data is used:
+
+            t = round(0.032 * min_span + 0.065, 2)
+
+        In both cases the result is capped at :attr:`MAX_THICKNESS`.
 
         References
         ----------
         https://presdouro.pt/wp-content/themes/presdouro/images/DT_PD2016_VALIDADO.pdf
         https://lajes.pavimir.pt/pdfs/DA%2060%20-%20Pavimentos%20Aligeirados.pdf
         """
-        if not self._thickness:
+        if self._thickness is None:
             min_span_length = min(self.lx, self.ly)
             if self.typology == 1 or self.typology == 2:
                 return min(
@@ -231,17 +309,32 @@ class SlabBase(ABC):
         return self._thickness
 
     @t.setter
-    def t(self, value=None) -> None:
-        """Setter for slab thickness (depth)."""
+    def t(self, value: Optional[float] = None) -> None:
+        """Setter for slab thickness (depth).
+
+        If ``value`` is None, thickness will be estimated from span length
+        when next accessed; see :attr:`t`.
+        """
         self._thickness = value
 
     @property
     def beam_tributary_areas(self) -> List[float]:
         """
+        Tributary areas assigned to the surrounding beams.
+
         Returns
         -------
-        List[float]
-            Tributary areas for four beams surrounding the slab.
+        list[float]
+            Tributary areas [m^2] for the four beams surrounding the slab,
+            ordered [l1, l2, l3, l4] following the plan-view convention.
+
+        Notes
+        -----
+        For one-way orientations (1 or 2), one pair of parallel beams carries
+        the full half-area each and the perpendicular pair carries nothing.
+        For two-way orientation (3), loads are distributed as triangular areas
+        to beams along the shorter span and trapezoidal areas to beams along
+        the longer span.
         """
         # Loading along beam in x
         if self.orientation == 1:
@@ -271,7 +364,11 @@ class SlabBase(ABC):
     def set_loads(
         self, permanent_loads: PermanentBase, variable_loads: VariableBase
     ) -> None:
-        """Sets the values of permanent and variable loads on slabs.
+        """Assign permanent and variable loads to the slab.
+
+        Sets :attr:`gamma_rc`, :attr:`pg` (self-weight + superimposed dead
+        load), and :attr:`pq` from the provided load objects. Load values
+        depend on whether the slab is at roof or floor level (:attr:`roof`).
 
         Parameters
         ----------
@@ -290,49 +387,49 @@ class SlabBase(ABC):
 
     def _get_alpha(self, ratio: float) -> float:
         """
-        Computes correction factor for equivalent uniformly distributed load.
+        Compute correction factor for equivalent uniformly distributed load.
 
-        Given the transferred load from slab for each beam will be either
-        triangle or trapezoidal, the correction factor, alpha, needs to be
-        applied to the equivalent uniformly distributed load to obtain the
-        same maximum moment for these distributed loading shapes.
+        The load transferred from the slab to a beam may be triangular or
+        trapezoidal. The correction factor ``alpha`` converts this load to an
+        equivalent uniformly distributed load that produces the same maximum
+        bending moment.
 
         Parameters
         ----------
         ratio : float
-            Ratio of shorter slab width to longer slab width.
+            Ratio of shorter to longer slab dimension, in the range (0, 1].
 
         Returns
         -------
         float
-            The correction factor for equivalent uniformly distributed load.
+            Correction factor for equivalent uniformly distributed load,
+            in the range [2/3, 1.0].
 
         Notes
         -----
-        In the mid-span of a beam with length L,
-        the triangular load with height of wtr will result in max. moment of:
-        Mmax = (L**2 * wtr) / 12
-        On the other hand, the uniform load we for the same beam will result in
-        maximum moment of:
-        Mmax = (L**2 * we) / 8
-        Assuming that the max. moment from both load distributions are equal,
-        factor alpha=2/3 needs to be applied on wtr to obtain equivalent we
-        values. In the case of trapezoidal loads, alpha factor varies between
-        [2/3, 1.0].
+        The input ratio is halved internally before interpolation to align
+        with the reference table, which is defined over half-span ratios.
 
-        References
-        ----------
-        D'Arga e Lima, J., Monteiro, V., Mun,. M. (1997) Betão Armado, Esforços
-        Normais e de Flexão, 3rd Ed. Laboratório Nacional de Engenharia Civil,
-        Lisboa.
+        In the mid-span of a beam with length L, a triangular load with peak
+        value wtr results in a maximum moment of:
+
+            Mmax = (L**2 * wtr) / 12
+
+        A uniform load we over the same beam produces:
+
+            Mmax = (L**2 * we) / 8
+
+        Equating both expressions yields alpha = 2/3 for triangular loading.
+        For trapezoidal loads, alpha varies between 2/3 and 1.0 depending on
+        the aspect ratio.
         """
-        ratio = ratio / 2  # divided by half for compatibility with table.
+        # Reference table for alpha values
         ratio_ref = np.arange(0, 0.55, 0.05)
         alpha_ref = np.array([1.000, 0.9967, 0.9867, 0.97, 0.9467, 0.9167,
                               0.88, 0.8367, 0.7867, 0.73, 0.6667])
-        if ratio <= 0.50:
-            alpha = interp1d(ratio_ref, alpha_ref)(ratio)
-        else:
-            alpha = ratio * alpha_ref[-1]
+
+        # Ratio is halved and clipped for compatibility with the table.
+        ratio = np.clip(ratio / 2, 0.0, 0.5)
+        alpha = float(interp1d(ratio_ref, alpha_ref)(ratio))
 
         return alpha

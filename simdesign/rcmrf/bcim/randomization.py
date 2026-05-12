@@ -1,7 +1,6 @@
+"""This module provides samplers for randomization in the building
+portfolio generation process.
 """
-Samplers used for randomization in building portfolio generation process.
-"""
-
 # Imports from installed packages
 import numpy as np
 from typing import List, Tuple, Literal
@@ -15,121 +14,91 @@ from ...utils.misc import PRECISION
 
 
 class Sampler:
-    """
-    Sampler class for regular moment resisting frame structures.
-
-    Parameters
-    ----------
-    num_sample : int
-        Number of samples to be generated.
-    seed : int
-        Seed number considered in random number generators.
+    """Sampler for regular moment resisting frame structures.
 
     Attributes
     ----------
     sample_size : int
         Number of samples to be generated.
     staircase_span_length_x : np.ndarray
-        Staircase span length in x direction.
+        Staircase span length in X direction.
     typical_span_length_x : np.ndarray
-        Typical span length in x direction.
+        Typical span length in X direction.
     typical_span_length_y : np.ndarray
-        Typical span length in y direction.
-    layout: np.ndarray
+        Typical span length in Y direction.
+    layout : np.ndarray
         Building floor layouts.
     typical_storey_height : np.ndarray
         Typical storey heights.
     ground_storey_height : np.ndarray
         Ground storey heights.
     slab_type : np.ndarray
-        Slab typology
-            1: Two-way solid slab
-            2: One-way solid slab
-            3: One-way composite slab with ceramic blocks and RC joists or
-            pre-stressed beams
-    beam_type : np.ndarray
-        Beam typology
-            1: Wide beams
-            2: Emergent beams
-    column_section : np.ndarray
-        Column cross-section
-            1: square solid section
-            2: rectangular solid section
-    steel_mat_class : np.ndarray
-        Steel material class ID, e.g., S400
-    concrete_mat_class : np.ndarray
-        Concrete material class ID, e.g., C20
-    quality : np.ndarray
-        Construction quality
-            1: High quality
-            2: Moderate quality
-            3: Low quality
-
-    Methods
-    -------
-    set_stair_span_length_x
-        Sets staircase span lengths.
-    set_typical_span_length
-        Sets typical span lengths in x and y directions in a random fashion.
-    set_layout
-        Sets plan layout IDs for buildings.
-    set_typical_storey_height
-        Sets typical storey heights in a random fashion.
-    set_ground_storey_height
-        Sets ground storey heights.
-    set_slab_properties
-        Sets slab properties following a span length based decision tree.
-    set_beam_type
-        Sets beam types.
-    set_column_type
-        Sets the type of column type or cross-section geometry.
-    set_material_class
-        Randomly assigns material classes to the buildings given their
-        occurrence probabilities.
-    set_construction_quality
-        Sets construction quality in a randomised fashion.
-    """
-    sample_size: int
-    """Number of samples to be generated."""
-    staircase_span_length_x: np.ndarray
-    """Staircase span length in x direction."""
-    typical_span_length_x: np.ndarray
-    """Typical span length in x direction."""
-    typical_span_length_y: np.ndarray
-    """Typical span length in y direction."""
-    layout: np.ndarray
-    """Building floor layouts."""
-    typical_storey_height: np.ndarray
-    """Typical storey heights."""
-    ground_storey_height: np.ndarray
-    """Ground storey heights."""
-    slab_type: np.ndarray
-    """Slab typology.
+        Slab typology.
         1: Two-way solid slab.
         2: One-way solid slab.
         3: One-way composite slab with ceramic blocks and RC joists or
-    pre-stressed beams."""
-    beam_type: np.ndarray
-    """Beam typology.
+        pre-stressed beams.
+    beam_type : np.ndarray
+        Beam typology.
         1: Wide beams.
-        2: Emergent beams."""
-    column_section: np.ndarray
-    """Column cross-section.
-        1: square solid section.
-        2: rectangular solid section."""
-    steel_grade: np.ndarray
-    """Steel material class ID, e.g., S400."""
-    concrete_grade: np.ndarray
-    """Concrete material class ID, e.g., C20."""
-    quality: np.ndarray
-    """Construction quality.
+        2: Emergent beams.
+    column_section : np.ndarray
+        Column cross-section.
+        1: Square solid section.
+        2: Rectangular solid section.
+    steel_grade : np.ndarray
+        Steel material class ID, e.g., 'S400'.
+    concrete_grade : np.ndarray
+        Concrete material class ID, e.g., 'C20/25'.
+    quality : np.ndarray
+        Construction quality.
         1: High quality.
         2: Moderate quality.
-        3: Low quality."""
+        3: Low quality.
+    ext_infill_type : np.ndarray
+        Exterior masonry infill typology in terms of strength.
+        1: Weak.
+        2: Medium.
+        3: Strong.
+    int_infill_type : np.ndarray
+        Interior masonry infill typology in terms of strength.
+        1: Weak.
+        2: Medium.
+        3: Strong.
+    infill_conf : np.ndarray
+        Masonry infill wall configuration IDs.
+        1: Exterior only, Regular over the height, XX + YY.
+        2: Exterior only, Pilotis, XX + YY.
+        3: Exterior only, Pilotis, XX.
+        4: Exterior only, Pilotis, YY.
+        5: Exterior + Interior, Regular over the height, XX + YY.
+        6: Exterior + Interior, Pilotis, XX + YY.
+        7: Exterior + Interior, Pilotis, XX.
+        8: Exterior + Interior, Pilotis, YY.
+        9: Interior only, Regular over the height, XX + YY.
+        10: Interior only, Pilotis, XX + YY.
+        11: Interior only, Pilotis, XX.
+        12: Interior only, Pilotis, YY.
+    """
+    sample_size: int
+    staircase_span_length_x: np.ndarray
+    typical_span_length_x: np.ndarray
+    typical_span_length_y: np.ndarray
+    layout: np.ndarray
+    typical_storey_height: np.ndarray
+    ground_storey_height: np.ndarray
+    slab_type: np.ndarray
+    beam_type: np.ndarray
+    column_section: np.ndarray
+    steel_grade: np.ndarray
+    concrete_grade: np.ndarray
+    quality: np.ndarray
+    ext_infill_type: np.ndarray
+    int_infill_type: np.ndarray
+    infill_conf: np.ndarray
 
     def __init__(self, num_sample: int, seed: int | None = None) -> None:
-        """
-        Initialise the sampler object for regular moment resisting frame
+        """Initialize the sampler for regular moment resisting frame
         structures.
 
         Parameters
@@ -140,8 +109,8 @@ class Sampler:
             Seed number considered in random number generators,
             by default None.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> num_sample = 150
         >>> seed = 1993
         """
@@ -153,8 +122,7 @@ class Sampler:
 
     def set_stair_span_length_x(self, lower_bound: float, upper_bound: float
                                 ) -> List[float]:
-        """
-        Sets staircase span lengths.
+        """Set staircase span lengths.
 
         Staircase span lengths are represented by uniform distribution.
 
@@ -172,8 +140,8 @@ class Sampler:
         List[float]
             Staircase span lengths.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> lower_bound = 2.8
         >>> upper_bound = 3.2
         """
@@ -189,8 +157,7 @@ class Sampler:
         self, corr_coeff: float, lower_bound: Tuple[float],
         upper_bound: Tuple[float], theta: Tuple[float], std_ln: Tuple[float],
     ) -> Tuple[List[float]]:
-        """
-        Sets typical span lengths in x and y directions in a random fashion.
+        """Set typical span lengths in x and Y directions.
 
         Typical span lengths are represented with truncated log-normal
         distribution. It is assumed that span lengths are correlated.
@@ -207,7 +174,7 @@ class Sampler:
             Upper bound for truncated log-normal distribution (x, y).
         theta : Tuple[float]
             Median of log-normal distribution.
-        sigma : Tuple[float]
+        std_ln : Tuple[float]
             Logarithmic standard deviation of the log-normal
             distribution (x, y).
 
@@ -220,8 +187,8 @@ class Sampler:
         Tuple[List[float]]
             Span lengths (x, y).
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> corr_coeff = -0.92
         >>> lower_bound = (3.5, 3.5)
         >>> upper_bound = (7.5, 6.0)
@@ -252,24 +219,23 @@ class Sampler:
         return typical_span_length_x.tolist(), typical_span_length_y.tolist()
 
     def set_layout(self, layouts: List[str]) -> List[str]:
-        """Sets plan layout IDs for buildings.
+        """Set plan layout IDs for buildings.
 
         Parameters
         ----------
         layouts : List[str]
-            Building layouts
+            Building layouts.
 
         Returns
         -------
-        np.ndarray
-           Random building layout assignments
+        List[str]
+            Random building layout assignments.
 
-        Example Inputs
-        --------------
-        >>> layouts = ["B01", "B02", "B03", "B04", "B04b", "B05", "B06",
-        "B07", "B08", "B09", "B10"]
+        Examples
+        --------
+        >>> layouts = ["B01", "B02", "B03", "B04", "B04b",
+        ...            "B05", "B06", "B07", "B08", "B09", "B10"]
         """
-
         sample = np.random.choice(layouts, size=self.sample_size)
         # Store
         self.layout = sample
@@ -279,8 +245,7 @@ class Sampler:
     def set_typical_storey_height(
         self, cv: float, mu: float, lower_bound: float, upper_bound: float
     ) -> List[float]:
-        """
-        Sets typical storey heights in a random fashion.
+        """Set typical storey heights.
 
         Typical storey heights are represented with truncated log-normal
         distribution.
@@ -301,8 +266,8 @@ class Sampler:
         List[float]
             Generated typical storey heights.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> cv = 0.07
         >>> mu = 2.90
         >>> lower_bound = 2.3
@@ -326,8 +291,7 @@ class Sampler:
         self, factors: List[float], probabilities: List[float],
         max_height: float
     ) -> List[float]:
-        """
-        Sets ground storey heights.
+        """Set ground storey heights.
 
         Parameters
         ----------
@@ -335,7 +299,7 @@ class Sampler:
             Factors applied on typical storey heights to obtain
             ground storey heights.
         probabilities : List[float]
-            Corresponding probabilities of factors
+            Corresponding probabilities of factors.
         max_height : float
             Maximum considered ground storey height.
 
@@ -348,10 +312,10 @@ class Sampler:
         -----
         1. `ground_storey_height = min(factor * typical_storey_heights,
         max_height)`
-        2. Factors have different probabilities
+        2. Factors have different probabilities.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> factors = [1.0, 1.1, 1.2, 1.3, 1.4]
         >>> probability = [0.55, 0.10, 0.20, 0.10, 0.05]
         >>> max_height = 4.20
@@ -377,8 +341,7 @@ class Sampler:
         max_ss_short_span: float,
         max_ss2_aspect_ratio: float
     ) -> List[Literal[1, 2, 3]]:
-        """
-        Sets slab typology following a span length based decision tree.
+        """Set slab typology following a span length based decision tree.
 
         Parameters
         ----------
@@ -414,8 +377,8 @@ class Sampler:
         4. Otherwise, slab type is determined randomly as SS2 or HS based on
         `ss2_prob_given_ss2_or_hs`.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> ss1_prob_given_ss1_or_hs = 0.50
         >>> ss2_prob_given_ss2_or_hs = 0.65
         >>> max_ss_short_span = 6.0  # in meters
@@ -449,13 +412,12 @@ class Sampler:
         return slab_type.tolist()
 
     def set_beam_type(self, wb_prob_given_hs: float) -> List[Literal[1, 2]]:
-        """
-        Sets beam types.
+        """Set beam types.
 
         Parameters
         ----------
         wb_prob_given_hs : float
-            Probability of having wide beams (WB) given slab type is HS
+            Probability of having wide beams (WB) given slab type is HS.
 
         Returns
         -------
@@ -466,10 +428,10 @@ class Sampler:
         -----
         1. If slabs are solid slabs, beams are set as emergent beams (2).
         2. Otherwise, randomly assign wide (1) or emergent beam (2) based on
-        the user-defined `wb_prob_given_hs` parameter.
+           the user-defined `wb_prob_given_hs` parameter.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> wb_prob_given_hs = 0.50
         """
         # Set the storage array
@@ -488,8 +450,7 @@ class Sampler:
         return beam_type.tolist()
 
     def set_column_type(self, square_prob: float) -> List[Literal[1, 2]]:
-        """
-        Sets the type of column or cross-section geometry.
+        """Set the type of column or cross-section geometry.
 
         Parameters
         ----------
@@ -502,8 +463,8 @@ class Sampler:
             Randomly assigned column types for each building,
             square (1) or rectangular (2).
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> square_prob = 0.50
         """
         probability = [square_prob, 1.0 - square_prob]
@@ -519,9 +480,8 @@ class Sampler:
         self, material_class: List[str], probability: List[float],
         material: Literal["steel", "concrete"]
     ) -> List[str]:
-        """
-        Randomly assigns material classes to the buildings given
-        their occurrence probabiities.
+        """Randomly assign material classes to buildings given
+        their occurrence probabilities.
 
         Parameters
         ----------
@@ -538,8 +498,8 @@ class Sampler:
         List[str]
             Randomly assigned material classes for building.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> material_class = ["S240", "S400"]
         >>> probabilities = [0.60, 0.40]
         """
@@ -554,8 +514,7 @@ class Sampler:
 
     def set_construction_quality(self, quality_ids: List[int],
                                  probabilities: List[float]) -> List[int]:
-        """
-        Sets construction quality in a randomised fashion.
+        """Set construction quality in a randomised fashion.
 
         Parameters
         ----------
@@ -570,8 +529,8 @@ class Sampler:
         List[int]
             Construction quality sample.
 
-        Example Inputs
-        --------------
+        Examples
+        --------
         >>> quality_ids = [1, 2, 3]
         >>> probabilities = [0.6, 0.3, 0.1]
         """
@@ -582,8 +541,107 @@ class Sampler:
         # Return
         return quality.tolist()
 
+    def set_ext_infill_type(self, infill_types: List[int],
+                            probabilities: List[float]) -> List[int]:
+        """Set masonry exterior infill wall typologies in a randomised fashion.
+
+        Parameters
+        ----------
+        infill_types : List[int]
+            Infill typology IDs.
+        probabilities : List[float]
+            Corresponding probabilities for infill typologies.
+            Sum should be equal to 1.0.
+
+        Returns
+        -------
+        List[int]
+            Exterior masonry infill typology sample.
+
+        Examples
+        --------
+        >>> infill_types = [1, 2, 3]
+        >>> probabilities = [0.6, 0.3, 0.1]
+        """
+        infill = np.random.choice(
+            infill_types, size=self.sample_size, p=probabilities)
+        # Store
+        self.ext_infill_type = infill
+        # Return
+        return infill.tolist()
+
+    def set_int_infill_type(self, infill_types: List[int],
+                            probabilities: List[float]) -> List[int]:
+        """Set masonry interior infill wall typologies in a randomised fashion.
+
+        Parameters
+        ----------
+        infill_types : List[int]
+            Infill typology IDs.
+        probabilities : List[float]
+            Corresponding probabilities for infill typologies.
+            Sum should be equal to 1.0.
+
+        Returns
+        -------
+        List[int]
+            Interior masonry infill typology sample.
+
+        Notes
+        -----
+        It is assumed that interior infills should be weaker than
+        exterior ones, if they co-exist.
+
+        Examples
+        --------
+        >>> infill_types = [1, 2, 3]
+        >>> probabilities = [0.33, 0.34, 0.33]
+        """
+        # Location settings with both exterior and interior infills
+        MAPPER = [5, 6, 7, 8]  # exterior + interior
+        idx = np.where(np.isin(self.infill_conf, MAPPER))[0]
+        # Sample interior infill types
+        infill = np.random.choice(
+            infill_types, size=self.sample_size, p=probabilities)
+        # Ensure that interior infills are weaker when both exist
+        infill[idx] = np.minimum(infill[idx], self.ext_infill_type[idx] - 1)
+        infill[idx] = np.maximum(infill[idx], 1)
+        # Store
+        self.int_infill_type = infill
+        # Return
+        return infill.tolist()
+
+    def set_infill_conf(self, infill_confs: List[int],
+                        probabilities: List[float]) -> List[int]:
+        """Set masonry infill wall configurations in a randomised fashion.
+
+        Parameters
+        ----------
+        infill_confs : List[int]
+            Infill configuration IDs.
+        probabilities : List[float]
+            Corresponding probabilities for infill configuration IDs.
+            Sum should be equal to 1.0.
+
+        Returns
+        -------
+        List[int]
+            Masonry infill configuration sample.
+
+        Examples
+        --------
+        >>> infill_confs = [1, 2, 5, 6]
+        >>> probabilities = [0.25, 0.25, 0.25, 0.25]
+        """
+        infill = np.random.choice(
+            infill_confs, size=self.sample_size, p=probabilities)
+        # Store
+        self.infill_conf = infill
+        # Return
+        return infill.tolist()
+
     def reset(self) -> None:
-        """Resets all the attributes of the Sampler class instance.
+        """Reset all the attributes of the Sampler class instance.
         """
         # Reset
         attrs = list(self.__dict__.keys())

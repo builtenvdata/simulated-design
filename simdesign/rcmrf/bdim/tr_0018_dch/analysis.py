@@ -1,3 +1,6 @@
+"""This module provides the class implementation representing the elastic
+numerical model used in the BDIM layer for the ``tr_0018_dch`` design class.
+"""
 # Imports from installed packages
 from typing import List
 
@@ -10,9 +13,21 @@ from ..baselib.analysis import ElasticModelBase
 
 
 class ElasticModel(ElasticModelBase):
-    """Elastic model builder in OpenSees for design class tr_0018_dch.
+    """Elastic model implementation for design class ``tr_0018_dch``.
+
+    This class extends ``ElasticModelBase`` by narrowing the attribute types.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.tr_0018_dch.beam.Beam]
+        List of beam objects of the building.
+    columns : List[~simdesign.rcmrf.bdim.tr_0018_dch.column.Column]
+        List of column objects of the building.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.analysis.ElasticModelBase`
+        Base class defining the core behaviour and configuration.
     """
     beams: List[Beam]
-    """Beam objects of the building."""
     columns: List[Column]
-    """Column objects of the building."""

@@ -1,11 +1,6 @@
+"""This module provides the base class for representing buildings
+within the BDIM layer.
 """
-Base routines for defining and designing buildings.
-
-x, y are horizontal directions whereas z is vertical.
-
-Basic Units are kN, m, sec
-"""
-
 # Imports from installed packages
 from abc import ABC
 from dataclasses import dataclass
@@ -26,9 +21,10 @@ from .quality import QualityBase
 from .rebars import RebarsBase
 from .slab import SlabBase
 from .stairs import StairsBase
+from .infill import InfillBase
 
 # Imports from geometry library
-from ...geometry.base import FrameBase, Point, Line, Rectangle
+from ...geometry.base import GeometryBase, Point, Line, Rectangle
 
 # Imports from utils library
 from ....utils.misc import make_dir
@@ -38,139 +34,191 @@ from ....utils.units import MPa, mm
 @dataclass
 class TaxonomyData:
     """Taxonomy data required for performing simulated-designs.
+
+    Attributes
+    ----------
+    slab_type : Literal[1, 2, 3]
+        Slab typology:
+        1: Solid two-way cast-in-situ slabs (SS2).
+        2: Solid one-way cast-in-situ slabs (SS1).
+        3: One-way composite slab with ceramic blocks and RC joists or
+        pre-stressed beams (HS).
+    beam_type : Literal[1, 2]
+        Beam typology:
+        1: Wide beams.
+        2: Emergent beams.
+    column_section : Literal[1, 2]
+        Column cross-section type:
+        1: Square solid section.
+        2: Rectangular solid section.
+    steel_grade : str
+        Steel material class ID, e.g., 'S400'.
+    concrete_grade : str
+        Concrete material class ID, e.g., 'C20/25'.
+    quality : Literal[0, 1, 2, 3]
+        Construction quality level:
+        0: Excellent quality.
+        1: High quality.
+        2: Moderate quality.
+        3: Low quality.
+    geometry : GeometryBase
+        Building geometry instance.
+    beta : float
+        Design lateral load factor.
+    design_class : str
+        Building design class selected.
+    beta_v : float, optional
+        Vertical load factor. By default None.
+    staircase_slab_depth : float, optional
+        Depth of the staircase slabs. By default None.
+    slab_thickness : float, optional
+        Slab thickness (depth). By default None.
+    slab_orientation : Literal[1, 2, 3], optional
+        Slab unloading orientation. By default None.
+        1: Unloading in beams along X direction.
+        2: Unloading in beams along Y direction.
+        3: Unloading in beams along both directions.
     """
     slab_type: Literal[1, 2, 3]
-    """Slab typology
-    1: Two-way solid slab (SS2).
-    2: One-way solid slab (SS1).
-    3: Composite slabs with pre-fabricated joists and ceramic blocks (HS)."""
     beam_type: Literal[1, 2]
-    """Beam typology
-    1: Wide beams.
-    2: Emergent beams."""
     column_section: Literal[1, 2]
-    """Column cross-section
-    1: square solid section.
-    2: rectangular solid section."""
     steel_grade: str
-    """Steel material class ID, e.g., S400."""
     concrete_grade: str
-    """Concrete material class ID, e.g., C20."""
-    quality: Literal[1, 2, 3]
-    """Construction quality levels
-    1: High quality.
-    2: Moderate quality.
-    3: Low quality."""
-    geometry: FrameBase
-    """Building geometry instance."""
+    quality: Literal[0, 1, 2, 3]
+    geometry: GeometryBase
     beta: float
-    """Design lateral load factor."""
     design_class: str
-    """Building design class selected."""
     beta_v: Optional[float] = None
-    """Vertical load factor."""
     staircase_slab_depth: Optional[float] = None
-    """Depth of the staircase slabs."""
     slab_thickness: Optional[float] = None
-    """Slab thickness (depth)."""
     slab_orientation: Optional[Literal[1, 2, 3]] = None
-    """Slab unloading orientation.
-    1: Unloading in beams along X direction.
-    2: Unloading in beams along Y direction.
-    3: Unloading in beams along both directions."""
 
 
 class BuildingBase(ABC):
-    """
-    Abstract base class for buildings.
+    """Abstract base class for buildings.
 
-    Must be inherited by design class specific buildings.
+    Must be inherited by design-class-specific buildings.
+
+    Attributes
+    ----------
+    taxonomy : TaxonomyData
+        Building taxonomy data.
+    beams : List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
+        List of beam instances.
+    columns : List[~simdesign.rcmrf.bdim.baselib.column.ColumnBase]
+        List of column instances.
+    joints : List[~simdesign.rcmrf.bdim.baselib.joint.JointBase]
+        List of joint instances.
+    slabs : List[SlabBase]
+        List of slab instances.
+    stairs : List[StairsBase]
+        List of stairs instances.
+    infills : List[~simdesign.rcmrf.bdim.baselib.infill.InfillBase]
+        List of infill wall instances.
+    steel : SteelBase
+        Steel material instance considered in design of beams and
+        columns.
+    concrete : ConcreteBase
+        Concrete material instance considered in design of beams and
+        columns.
+    loads : LoadsBase
+        Loads instance used to apply building loads.
+    materials : MaterialsBase
+        Materials instance used to set building materials.
+    rebars : RebarsBase
+        Rebars instance used to determine reinforcement arrangement.
+    quality : QualityBase
+        Quality instance used to adjust properties of structural
+        elements.
+    ColumnClass : Type[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]
+        Column class used to instantiate column objects.
+    BeamClass : Type[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]
+        Beam class used to instantiate beam objects.
+    JointClass : Type[~simdesign.rcmrf.bdim.baselib.joint.JointBase]
+        Joint class used to instantiate joint objects.
+    SlabClass : Type[SlabBase]
+        Slab class used to instantiate slab objects.
+    StairsClass : Type[StairsBase]
+        Stairs class used to instantiate stairs objects.
+    InfillClass : Type[~simdesign.rcmrf.bnsm.baselib.infill.InfillBase]
+        Infill class used to instantiate infill objects.
+    ElasticModelClass : Type[ElasticModelBase]
+        Elastic model class used to run structural analyses.
+    ok : bool
+        Decision flag for determining whether design is ok or not.
+    ITER_MAX : int
+        Maximum number of iterations in the iterative design routine.
+        By default 200.
+    COLUMN_UNIFORMIZATION_STEP : int, optional
+        Step size for column section uniformization. For example, if
+        equals to 2, the same column section might be varied at every
+        two storeys from bottom to top. If None, a constant section is
+        used at all storeys. By default None.
+    OVERSTRENGTH_FACTOR_COLUMN_MOMENT : float, optional
+        Overstrength factor for capacity design moments for columns
+        (strong-column weak-beam principle). If None, column capacity
+        design moments are not considered. By default None.
+    OVERSTRENGTH_FACTOR_BEAM_SHEAR : float, optional
+        Overstrength factor for capacity design shear forces for beams.
+        If None, beam capacity design shear forces are not considered.
+        By default None.
+    OVERSTRENGTH_FACTOR_COLUMN_SHEAR : float, optional
+        Overstrength factor for capacity design shear forces for
+        columns. If None, column capacity design shear forces are not
+        considered. By default None.
+    COLUMN_POSITION_FACTORS : Dict[...]
+        Position factors to account for column axial force increase due
+        to seismic loading. Used to compute preliminary axial forces on
+        columns.
     """
     taxonomy: TaxonomyData
-    """Building taxonomy data."""
     beams: List[BeamBase]
-    """List of beam instances."""
     columns: List[ColumnBase]
-    """List of column instances."""
     joints: List[JointBase]
-    """List of joint instances."""
     slabs: List[SlabBase]
-    """List of slab instances."""
     stairs: List[StairsBase]
-    """List of stairs instances."""
+    infills: List[InfillBase]
     steel: SteelBase
-    """Steel material instance considered in design of beams and columns."""
     concrete: ConcreteBase
-    """Concrete material instance considered in design of beams and columns."""
     loads: LoadsBase
-    """Loads instance used to apply building loads."""
     materials: MaterialsBase
-    """Materials instance used to set building materials."""
     rebars: RebarsBase
-    """Rebars instance used to determine reinforcement arrangement."""
     quality: QualityBase
-    """Quality instance used to adjust properties of structural elements."""
     ColumnClass: Type[ColumnBase]
     BeamClass: Type[BeamBase]
     JointClass: Type[JointBase]
     SlabClass: Type[SlabBase]
     StairsClass: Type[StairsBase]
+    InfillClass: Type[InfillBase]
     ElasticModelClass: Type[ElasticModelBase]
     ok: bool
-    """Decision flag for determining whether design is ok or not."""
     ITER_MAX: int = 200
-    """Maximum number of iterations in the iterative design routine.
-    By default 200."""
     COLUMN_UNIFORMIZATION_STEP: Optional[int] = None
-    """Step size considered for section uniformization in column. For
-    example, if equals to 2, the same column section might be varied at
-    every two storeys from bottom to top. If None, a constant section is
-    used at all storeys. By default None.
-
-    If step size is only 1 storey lower than total number of stories in the
-    building a constant section is used for column along the building."""
     OVERSTRENGTH_FACTOR_COLUMN_MOMENT: Optional[float] = None
-    """Safety or overstrength factor considered in calculation of capacity
-    design moments for columns (strong-column weak-beam principle).
-    By default None.
-
-    If None, column capacity design moments are not considered during
-    the design."""
     OVERSTRENGTH_FACTOR_BEAM_SHEAR: Optional[float] = None
-    """Safety or overstrength factor considered in calculation of capacity
-    design shear forces for beams. By default None.
-
-    If None, beam capacity design shear forces are not considered during
-    the design."""
     OVERSTRENGTH_FACTOR_COLUMN_SHEAR: Optional[float] = None
-    """Safety or overstrength factor considered in calculation of capacity
-    design shear forces for columns. By default None.
-
-    If None, column capacity design shear forces are not considered during
-    the design."""
     COLUMN_POSITION_FACTORS: Dict[
         Literal["bot", "top"], Dict[Literal["central", "exterior"], float]
     ] = {
         "bot": {"central": 1.1, "exterior": 1.3},
         "top": {"central": 1.3, "exterior": 1.5},
     }
-    """Position factor considered to account for the column axial force
-    increase due to seismic loading. These are used to compute preliminary
-    axial forces on columns."""
 
     @property
     def stairs_midstorey_beams(self) -> List[BeamBase]:
-        """
+        """List of stairs midstorey beams.
+
         Returns
         -------
-        List[BeamBase]
+        List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
             List of stairs midstorey beams.
         """
         return self._get_stairs_midstorey_beams()
 
     @property
     def next_steel(self) -> SteelBase:
-        """
+        """Next steel material.
+
         Returns
         -------
         SteelBase
@@ -180,7 +228,8 @@ class BuildingBase(ABC):
 
     @property
     def next_concrete(self) -> ConcreteBase:
-        """
+        """Next concrete material.
+
         Returns
         -------
         ConcreteBase
@@ -189,18 +238,20 @@ class BuildingBase(ABC):
         return self.materials.get_next_concrete(self.concrete)
 
     @property
-    def geometry(self) -> FrameBase:
-        """
+    def geometry(self) -> GeometryBase:
+        """Frame building geometry instance.
+
         Returns
         -------
-        StandardFrame
+        GeometryBase
             Frame building geometry instance.
         """
         return self.taxonomy.geometry
 
     @property
     def beta(self) -> float:
-        """
+        """Design lateral load factor (in g).
+
         Returns
         -------
         float
@@ -210,7 +261,8 @@ class BuildingBase(ABC):
 
     @property
     def beam_type(self) -> Literal[1, 2]:
-        """
+        """Typology of beams.
+
         Returns
         -------
         Literal[1, 2]
@@ -229,7 +281,8 @@ class BuildingBase(ABC):
 
     @property
     def column_section(self) -> Literal[1, 2]:
-        """
+        """Cross-section of columns.
+
         Returns
         -------
         Literal[1, 2]
@@ -248,7 +301,8 @@ class BuildingBase(ABC):
 
     @property
     def design_class(self) -> str:
-        """
+        """Building design class, e.g., 'eu_cdh'.
+
         Returns
         -------
         str
@@ -258,12 +312,13 @@ class BuildingBase(ABC):
 
     @property
     def slab_thickness(self) -> float | None:
-        """
+        """Slab thickness (depth) in the building.
+
         Returns
         -------
         float | None
             Slab thickness (depth) considered in the building,
-            if already set in the taxonomy, otherwise, None
+            if already set in the taxonomy, otherwise, None.
         """
         if hasattr(self.taxonomy, 'slab_thickness'):
             return self.taxonomy.slab_thickness
@@ -277,26 +332,28 @@ class BuildingBase(ABC):
 
     @property
     def slab_type(self) -> Literal[1, 2, 3]:
-        """
+        """Slab typology considered in the building.
+
         Returns
         -------
         Literal[1, 2, 3]
             Slab typology considered in the building.
-            1: Two-way solid slab.
-            2: One-way solid slab.
+            1: Solid two-way cast-in-situ slabs (SS2).
+            2: Solid one-way cast-in-situ slabs (SS1).
             3: One-way composite slab with ceramic blocks and RC joists or
-            pre-stressed beams.
+            pre-stressed beams (HS).
         """
         return self.taxonomy.slab_type
 
     @slab_type.setter
     def slab_type(self, new_type: Literal[1, 2, 3]) -> None:
-        """Setter for `staircase_slab_depth`."""
+        """Setter for `slab_type`."""
         self.taxonomy.slab_type = new_type
 
     @property
     def staircase_slab_depth(self) -> float:
-        """
+        """Building staircase slab thickness (depth).
+
         Returns
         -------
         float
@@ -314,11 +371,12 @@ class BuildingBase(ABC):
 
     @property
     def steel_grade(self) -> str:
-        """
+        """Reinforcing steel material grade, e.g., 'S400'.
+
         Returns
         -------
         str
-            The reinforcing steel material grade, e.g., 'S400'.
+            Reinforcing steel material grade, e.g., 'S400'.
         """
         return self.taxonomy.steel_grade
 
@@ -329,11 +387,12 @@ class BuildingBase(ABC):
 
     @property
     def concrete_grade(self) -> str:
-        """
+        """Concrete material grade, e.g., 'C20/25'.
+
         Returns
         -------
         str
-            The concrete material grade, e.g., 'C20'.
+            Concrete material grade, e.g., 'C20/25'.
         """
         return self.taxonomy.concrete_grade
 
@@ -344,7 +403,8 @@ class BuildingBase(ABC):
 
     @property
     def gamma_rc(self) -> float:
-        """
+        """Reinforced concrete unit weight in building.
+
         Returns
         -------
         float
@@ -356,11 +416,13 @@ class BuildingBase(ABC):
     def continuous_columns(
         self
     ) -> Dict[Tuple[Union[float, int]], List[List[ColumnBase]]]:
-        """
+        """Continuous columns grouped by grid position on XY-plane.
+
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[List[ColumnBase]]]
-            Lists of continuous columns at each grid on xy-plane.
+        Dict[Tuple[Union[float, int]], \
+            List[List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]]]
+            Lists of continuous columns at each grid on XY-plane.
 
         Notes
         -----
@@ -388,11 +450,12 @@ class BuildingBase(ABC):
 
     @property
     def _continuous_columns(self) -> List[List[ColumnBase]]:
-        """
+        """All continuous columns as a single flat list.
+
         Returns
         -------
-        List[List[ColumnBase]]
-            All continuous columns in a single list
+        List[List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]]
+            All continuous columns as a single flat list.
         """
         return [columns
                 for _, columns_list in self.continuous_columns.items()
@@ -402,11 +465,13 @@ class BuildingBase(ABC):
     def continuous_beams_x(
         self
     ) -> Dict[Tuple[Union[float, int]], List[List[BeamBase]]]:
-        """
+        """Continuous beams along -X grouped by grid on YZ-plane.
+
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[List[BeamBase]]]
-            Lists of continuous beams at each grid on yz-plane.
+        Dict[Tuple[Union[float, int]], \
+            List[List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]]]
+            Lists of continuous beams at each grid on YZ-plane.
 
         Notes
         -----
@@ -436,11 +501,13 @@ class BuildingBase(ABC):
     def continuous_beams_y(
         self
     ) -> Dict[Tuple[Union[float, int]], List[List[BeamBase]]]:
-        """
+        """Continuous beams along -Y grouped by grid on XZ-plane.
+
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[List[BeamBase]]]
-            Lists of continuous beams at each grid on xz-plane.
+        Dict[Tuple[Union[float, int]], \
+            List[List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]]]
+            Lists of continuous beams at each grid on XZ-plane.
 
         Notes
         -----
@@ -468,11 +535,12 @@ class BuildingBase(ABC):
 
     @property
     def _continuous_beams(self) -> List[List[BeamBase]]:
-        """
+        """All continuous beams as a single flat list.
+
         Returns
         -------
-        List[List[BeamBase]]
-            All continuous beams in a single list
+        List[List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]]
+            All continuous beams as a single flat list.
         """
         # Get continuous beams as single list
         cont_beams_all: List[List[BeamBase]] = []
@@ -486,7 +554,8 @@ class BuildingBase(ABC):
 
     @property
     def num_storeys(self) -> int:
-        """
+        """Number of storeys in the building.
+
         Returns
         -------
         int
@@ -518,7 +587,8 @@ class BuildingBase(ABC):
 
     @property
     def dim_change(self) -> bool:
-        """
+        """Flag indicating whether section dimensions can be increased.
+
         Returns
         -------
         bool
@@ -529,7 +599,8 @@ class BuildingBase(ABC):
 
     @property
     def dim_change_column(self) -> bool:
-        """
+        """Flag indicating whether column dimensions can be increased.
+
         Returns
         -------
         bool
@@ -540,11 +611,12 @@ class BuildingBase(ABC):
 
     @property
     def dim_change_beam(self) -> bool:
-        """
+        """Flag indicating whether beam dimensions can be increased.
+
         Returns
         -------
         bool
-            Flag indicating whether it is possible to increase column section
+            Flag indicating whether it is possible to increase beam section
             dimensions or not.
         """
         # Beam breadth
@@ -556,7 +628,8 @@ class BuildingBase(ABC):
 
     @property
     def mat_change(self) -> bool:
-        """
+        """Flag for determining if materials can be changed.
+
         Returns
         -------
         bool
@@ -569,12 +642,14 @@ class BuildingBase(ABC):
 
     @property
     def beam_change(self) -> bool:
-        """
+        """Flag for determining if beam type can be changed.
+
         Returns
         -------
         bool
-            Flag for determining if it is possible change `beam_type`
+            Flag for determining if it is possible change ``beam_type``
             or not.
+
         Notes
         -----
         Can be overwritten.
@@ -586,12 +661,14 @@ class BuildingBase(ABC):
 
     @property
     def column_change(self) -> bool:
-        """
+        """Flag for determining if column section can be changed.
+
         Returns
         -------
         bool
-            Flag for determining if it is possible change `column_section`
-            or not.
+            Flag for determining if it is possible change
+            ``column_section`` or not.
+
         Notes
         -----
         Can be overwritten.
@@ -603,7 +680,8 @@ class BuildingBase(ABC):
 
     @property
     def beams_fail(self) -> bool:
-        """
+        """Boolean indicating if any beams failed the design check.
+
         Returns
         -------
         bool
@@ -613,7 +691,8 @@ class BuildingBase(ABC):
 
     @property
     def columns_fail(self) -> bool:
-        """
+        """Boolean indicating if any columns failed the design check.
+
         Returns
         -------
         bool
@@ -624,7 +703,8 @@ class BuildingBase(ABC):
 
     @property
     def elastic_nodes(self) -> List[Point]:
-        """
+        """Nodes (points) in the linear elastic numerical model.
+
         Returns
         -------
         List[Point]
@@ -634,18 +714,18 @@ class BuildingBase(ABC):
 
     @property
     def elastic_nodes_ground(self) -> List[Point]:
-        """_summary_
+        """Ground-level nodes in the linear elastic numerical model.
 
         Returns
         -------
         List[Point]
-            Nodes (points) in the linear elastic numerical model.
+            Ground-level nodes in the linear elastic numerical model.
         """
         return [cols[0][0].line.points[0]
                 for _, cols in self.continuous_columns.items()]
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
-        """Initializes building object.
+        """Initialize a new instance of BuildingBase.
 
         Parameters
         ----------
@@ -657,6 +737,7 @@ class BuildingBase(ABC):
         self.columns = []
         self.joints = []
         self.slabs = []
+        self.infills = []
         self.stairs = []
         self.ok = False
         self._initialize_columns()
@@ -665,12 +746,13 @@ class BuildingBase(ABC):
         self._initialize_slabs()
         self._initialize_stairs()
         self._initialize_materials()
+        self._initialize_infills()
         self._set_beam_gravity_loads()
         self._set_restore_point()
         self._set_quality_model()
 
     def _initialize_beams(self) -> None:
-        """Initializes building beams.
+        """Initialize building beams.
         """
         # Lines of exterior beams
         exterior_beam_lines = self.geometry.exterior_horizontal_lines
@@ -685,6 +767,8 @@ class BuildingBase(ABC):
             beam.cover = self.rebars.beam_cover
             # Find end columns
             beam.columns = self._find_columns_by_beam(beam)
+            # Initialize superimposed gravity loads from the infills
+            beam.infill_wg = 0.0
             # Append to beams list
             self.beams.append(beam)
         # Beams along global y-axis
@@ -698,27 +782,24 @@ class BuildingBase(ABC):
             beam.cover = self.rebars.beam_cover
             # Find end columns
             beam.columns = self._find_columns_by_beam(beam)
+            # Initialize superimposed gravity loads from the infills
+            beam.infill_wg = 0.0
             # Append to beams list
             self.beams.append(beam)
 
     def _initialize_columns(self) -> None:
-        """Initializes building columns.
+        """Initialize building columns.
         """
-        # Get facades
-        facade_ids = self.geometry.lines_z_facades
-        vertical_lines = self.geometry.lines_z
         # Start loop through each vertical line
-        for line in vertical_lines:
+        for line in self.geometry.column_lines:
             column = self.ColumnClass(line=line,
                                       section=self.column_section,
                                       gamma_rc=self.gamma_rc)
-            line_idx = vertical_lines.index(line)
-            facade_id = facade_ids[line_idx]
             # Set the longer dimension direction in global axis for
             # rectangular column.
-            if facade_id in [2, 4, 12, 14, 32, 34]:
+            if line.rot_angle == 90.0:
                 column.orient = 'y'
-            else:
+            elif line.rot_angle == 0.0:
                 column.orient = 'x'
             # Set the column cover
             column.cover = self.rebars.col_cover
@@ -726,9 +807,9 @@ class BuildingBase(ABC):
             self.columns.append(column)
 
     def _initialize_slabs(self) -> None:
-        """Initializes building slabs.
+        """Initialize building slabs.
         """
-        for rectangle in self.geometry.slabs_rectangles:
+        for rectangle in self.geometry.slab_rectangles:
             slab = self.SlabClass(rectangle=rectangle,
                                   typology=self.slab_type,
                                   thickness=self.slab_thickness)
@@ -742,7 +823,7 @@ class BuildingBase(ABC):
                 slab.t = self.slab_thickness
 
     def _initialize_stairs(self) -> None:
-        """Initializes building stairs.
+        """Initialize building stairs.
         """
         for rectangle in self.geometry.stairs_rectangles:
             slab = self.StairsClass(
@@ -752,13 +833,13 @@ class BuildingBase(ABC):
             slab.set_loads(self.loads.permanent, self.loads.variable)
             self.stairs.append(slab)
         # If staircase slab depth is not provided, set a global depth value
-        if self.staircase_slab_depth is None:
+        if self.staircase_slab_depth is None and any(self.stairs):
             self.staircase_slab_depth = max(slab.t for slab in self.stairs)
             for slab in self.stairs:
                 slab.t = self.staircase_slab_depth
 
     def _initialize_materials(self) -> None:
-        """Initializes building materials.
+        """Initialize building materials.
         """
         # Set the current materials
         self.steel = self.materials.get_steel(self.steel_grade)
@@ -767,7 +848,7 @@ class BuildingBase(ABC):
         self._update_element_materials()
 
     def _initialize_joints(self) -> None:
-        """Initializes building joints.
+        """Initialize building joints.
         """
         for node in self.elastic_nodes:
             # Get elements connected to the node
@@ -785,13 +866,40 @@ class BuildingBase(ABC):
             )
             self.joints.append(joint)
 
+    def _initialize_infills(self) -> None:
+        """Initialize building infill walls.
+        """
+        exterior_beam_lines = self.geometry.exterior_horizontal_lines
+        for rectangle in self.geometry.infill_rectangles:
+            beams = []
+            cols = []
+            loc = 'interior'
+            for i, line in enumerate(rectangle.lines):
+                if i in [1, 3]:  # beams
+                    if line:
+                        beams.append(self._find_beam_by_line(line))
+                        if beams[-1] in exterior_beam_lines:
+                            loc = 'exterior'
+                    else:
+                        beams.append(None)  # Could be None at base level
+                elif i in [0, 2]:  # columns
+                    if isinstance(line, list):
+                        # Handle the case with multiple columns
+                        tmp = [self._find_column_by_line(li) for li in line]
+                        cols.append(tmp)
+                    else:
+                        cols.append(self._find_column_by_line(line))
+
+            infill = self.InfillClass(rectangle, beams, cols, loc)
+            self.infills.append(infill)
+
     def _set_quality_model(self) -> None:
-        """Sets construction quality model.
+        """Set construction quality model.
         """
         self.quality.model = self.taxonomy.quality
 
     def _update_element_materials(self) -> None:
-        """Updates beam-column elements' materials."""
+        """Update beam-column elements' materials."""
         # Update the material grades
         self.concrete_grade = self.concrete.grade
         self.steel_grade = self.steel.grade
@@ -814,7 +922,7 @@ class BuildingBase(ABC):
     def _get_unique_seism_combo_grav_factors(
         self
     ) -> List[Dict[Literal['G', 'Q'], float]]:
-        """Retrieves the list containining gravity load factors from seismic
+        """Retrieve the list containing gravity load factors from seismic
         load combos.
 
         These factors can be used to compute the mean gravity forces obtained
@@ -823,7 +931,7 @@ class BuildingBase(ABC):
         Returns
         -------
         List[Dict[Literal['G', 'Q'], float]]
-            A list containining gravity load factors from seismic load combos.
+            A list containing gravity load factors from seismic load combos.
         """
         factors = []
         unique_pairs = set()
@@ -846,18 +954,18 @@ class BuildingBase(ABC):
         return factors
 
     def _get_stairs_midstorey_beams(self) -> List[BeamBase]:
-        """Returns midstorey stairs beams along x-direction.
+        """Return midstorey stairs beams along x-direction.
 
         Returns
         -------
-        List[BeamBase]
+        List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]
             List of mid-storey stairs beams along x-direction.
         """
         return [self._find_beam_by_line(line)
                 for line in self.geometry.stairs_lines_x1]
 
     def _get_stairs_columns_disagg(self) -> List[List[List[ColumnBase]]]:
-        """Returns disaggregated stairs columns.
+        """Return disaggregated stairs columns.
 
         The first level of items corresponds to each stairs columns (has
         length of num stairs).
@@ -869,7 +977,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        List[List[List[ColumnBase]]]
+        List[List[List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]]]
             List of disaggregated stairs columns lists.
         """
         columns_list_per_stairs = []
@@ -892,12 +1000,12 @@ class BuildingBase(ABC):
         return columns_list_per_stairs
 
     def _get_stairs_columns_agg(self) -> List[ColumnBase]:
-        """Returns aggregated list of stairs columns.
+        """Return aggregated list of stairs columns.
 
         Returns
         -------
-        List[ColumnBase]
-            List of all stairs columns
+        List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]
+            List of all stairs columns.
         """
         columns = []
         z11_lines = self.geometry.stairs_lines_z11
@@ -913,7 +1021,7 @@ class BuildingBase(ABC):
         return columns
 
     def _find_beam_by_line(self, line: Line) -> Optional[BeamBase]:
-        """Finds the beam object with given line attribute.
+        """Find the beam object with given line attribute.
 
         Parameters
         ----------
@@ -922,7 +1030,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        BeamBase | None
+        ~simdesign.rcmrf.bnsm.baselib.beam.BeamBase | None
             Returns Beam object if line attribute matches with given,
             otherwise, returns None.
         """
@@ -932,7 +1040,7 @@ class BuildingBase(ABC):
         return matching_beam
 
     def _find_column_by_line(self, line: Line) -> Optional[ColumnBase]:
-        """Finds the column object with given line attribute.
+        """Find the column object with given line attribute.
 
         Parameters
         ----------
@@ -941,7 +1049,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        ColumnBase | None
+        ~simdesign.rcmrf.bnsm.baselib.column.ColumnBase | None
             Returns Column object if line attribute matches with given,
             otherwise, returns None.
         """
@@ -953,16 +1061,16 @@ class BuildingBase(ABC):
 
     def _find_columns_by_beam(self, beam: BeamBase
                               ) -> List[Optional[ColumnBase]]:
-        """Finds the columns at both ends of the given beam.
+        """Find the columns at both ends of the given beam.
 
         Parameters
         ----------
-        beam : BeamBase
+        beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase
             Beam object for which columns are going to be found.
 
         Returns
         -------
-        List[ColumnBase | None]
+        List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase | None]
             List of found Column objects [Ci_top, Ci_bot, Cj_top, Cj_end],
             Columns which are not found are equal to None.
         """
@@ -980,7 +1088,7 @@ class BuildingBase(ABC):
 
     def _find_slab_by_rectangle(self, rectangle: Rectangle
                                 ) -> Optional[SlabBase]:
-        """Finds slab with given rectangle attribute.
+        """Find slab with given rectangle attribute.
 
         Parameters
         ----------
@@ -1001,7 +1109,7 @@ class BuildingBase(ABC):
 
     def _find_stairs_by_rectangle(self, rectangle: Rectangle
                                   ) -> Optional[StairsBase]:
-        """Finds stairs with given rectangle attribute.
+        """Find stairs with given rectangle attribute.
 
         Parameters
         ----------
@@ -1028,7 +1136,7 @@ class BuildingBase(ABC):
         Optional[ColumnBase],
         Optional[ColumnBase],
     ]:
-        """Finds the elements connected to the given node/point.
+        """Find the elements connected to the given node/point.
 
         Parameters
         ----------
@@ -1037,9 +1145,12 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        Tuple[ Optional[BeamBase], Optional[BeamBase],
-        Optional[BeamBase], Optional[BeamBase],
-        Optional[ColumnBase], Optional[ColumnBase] ]
+        Tuple[ Optional[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase], \
+            Optional[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase],
+        Optional[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase], \
+            Optional[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase],
+        Optional[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase], \
+            Optional[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase] ]
             0. If exists left beam along global x-axis, otherwise None,
             1. If exists right beam along global x-axis, otherwise None,
             2. If exists front beam along global y-axis, otherwise None,
@@ -1082,7 +1193,7 @@ class BuildingBase(ABC):
         )
 
     def _find_joint_by_point(self, node: Point) -> Optional[JointBase]:
-        """Finds the joints by the given node/point.
+        """Find the joints by the given node/point.
 
         Parameters
         ----------
@@ -1091,7 +1202,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        JointBase | None
+        ~simdesign.rcmrf.bdim.baselib.joint.JointBase | None
             Returns Joint object if elastic_node attribute matches with
             given node, otherwise, returns None.
         """
@@ -1102,13 +1213,18 @@ class BuildingBase(ABC):
         return matching_joint
 
     def _set_beam_gravity_loads(self) -> None:
-        """Defines the uniformly distributed gravity loads for beams.
+        """Define the uniformly distributed gravity loads for beams.
 
         The loads transferred from slabs are not factored by alpha.
         Hence, alpha factors corresponding to loads transferred from
         each slab are also set.
+
+        TODO
+        ----
+        I think we can still assume partitions exist. Even if
+        they do not have influence on the lateral capacity (e.g., drywalls)
+        and we can add include their weights as default on the beams.
         """
-        exterior_beam_lines = self.geometry.exterior_horizontal_lines
         # Add loads to floor beams
         for slab in self.slabs:
             beams = [self._find_beam_by_line(line)
@@ -1121,14 +1237,6 @@ class BuildingBase(ABC):
                 beam.slab_alpha.append(alpha)
                 beam.slab_wg.append(tributary_area * slab.pg / beam.L)
                 beam.slab_wq.append(tributary_area * slab.pq / beam.L)
-                # Add infill loads to the exterior beams
-                if beam.line in exterior_beam_lines:
-                    beam.infill_wg = self.loads.permanent.infill
-                else:
-                    beam.infill_wg = 0.0
-                # At roof level infills do not exist, remove
-                if slab.roof:
-                    beam.infill_wg = 0.0
 
         # Add loads to the beams supporting staircase
         mid_beams = self.stairs_midstorey_beams
@@ -1142,7 +1250,6 @@ class BuildingBase(ABC):
                 slab.pg / mid_beam.L
             mid_beam.stairs_wq = slab.beam_influence_areas * \
                 slab.pq / mid_beam.L
-            mid_beam.infill_wg = 0.5 * self.loads.permanent.infill
 
             for j, beam in enumerate(rect_beams):
                 if j == 1:  # The beam which supports staircase
@@ -1150,17 +1257,13 @@ class BuildingBase(ABC):
                         slab.pg / beam.L
                     beam.stairs_wq = slab.beam_influence_areas * \
                         slab.pq / beam.L
-                elif j in [0, 2]:
-                    beam.infill_wg = self.loads.permanent.infill
-                if j == 3:
-                    beam.infill_wg = 0.0
 
-                # At roof level infills do not exist
-                if slab.roof:
-                    beam.infill_wg = 0.0
+        # Add superimposed gravity loads from the infills to the beams
+        for infill in self.infills:
+            infill.set_beam_infill_load()
 
     def _set_beam_predesign_forces(self) -> None:
-        """Defines the beam predesign forces (mid-span moments and shears).
+        """Define the beam predesign forces (mid-span moments and shears).
 
         The expected predesign forces are computed based on the gravity loads.
         The forces computed herein should be used only for the preliminary
@@ -1187,10 +1290,10 @@ class BuildingBase(ABC):
             beam.pre_Vd = Vd
 
     def _set_column_predesign_forces(self) -> None:
-        """Defines the predesign forces (axial forces) for columns.
+        """Define the predesign forces (axial forces) for columns.
 
         The expected axial forces are first computed due to the gravity loads.
-        These are then factored to account for increse in column axial forces
+        These are then factored to account for increase in column axial forces
         due to the lateral loads in frame. The forces computed herein should be
         used only for the preliminary design of columns.
         """
@@ -1275,7 +1378,7 @@ class BuildingBase(ABC):
             column.pre_Nd = Nd
 
     def _uniformize_stairs_columns(self) -> None:
-        """Uniformizes the continuous columns of the same stairs.
+        """Uniformize the continuous columns of the same stairs.
         """
         stairs_columns_disagg = self._get_stairs_columns_disagg()
         for columns_list in stairs_columns_disagg:
@@ -1289,7 +1392,7 @@ class BuildingBase(ABC):
                 top_col.by = by_max
 
     def _ensure_column_dim_consistency(self) -> None:
-        """Makes lower column dimensions are always greater or equal.
+        """Ensure lower column dimensions are always greater or equal.
         """
         for _, column_lists in self.continuous_columns.items():
             for columns in column_lists:
@@ -1304,7 +1407,8 @@ class BuildingBase(ABC):
                             col.by = by_max
 
     def _uniformize_columns_geometry(self) -> None:
-        """Uniformizes column section dimensions on the same continuous lines.
+        """Uniformize column section dimensions on the same continuous lines.
+
         Notes
         -----
         If step size is only 1 storey lower than total number of stories in the
@@ -1383,7 +1487,7 @@ class BuildingBase(ABC):
                     beam.h = h_max
 
     def _predesign(self) -> None:
-        """Does preliminary design of the building beams and columns.
+        """Make preliminary design of the building beams and columns.
 
         1) Makes initial guess for section dimensions.
         2) Uniformizes the column sections along the continuous lines.
@@ -1491,7 +1595,7 @@ class BuildingBase(ABC):
         elastic_model.analyze_for_all()
 
     def _make_trial_structural_design(self) -> None:
-        """Makes a trial structural design and checks if it is ok or not.
+        """Make a trial structural design and checks if it is ok or not.
         """
         self._design_beams_for_flexure()
         self._design_columns_for_flexure()
@@ -1500,7 +1604,7 @@ class BuildingBase(ABC):
         self._validate_structural_design()
 
     def _validate_structural_design(self) -> None:
-        """Determines whether the current design is satisfactory or not.
+        """Determine whether the current design is satisfactory or not.
 
         All structural element should meet the design criteria.
         """
@@ -1510,7 +1614,7 @@ class BuildingBase(ABC):
             self.ok = True
 
     def __print_beam_failure(self, text: str) -> None:
-        """Prints the number of failed beams and their dimensions.
+        """Print the number of failed beams and their dimensions.
         """
         idxs = [i for i, beam in enumerate(self.beams) if not beam.ok]
         print(
@@ -1521,7 +1625,7 @@ class BuildingBase(ABC):
         #           f"b={self.beams[idx].b}")
 
     def __print_column_failure(self, text: str) -> None:
-        """Prints the number of failed columns and their dimensions.
+        """Print the number of failed columns and their dimensions.
         """
         idxs = [i for i, col in enumerate(self.columns)
                 if not (col.ok_x and col.ok_y)]
@@ -1533,21 +1637,21 @@ class BuildingBase(ABC):
         #           f"by={self.columns[idx].by}")
 
     def _validate_beam_section_dimensions(self) -> None:
-        """Checks if section dimensions of beam are adequate and
-        validates against maximum dimensions."""
+        """Check if section dimensions of beams are adequate and
+        validate against maximum dimensions."""
         for beam in self.beams:
             beam.verify_section_adequacy()
             beam.validate_section_dimensions()
 
     def _validate_column_section_dimensions(self) -> None:
-        """Checks if section dimensions of columns are adequate and
-        validates against maximum dimensions."""
+        """Check if section dimensions of columns are adequate and
+        validate against maximum dimensions."""
         for column in self.columns:
             column.verify_section_adequacy()
             column.validate_section_dimensions()
 
     def _design_beams_for_flexure(self) -> None:
-        """Performs flexure design of the beams.
+        """Perform flexure design of the beams.
 
         1. Perform section adequacy checks (e.g., max. normalized moment).
         2. If the section is adequate for given design forces,
@@ -1607,12 +1711,19 @@ class BuildingBase(ABC):
             self.__print_beam_failure('stage 2 flexure')
 
     def _set_column_capacity_design_moments(self) -> None:
-        """Appends the capacity design moments to the list of design forces
+        """Append the capacity design moments to the list of design forces
         for columns.
+
+        Notes
+        -----
+        EN 1998-1:2004, Clause 4.4.2.3(4).
 
         References
         ----------
-        EN 1998-1:2004 4.4.2.3(4)
+        Comité Européen de Normalisation, CEN (2004). Eurocode 8: Design of
+        Structures for Earthquake Resistance — Part 1: General Rules,
+        Seismic Actions and Rules for Buildings.
+        European Committee for Standardization, Brussels, Belgium.
         """
         if self.OVERSTRENGTH_FACTOR_COLUMN_MOMENT is None:  # Do not add
             return
@@ -1683,20 +1794,27 @@ class BuildingBase(ABC):
                     joint.bottom_column.design_forces.append(forces_bottom)
 
     def _set_beam_capacity_design_shear_forces(self) -> None:
-        """Appends the beam capacity design shear forces to the list of
+        """Append the beam capacity design shear forces to the list of
         beam design forces.
+
+        Notes
+        -----
+        EN 1998-1:2004, Clause 5.4.2.2.
 
         References
         ----------
-        EN 1998-1:2004 5.4.2.2
+        Comité Européen de Normalisation, CEN (2004). Eurocode 8: Design of
+        Structures for Earthquake Resistance — Part 1: General Rules,
+        Seismic Actions and Rules for Buildings.
+        European Committee for Standardization, Brussels, Belgium.
         """
 
         def get_sum_mrdb_at_joint(joint: JointBase) -> Tuple[float, float]:
-            """Gets the summation of moment of resistances of joint beams.
+            """Get the summation of moment of resistances of joint beams.
 
             Parameters
             ----------
-            joint : JointBase
+            joint : ~simdesign.rcmrf.bdim.baselib.joint.JointBase
                 Instance of the Joint object.
 
             Returns
@@ -1729,11 +1847,11 @@ class BuildingBase(ABC):
             return sum_mrd_pos, sum_mrd_neg
 
         def get_sum_mrdc_at_joint(joint: JointBase) -> float:
-            """Gets the summation of moment of resistances of joint columns.
+            """Get the summation of moment of resistances of joint columns.
 
             Parameters
             ----------
-            joint : JointBase
+            joint : ~simdesign.rcmrf.bdim.baselib.joint.JointBase
                 Instance of the Joint object.
 
             Returns
@@ -1769,12 +1887,12 @@ class BuildingBase(ABC):
             return sum_mrd
 
         def get_beam_clear_length() -> float:
-            """Gets beam clear length (distance between column faces).
+            """Get beam clear length (distance between column faces).
 
             Returns
             -------
             float
-                Beam clear length
+                Beam clear length.
             """
             # i'th joint width
             if joint_i.top_column and joint_i.bottom_column:
@@ -1865,7 +1983,7 @@ class BuildingBase(ABC):
                 beam.design_forces.append(forces)
 
     def _design_beams_for_shear(self) -> None:
-        """Performs shear design of the beams.
+        """Make shear design of the beams.
 
         1. Check if beam and column flexure designs are ok, if ok continue.
         2. Add capacity design shear forces to the design forces list. Then,
@@ -1927,14 +2045,14 @@ class BuildingBase(ABC):
             self.__print_beam_failure('stage 2 shear')
 
     def _design_columns_for_flexure(self) -> None:
-        """Performs flexure design of the columns.
+        """Make flexure design of the columns.
 
         1. Check if beam flexure designs are ok. If beams are ok, continue.
         2. Add capacity design moments to the design forces list. Then,
         perform section adequacy checks (e.g., checks shear stress).
         If column sections are ok, continue.
         3. Compute required longitudinal reinforcement area. Then,
-        find the rebar solution to meet detailing requirements and valdiate.
+        find the rebar solution to meet detailing requirements and validate.
         """
         # STAGE 1: Check beam flexure designs
         if self.beams_fail:  # Beam sections are not verified.
@@ -1983,20 +2101,27 @@ class BuildingBase(ABC):
             self.__print_column_failure('stage 2 flexure')
 
     def _set_column_capacity_design_shear_forces(self) -> None:
-        """Appends the column capacity design shear forces to the list of
+        """Append the column capacity design shear forces to the list of
         column design forces.
+
+        Notes
+        -----
+        EN 1998-1:2004, Clause 5.4.2.3.
 
         References
         ----------
-        EN 1998-1:2004 5.4.2.3
+        Comité Européen de Normalisation, CEN (2004). Eurocode 8: Design of
+        Structures for Earthquake Resistance — Part 1: General Rules,
+        Seismic Actions and Rules for Buildings.
+        European Committee for Standardization, Brussels, Belgium.
         """
 
         def get_sum_mrdb_at_joint(joint: JointBase) -> Tuple[float, float]:
-            """Gets the summation of moment of resistances of joint beams.
+            """Get the summation of moment of resistances of joint beams.
 
             Parameters
             ----------
-            joint : JointBase
+            joint : ~simdesign.rcmrf.bdim.baselib.joint.JointBase
                 Instance of the Joint object.
 
             Returns
@@ -2027,11 +2152,11 @@ class BuildingBase(ABC):
                     sum_mrdb_y_pos, sum_mrdb_y_neg)
 
         def get_sum_mrdc_at_joint(joint: JointBase) -> Tuple[float, float]:
-            """Gets the summation of moment of resistances of joint columns.
+            """Get the summation of moment of resistances of joint columns.
 
             Parameters
             ----------
-            joint : JointBase
+            joint : ~simdesign.rcmrf.bdim.baselib.joint.JointBase
                 Instance of the Joint object.
 
             Returns
@@ -2063,7 +2188,7 @@ class BuildingBase(ABC):
             return sum_mrd_x, sum_mrd_y
 
         def get_column_clear_length() -> Tuple[float, float]:
-            """Gets column clear length (distance between column faces).
+            """Get column clear length (distance between column faces).
 
             Returns
             -------
@@ -2188,7 +2313,7 @@ class BuildingBase(ABC):
                 column.design_forces.append(forces)
 
     def _design_columns_for_shear(self) -> None:
-        """Performs shear design of the columns.
+        """Make shear design of the columns.
 
         1. Check if beam and column flexure designs are ok, if ok continue.
         2. Add capacity design shear forces to the design forces list. Then,
@@ -2249,10 +2374,10 @@ class BuildingBase(ABC):
             self.__print_column_failure('stage 2 shear')
 
     def _set_expected_axial_forces_on_column_hinges(self) -> None:
-        """This method sets the expected axial forces on column hinges.
+        """Set the expected axial forces on column hinges.
 
         These axial forces are used for calculating plastic hinge
-        properties. By default, they are assummed to be equal to the
+        properties. By default, they are assumed to be equal to the
         factored axial forces computed during preliminary design phase.
         """
         # Set the predesign forces based on final configurations
@@ -2263,7 +2388,7 @@ class BuildingBase(ABC):
             column.hinge_Nq = column.pre_Nq_pos
 
     def run_iterative_design_algorithm(self) -> None:
-        """Routine for iterative design algorithm.
+        """Execute the iterative design algorithm.
 
         Notes
         -----
@@ -2327,7 +2452,7 @@ class BuildingBase(ABC):
             Warning('No design solution is found.')
 
     def to_csv(self, directory: Union[str, Path]) -> None:
-        """Saves the generated BDIM data into the specified directory.
+        """Save the generated BDIM data into the specified directory.
 
         The files will be saved into the directory upon re-creating it.
 
@@ -2346,17 +2471,40 @@ class BuildingBase(ABC):
             make_dir(directory)
 
         # Set the paths for .csv files
+        infills_path = directory / 'infills.csv'
         joints_path = directory / 'joints.csv'
         columns_path = directory / 'columns.csv'
         beams_path = directory / 'beams.csv'
+        slabs_path = directory / 'slabs.csv'
+        stairs_path = directory / 'stairs.csv'
 
         # Retrive the bondslip factor and joint model type
         bondslip_factor = self.quality.model.bondslip_factor
         joint_model = self.quality.model.joint
 
+        # Keys to save for infills
+        i_keys = (
+            'id', 'node_1', 'node_2', 'node_3', 'node_4',
+            'typology', 'tw [mm]',
+        )
+        # Start infills dictionary
+        i_dict = {key: [] for key in i_keys}
+        for i in self.infills:
+            i_dict['id'].append(i.rectangle.tag)
+            i_dict['node_1'].append(i.rectangle.points[0].tag)
+            i_dict['node_2'].append(i.rectangle.points[1].tag)
+            i_dict['node_3'].append(i.rectangle.points[2].tag)
+            i_dict['node_4'].append(i.rectangle.points[3].tag)
+            i_dict['typology'].append(i.typology)
+            i_dict['tw [mm]'].append(i.thickness / mm)
+        # Convert infills dictionary to Pandas DataFrame
+        infills = pd.DataFrame(i_dict)
+        # Export infills DataFrame as .csv file
+        infills.to_csv(infills_path, index=False, float_format='%g')
+
         # Keys to save for joints
         j_keys = (
-            'node_id', 'x-coord [m]', 'y-coord [m]', 'z-coord [m]',
+            'id', 'x-coord [m]', 'y-coord [m]', 'z-coord [m]',
             'bottom_column', 'top_column',
             'left_beam_x', 'right_beam_x', 'left_beam_y', 'right_beam_y',
             'fcm [MPa]', 'model_type_q'
@@ -2365,7 +2513,7 @@ class BuildingBase(ABC):
         j_dict = {key: [] for key in j_keys}
         # Loop through each joint and append
         for jnt in self.joints:
-            j_dict['node_id'].append(jnt.elastic_node.tag)
+            j_dict['id'].append(jnt.elastic_node.tag)
             j_dict['x-coord [m]'].append(jnt.elastic_node.coordinates[0])
             j_dict['y-coord [m]'].append(jnt.elastic_node.coordinates[1])
             j_dict['z-coord [m]'].append(jnt.elastic_node.coordinates[2])
@@ -2402,21 +2550,29 @@ class BuildingBase(ABC):
 
         # Keys to save for columns
         c_keys = (
-            'column_id', 'node_i', 'node_j',
+            # Element connectivity keys
+            'id', 'node_i', 'node_j',
+            # Design keys
             'bx [mm]', 'by [mm]', 'length [mm]',
             'wg [kN/m]', 'wq [kN/m]', 'fcd [MPa]', 'fsyd [MPa]', 'cover [mm]',
             'dbl_cor [mm]', 'dbl_int [mm]', 'nblx_int', 'nbly_int',
             'dbh [mm]', 'sbh [mm]', 'nbh_x', 'nbh_y',
-            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]', 'sbh_q [mm]',
-            'cover_q [mm]', 'bondslip_factor_q'
+            # Quality-adjusted reinforcement keys
+            'dbl_cor_q [mm]', 'dbl_int_q [mm]', 'nblx_int_q', 'nbly_int_q',
+            'dbh_q [mm]', 'sbh_q [mm]', 'nbh_x_q', 'nbh_y_q',
+            # Other quality-related fields
+            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]', 'cover_q [mm]',
+            'bondslip_factor_q'
         )
         # Start columns dictionary
         c_dict = {key: [] for key in c_keys}
         # Loop through each column and append
         for col in self.columns:
-            c_dict['column_id'].append(col.line.tag)
+            # Element connectivity keys
+            c_dict['id'].append(col.line.tag)
             c_dict['node_i'].append(col.elastic_nodes[0].tag)
             c_dict['node_j'].append(col.elastic_nodes[1].tag)
+            # Design keys
             c_dict['bx [mm]'].append(col.bx / mm)
             c_dict['by [mm]'].append(col.by / mm)
             c_dict['length [mm]'].append(col.H / mm)
@@ -2433,10 +2589,19 @@ class BuildingBase(ABC):
             c_dict['sbh [mm]'].append(col.sbh / mm)
             c_dict['nbh_x'].append(col.nbh_x)
             c_dict['nbh_y'].append(col.nbh_y)
+            # Quality-adjusted reinforcement keys
+            c_dict['dbl_cor_q [mm]'].append(col.dbl_cor_q / mm)
+            c_dict['dbl_int_q [mm]'].append(col.dbl_int_q / mm)
+            c_dict['nblx_int_q'].append(col.nblx_int_q)
+            c_dict['nbly_int_q'].append(col.nbly_int_q)
+            c_dict['dbh_q [mm]'].append(col.dbh_q / mm)
+            c_dict['sbh_q [mm]'].append(col.sbh_q / mm)
+            c_dict['nbh_x_q'].append(col.nbh_x_q)
+            c_dict['nbh_y_q'].append(col.nbh_y_q)
+            # Other quality-related fields
             c_dict['fcm_q [MPa]'].append(col.fc_q / MPa)
             c_dict['fsyml_q [MPa]'].append(col.fsyl_q / MPa)
             c_dict['fsymh_q [MPa]'].append(col.fsyh_q / MPa)
-            c_dict['sbh_q [mm]'].append(col.sbh_q / mm)
             c_dict['cover_q [mm]'].append(col.cover_q / mm)
             c_dict['bondslip_factor_q'].append(bondslip_factor)
         # Convert columns dictionary to Pandas DataFrame
@@ -2446,7 +2611,10 @@ class BuildingBase(ABC):
 
         # Keys to save for beams
         b_keys = (
-            'beam_id', 'node_i', 'node_j', 'b [mm]', 'h [mm]', 'length [mm]',
+            # Element connectivity keys
+            'id', 'node_i', 'node_j',
+            # Design keys
+            'b [mm]', 'h [mm]', 'length [mm]',
             'wg [kN/m]', 'wq [kN/m]', 'wg_alpha [kN/m]', 'wq_alpha [kN/m]',
             'fcd [MPa]', 'fsyd [MPa]', 'cover [mm]',
             'dbl_t1_i [mm]', 'nbl_t1_i', 'dbl_t2_i [mm]', 'nbl_t2_i',
@@ -2459,17 +2627,30 @@ class BuildingBase(ABC):
             'dbl_b1_j [mm]', 'nbl_b1_j', 'dbl_b2_j [mm]', 'nbl_b2_j',
             'dbh_j [mm]', 'sbh_j [mm]', 'dbh_mid [mm]', 'sbh_mid [mm]',
             'nbh_b_j', 'nbh_h_j',
-            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]',
-            'sbh_i_q [mm]', 'sbh_mid_q [mm]', 'sbh_j_q [mm]', 'cover_q [mm]',
+            # Quality-adjusted reinforcement keys
+            'dbl_t1_i_q [mm]', 'nbl_t1_i_q', 'dbl_t2_i_q [mm]', 'nbl_t2_i_q',
+            'dbl_b1_i_q [mm]', 'nbl_b1_i_q', 'dbl_b2_i_q [mm]', 'nbl_b2_i_q',
+            'dbh_i_q [mm]', 'sbh_i_q [mm]', 'nbh_b_i_q', 'nbh_h_i_q',
+            'dbl_t1_mid_q [mm]', 'nbl_t1_mid_q', 'dbl_t2_mid_q [mm]',
+            'nbl_t2_mid_q', 'dbl_b1_mid_q [mm]', 'nbl_b1_mid_q',
+            'dbl_b2_mid_q [mm]', 'nbl_b2_mid_q', 'dbh_mid_q [mm]',
+            'sbh_mid_q [mm]', 'nbh_b_mid_q', 'nbh_h_mid_q', 'dbl_t1_j_q [mm]',
+            'nbl_t1_j_q', 'dbl_t2_j_q [mm]', 'nbl_t2_j_q', 'dbl_b1_j_q [mm]',
+            'nbl_b1_j_q', 'dbl_b2_j_q [mm]', 'nbl_b2_j_q', 'dbh_j_q [mm]',
+            'sbh_j_q [mm]', 'nbh_b_j_q', 'nbh_h_j_q',
+            # Other quality-related fields
+            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]', 'cover_q [mm]',
             'bondslip_factor_q'
         )
         # Start beams dictionary
         b_dict = {key: [] for key in b_keys}
-        # Loop through each column and append
+        # Loop through each beam and append
         for beam in self.beams:
-            b_dict['beam_id'].append(beam.line.tag)
+            # Element connectivity keys
+            b_dict['id'].append(beam.line.tag)
             b_dict['node_i'].append(beam.elastic_nodes[0].tag)
             b_dict['node_j'].append(beam.elastic_nodes[1].tag)
+            # Design keys
             b_dict['b [mm]'].append(beam.b / mm)
             b_dict['h [mm]'].append(beam.h / mm)
             b_dict['length [mm]'].append(beam.L / mm)
@@ -2516,18 +2697,105 @@ class BuildingBase(ABC):
             b_dict['sbh_j [mm]'].append(beam.sbh[-1] / mm)
             b_dict['nbh_b_j'].append(beam.nbh_b[-1])
             b_dict['nbh_h_j'].append(beam.nbh_h[-1])
+            # Quality-adjusted reinforcement keys
+            b_dict['dbl_t1_i_q [mm]'].append(beam.dbl_t1_q[0] / mm)
+            b_dict['dbl_t1_mid_q [mm]'].append(beam.dbl_t1_q[1] / mm)
+            b_dict['dbl_t1_j_q [mm]'].append(beam.dbl_t1_q[-1] / mm)
+            b_dict['nbl_t1_i_q'].append(beam.nbl_t1_q[0])
+            b_dict['nbl_t1_mid_q'].append(beam.nbl_t1_q[1])
+            b_dict['nbl_t1_j_q'].append(beam.nbl_t1_q[-1])
+            b_dict['dbl_t2_i_q [mm]'].append(beam.dbl_t2_q[0] / mm)
+            b_dict['dbl_t2_mid_q [mm]'].append(beam.dbl_t2_q[1] / mm)
+            b_dict['dbl_t2_j_q [mm]'].append(beam.dbl_t2_q[-1] / mm)
+            b_dict['nbl_t2_i_q'].append(beam.nbl_t2_q[0])
+            b_dict['nbl_t2_mid_q'].append(beam.nbl_t2_q[1])
+            b_dict['nbl_t2_j_q'].append(beam.nbl_t2_q[-1])
+            b_dict['dbl_b1_i_q [mm]'].append(beam.dbl_b1_q[0] / mm)
+            b_dict['dbl_b1_mid_q [mm]'].append(beam.dbl_b1_q[1] / mm)
+            b_dict['dbl_b1_j_q [mm]'].append(beam.dbl_b1_q[-1] / mm)
+            b_dict['nbl_b1_i_q'].append(beam.nbl_b1_q[0])
+            b_dict['nbl_b1_mid_q'].append(beam.nbl_b1_q[1])
+            b_dict['nbl_b1_j_q'].append(beam.nbl_b1_q[-1])
+            b_dict['dbl_b2_i_q [mm]'].append(beam.dbl_b2_q[0] / mm)
+            b_dict['dbl_b2_mid_q [mm]'].append(beam.dbl_b2_q[1] / mm)
+            b_dict['dbl_b2_j_q [mm]'].append(beam.dbl_b2_q[-1] / mm)
+            b_dict['nbl_b2_i_q'].append(beam.nbl_b2_q[0])
+            b_dict['nbl_b2_mid_q'].append(beam.nbl_b2_q[1])
+            b_dict['nbl_b2_j_q'].append(beam.nbl_b2_q[-1])
+            b_dict['dbh_i_q [mm]'].append(beam.dbh_q[0] / mm)
+            b_dict['sbh_i_q [mm]'].append(beam.sbh_q[0] / mm)
+            b_dict['nbh_b_i_q'].append(beam.nbh_b_q[0])
+            b_dict['nbh_h_i_q'].append(beam.nbh_h_q[0])
+            b_dict['dbh_mid_q [mm]'].append(beam.dbh_q[1] / mm)
+            b_dict['sbh_mid_q [mm]'].append(beam.sbh_q[1] / mm)
+            b_dict['nbh_b_mid_q'].append(beam.nbh_b_q[1])
+            b_dict['nbh_h_mid_q'].append(beam.nbh_h_q[1])
+            b_dict['dbh_j_q [mm]'].append(beam.dbh_q[-1] / mm)
+            b_dict['sbh_j_q [mm]'].append(beam.sbh_q[-1] / mm)
+            b_dict['nbh_b_j_q'].append(beam.nbh_b_q[-1])
+            b_dict['nbh_h_j_q'].append(beam.nbh_h_q[-1])
+            # Other quality-related field
             b_dict['fcm_q [MPa]'].append(beam.fc_q / MPa)
             b_dict['fsyml_q [MPa]'].append(beam.fsyl_q / MPa)
             b_dict['fsymh_q [MPa]'].append(beam.fsyh_q / MPa)
-            b_dict['sbh_i_q [mm]'].append(beam.sbh_q[0] / mm)
-            b_dict['sbh_mid_q [mm]'].append(beam.sbh_q[1] / mm)
-            b_dict['sbh_j_q [mm]'].append(beam.sbh_q[-1] / mm)
             b_dict['cover_q [mm]'].append(beam.cover_q / mm)
             b_dict['bondslip_factor_q'].append(bondslip_factor)
         # Convert beams dictionary to Pandas DataFrame
         beams = pd.DataFrame(b_dict)
         # Export beams DataFrame as .csv file
         beams.to_csv(beams_path, index=False, float_format='%g')
+
+        # Keys to save for slabs
+        slab_keys = (
+            # Element connectivity keys
+            'id', 'node_1', 'node_2', 'node_3', 'node_4',
+            # Design keys
+            'lx [mm]', 'ly [mm]', 't [mm]'
+        )
+        # Start slabs dictionary
+        slab_dict = {key: [] for key in slab_keys}
+        # Loop through each slab and append
+        for slab in self.slabs:
+            # Element connectivity keys
+            slab_dict['id'].append(slab.rectangle.tag)
+            slab_dict['node_1'].append(slab.rectangle.points[0].tag)
+            slab_dict['node_2'].append(slab.rectangle.points[1].tag)
+            slab_dict['node_3'].append(slab.rectangle.points[2].tag)
+            slab_dict['node_4'].append(slab.rectangle.points[3].tag)
+            # Design keys
+            slab_dict['lx [mm]'].append(slab.lx / mm)
+            slab_dict['ly [mm]'].append(slab.ly / mm)
+            slab_dict['t [mm]'].append(slab.t / mm)
+        # Convert slabs dictionary to Pandas DataFrame
+        slabs = pd.DataFrame(slab_dict)
+        # Export slabs DataFrame as .csv file
+        slabs.to_csv(slabs_path, index=False, float_format='%g')
+
+        # Keys to save for stairs
+        stairs_keys = (
+            # Element connectivity keys
+            'id', 'node_1', 'node_2', 'node_3', 'node_4',
+            # Design keys
+            'lx [mm]', 'ly [mm]', 't [mm]'
+        )
+        # Start stairs dictionary
+        stairs_dict = {key: [] for key in stairs_keys}
+        # Loop through each stairs and append
+        for stairs in self.stairs:
+            # Element connectivity keys
+            stairs_dict['id'].append(stairs.rectangle.tag)
+            stairs_dict['node_1'].append(stairs.rectangle.points[0].tag)
+            stairs_dict['node_2'].append(stairs.rectangle.points[1].tag)
+            stairs_dict['node_3'].append(stairs.rectangle.points[2].tag)
+            stairs_dict['node_4'].append(stairs.rectangle.points[3].tag)
+            # Design keys
+            stairs_dict['lx [mm]'].append(stairs.lx / mm)
+            stairs_dict['ly [mm]'].append(stairs.ly / mm)
+            stairs_dict['t [mm]'].append(stairs.t / mm)
+        # Convert stairs dictionary to Pandas DataFrame
+        stairs = pd.DataFrame(stairs_dict)
+        # Export stairs DataFrame as .csv file
+        stairs.to_csv(stairs_path, index=False, float_format='%g')
 
     def set_seed_for_quality_adjustments(self, seed: int) -> None:
         """

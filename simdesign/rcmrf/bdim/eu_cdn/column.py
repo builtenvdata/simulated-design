@@ -1,15 +1,6 @@
+"""This module provides the column class implementation for the ``eu_cdn``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdn columns.
-
-Design is based on DCL1 properties.
-Design based on ultimate strength analysis.
-
-References
-----------
-RBA (1935) Regulamento para o Emprego de Betão Armado.
-Decreto-Lei N.° 4036, Lisbon, Portugal.
-"""
-
 # Imports from installed packages
 from math import ceil, pi
 
@@ -21,51 +12,81 @@ from ..baselib.column import ColumnBase
 
 
 class Column(ColumnBase):
-    """Column object for design class: eu_cdn.
+    """Column implementation for design class ``eu_cdn``.
+
+    This class extends ``ColumnBase`` by narrowing the attribute types
+    and overriding design methods per RBA (1935).
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdn.materials.Steel
+        Steel material assigned to the column.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdn.materials.Concrete
+        Concrete material assigned to the column.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.column.ColumnBase`
+        Base class defining the core behaviour and configuration.
+
+    Notes
+    -----
+    The design is based on the minimum reinforcemenet defined in RBA 1935.
+
+    References
+    ----------
+    RBA (1935) Regulamento do Betão Armado.
+    Decreto N.° 25:948, Lisbon, Portugal.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     @property
     def rhol_max(self) -> float:
-        """
+        """Maximum allowed longitudinal reinforcement ratio.
+
         Returns
         -------
         float
             Maximum allowed longitudinal reinforcement ratio.
+
+        Notes
+        -----
+        Based on the Article 38 of RBA (1935).
         """
-        return 0.05
+        return 0.06
 
     @property
     def rhol_min(self) -> float:
-        """
+        """Minimum allowed longitudinal reinforcement ratio.
+
         Returns
         -------
         float
             Minimum allowed longitudinal reinforcement ratio.
-        """
-        # Article 38 - RBA (1935)
-        aux = 0.005 + 0.0006 * (self.line.length / min(self.bx, self.by) - 5)
-        if aux < 0.005:
-            return 0.005
-        elif aux > 0.008:
-            return 0.008
-        else:
-            return aux
-
-    def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-
-        This method makes initial guess for section dimensions.
 
         Notes
         -----
-        It is overwritten for eu_cdn design class with following changes:
-        - It retrieves design concrete strength from concrete attributes.
-        - In case of the rectangular sections, the longer dimension does no
-        longer need to be twice of shorter one.
+        Computed per Article 38 of RBA (1935).
+        """
+        ratio = 0.005 + 0.0006 * (self.line.length / min(self.bx, self.by) - 5)
+        if ratio < 0.005:
+            return 0.005
+        elif ratio > 0.008:
+            return 0.008
+        else:
+            return ratio
+
+    def predesign_section_dimensions(self) -> None:
+        """Make an initial guess for column section dimensions.
+
+        Notes
+        -----
+        This method overrides ``ColumnBase.predesign_section_dimensions``
+        with the following changes:
+
+        - For rectangular sections, the longer dimension is no longer
+          required to be twice the shorter one.
         """
         # Initial guess for column concrete area
         min_area = self.pre_Nd / self.fcd
@@ -85,16 +106,18 @@ class Column(ColumnBase):
         self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def apply_section_compatibility(self) -> None:
-        """Modifies the section dimensions for square section compatibility.
+        """Modify section dimensions for compatibility with section type.
 
         This method is used in design iterations while increasing section
         dimensions.
 
         Notes
         -----
-        It is overwritten for eu_cdn design class with following changes:
-        - In case of the rectangular sections, the longer dimension no
-        longer needs to be twice of the shorter one.
+        This method overrides ``ColumnBase.apply_section_compatibility``
+        with the following changes:
+
+        - For rectangular sections, the longer dimension is no longer
+          required to be twice the shorter one.
         """
         if self.section == 1:  # Square section
             # Make both dimensions equal to their maximum
@@ -104,7 +127,12 @@ class Column(ColumnBase):
             pass
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the adequacy of section dimensions for design forces.
+        """Verify the adequacy of section dimensions for design forces.
+
+        Notes
+        -----
+        Adequacy is assessed solely against the maximum allowed dimension
+        ``max_b``. No minimum dimension check is performed in this override.
         """
         # Only adequacy check is maximum dimensions
         if self.bx > self.max_b:
@@ -117,11 +145,12 @@ class Column(ColumnBase):
             self.ok_y = True
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
+        Notes
+        -----
+        Design is based on the minimum reinforcement requirement from
+        ``rhol_min``, applied to the gross section area ``Ag``.
         """
         # Design is based on minimum reinforcement requirement
         Asl_min = self.rhol_min * self.Ag
@@ -144,10 +173,13 @@ class Column(ColumnBase):
         self.Asly_req = Asly
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
+
+        Notes
+        -----
+        The values computed here represent default geometric minimums
+        and they are not directly prescribed by RBA (1935).
         """
-        # NOTE: If the minimum based on the values from rebars.json is greater,
-        # it will be considered instead. Thus, could be left as 0.0
         sbh = 0.5  # stirrup spacing
         dbh = 0.006  # stirrup diameter
         nlegs = 2  # number of legs

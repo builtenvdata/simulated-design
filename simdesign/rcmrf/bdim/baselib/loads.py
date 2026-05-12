@@ -1,10 +1,10 @@
+"""This module provides base classes for representing loads
+within the BDIM layer.
 """
-Base module for defining applied loads in buildings.
-"""
-
 # Imports from installed packages
 from abc import ABC
 import json
+import inspect
 import numpy as np
 from pathlib import Path
 from pydantic import BaseModel
@@ -14,53 +14,50 @@ from typing import List, Literal, Type, Tuple, Dict, Optional
 class VariableBase(BaseModel, ABC):
     """Abstract base class representing live loads (Q).
 
+    Subclasses must provide the field values appropriate to the design class.
+
     Attributes
     ----------
     floor : float
-        Live load on the floor.
+        Live load on the floor (kN/m^2).
     roof : float
-        Live load on the roof.
+        Live load on the roof (kN/m^2).
     staircase : float
-        Live load on the staircase.
+        Live load on the staircase (kN/m^2).
     """
     floor: float
-    """Live load on the floor."""
     roof: float
-    """Live load on the roof."""
     staircase: float
-    """Live load on the staircase."""
 
 
 class PermanentBase(BaseModel, ABC):
     """Abstract base class representing superimposed dead loads (G).
 
+    Subclasses must provide the field values appropriate to the design class.
+
     Attributes
     ----------
     floor : float
-        Superimposed dead load on the floor.
+        Superimposed dead load on the floor (kN/m^2).
     roof : float
-        Superimposed dead load on the roof.
+        Superimposed dead load on the roof (kN/m^2).
     staircase : float
-        Superimposed dead load on the staircase.
-    infill : float
-        Superimposed dead load due to infill walls.
+        Superimposed dead load on the staircase (kN/m^2).
     gamma_rc : float
-        Unit weight of reinforced concrete.
+        Unit weight of reinforced concrete (kN/m^3).
     """
     floor: float
-    """Superimposed dead load on the floor."""
     roof: float
-    """Superimposed dead load on the roof."""
     staircase: float
-    """Superimposed dead load on the staircase."""
-    infill: float
-    """Superimposed dead load due to infill walls."""
     gamma_rc: float
-    """Unit weight of reinforced concrete."""
 
 
 class CombinationBase(BaseModel, ABC):
     """Abstract base class representing a load combination.
+
+    Subclasses must provide the field values appropriate to the design class.
+    The load combination can include dead loads (G), live loads (Q), and
+    seismic loads (E+X, E-X, E+Y, E-Y).
 
     Attributes
     ----------
@@ -69,23 +66,22 @@ class CombinationBase(BaseModel, ABC):
     loads : Dict[Literal["G", "Q", "E+X", "E-X", "E+Y", "E-Y"], float]
         Dictionary containing load tags and factors corresponding to
         each load type in the load combination.
-    masses : Dict[Literal["G", "Q"], float]
+    masses : Dict[Literal["G", "Q"], float], optional
         Dictionary containing mass sources and factors used to compute
-        seismic loads considered in the load combination.
-        Default is None.
+        seismic loads considered in the load combination. If not
+        provided, defaults are assigned automatically by
+        ``LoadsBase._set_mass_sources`` based on the gravity load
+        factors present in ``loads``.
     """
     tag: str
-    """Tag identifying the load combination."""
     loads: Dict[Literal["G", "Q", "E+X", "E-X", "E+Y", "E-Y"], float]
-    """Dictionary containing load tags and factors corresponding to
-    each load type in the load combination."""
     masses: Optional[Dict[Literal["G", "Q"], float]] = None
-    """Dictionary containing mass sources and factors used to compute
-    seismic loads considered in the load combination."""
 
 
 class LoadsDataBase(BaseModel, ABC):
-    """Abstract base class representing the format of loads data.
+    """Abstract base class representing the aggregated loads data.
+
+    Subclasses must provide the field values appropriate to the design class.
 
     Attributes
     ----------
@@ -96,22 +92,22 @@ class LoadsDataBase(BaseModel, ABC):
     combinations : List[CombinationBase]
         List of load combination objects.
     eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction, by default 0.
+        Accidental eccentricity to be considered in the earthquake
+        loading direction, expressed as a percentage (e.g. ``5.0``
+        for 5%). Defaults to ``0.0``.
     """
     variable: VariableBase
-    """Object representing variable (live) loads."""
     permanent: PermanentBase
-    """Object representing permanent (dead) loads."""
     combinations: List[CombinationBase]
-    """List of load combination objects."""
     eccentricity: float = 0.0
-    """Accidental eccentricity [in %] needs to be considered in the
-    earthquake loading direction."""
 
 
 class LoadsBase(ABC):
-    """Abstract base class for loading loads data from a file.
+    """Abstract base class for reading loads data from a JSON file.
+
+    Subclasses must define the class variables ``_data_path`` and
+    ``_data_model`` before instantiation, as ``__init__`` depends on
+    both. Failing to do so will raise an ``AttributeError`` at runtime.
 
     Attributes
     ----------
@@ -122,28 +118,61 @@ class LoadsBase(ABC):
     combinations : List[CombinationBase]
         List of load combinations.
     eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction.
-    _data_path : Path
-        Path to the file containing loads data.
-    _data_model : LoadsDataBase
-        Pydantic model used for loading data format.
+        Accidental eccentricity to be considered in the earthquake
+        loading direction, expressed as a percentage (e.g. ``5.0``
+        for 5%).
+    _data_path : Path or str
+        Class variable — must be defined by subclass. Path to the JSON
+        file containing loads data.
+    _data_model : Type[LoadsDataBase]
+        Class variable — must be defined by subclass. Pydantic model
+        used to validate and parse the loads data file.
     """
     variable: VariableBase
-    """Object representing variable (live) loads."""
     permanent: PermanentBase
-    """Object representing permanent (dead) loads."""
     combinations: List[CombinationBase]
-    """List of load combination objects."""
     eccentricity: float
-    """Accidental eccentricity [in %] needs to be considered in the
-    earthquake loading direction."""
     _data_path: Path | str
-    """Path to the file containing loads data."""
     _data_model: Type[LoadsDataBase]
+
+    @classmethod
+    def get_data_path(cls) -> Path:
+        """
+        Return the path to the ``loads.json`` data file associated with the
+        class.
+
+        The path is resolved relative to the module where the class is defined,
+        allowing subclasses to automatically reference their own ``data``
+        directory.
+
+        Returns
+        -------
+        Path
+            Absolute path to the ``loads.json`` file located in the
+            design class-specific ``data`` folder.
+
+        TODO
+        ----
+        Utilise this method in the future instead of _data_path attribute.
+        """
+        file = inspect.getfile(cls)
+        return Path(file).parent / 'data' / 'loads.json'
 
     def __init__(self) -> None:
         """Initialize a new instance of LoadsBase.
+
+        Reads and parses the JSON file at ``_data_path`` using
+        ``_data_model``. Both class variables must be defined by the
+        subclass prior to calling this method.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file at ``_data_path`` does not exist.
+        json.JSONDecodeError
+            If the file at ``_data_path`` is not valid JSON.
+        pydantic.ValidationError
+            If the parsed data does not conform to ``_data_model``.
         """
         with open(self._data_path, 'r') as json_file:
             # Load the JSON data into a Python dictionary
@@ -159,7 +188,7 @@ class LoadsBase(ABC):
         self._set_mass_sources()
 
     def get_seismic_load_combos(self) -> List[CombinationBase]:
-        """Returns load combinations containing seismic loading.
+        """Return load combinations containing seismic loading.
 
         Returns
         -------
@@ -175,10 +204,12 @@ class LoadsBase(ABC):
         return seismic_combos
 
     def get_gravity_load_combos(self) -> List[CombinationBase]:
-        """Returns load combinations containing only gravity loads.
+        """Return load combinations containing only gravity loads.
 
         Other gravity loads such as snow (S) can be added. In that case,
-        this method should be overwritten for the specific design class.
+        this method should be overridden in the subclass to extend
+        ``grav_strs`` with the additional load keys (e.g.
+        ``["G", "Q", "S"]``).
 
         Returns
         -------
@@ -194,11 +225,18 @@ class LoadsBase(ABC):
         return grav_combos
 
     def _set_mass_sources(self) -> None:
-        """Checks for mass sources and assigns the defaults if they're
-        not defined.
+        """Check for mass sources and assign defaults where absent.
+
+        Iterates over all seismic load combinations. Combinations that
+        already define ``masses`` are left unchanged; those without
+        ``masses`` are assigned default values derived from the gravity
+        load factors present in ``loads`` (``"G"`` and ``"Q"``),
+        defaulting to ``0.0`` if either key is absent.
 
         If other gravity loads such as snow (S) are added,
-        this method should be overwritten.
+        this method should be overridden in the subclass to handle the
+        additional mass source, following the same pattern used here
+        for ``"G"`` and ``"Q"``.
         """
         # Check for mass sources
         for combo in self.get_seismic_load_combos():
@@ -223,16 +261,24 @@ class LoadsBase(ABC):
         Parameters
         ----------
         beta : float
-            Design lateral load factor (in g).
+            Design lateral load factor expressed as a fraction of
+            building weight.
         weights : np.ndarray
-            Array of weights.
+            Array of storey weights. Units must be consistent with
+            those used for ``heights`` (e.g. kN if heights are in m).
         heights : np.ndarray
-            Array of heights corresponding to each mass.
+            Array of storey heights measured from the base, one entry
+            per storey. Must be the same length as ``weights`` and use
+            consistent units.
 
         Returns
         -------
-        Tuple[np.float64, np.ndarray]
-            Base shear and seismic forces acting at each mass.
+        base_shear : np.float64
+            Total base shear force, in the same units as ``weights``.
+        forces : np.ndarray
+            Seismic forces acting at each storey, distributed
+            proportionally to the product of weight and height.
+            Same shape as ``weights``.
         """
         base_shear = np.sum(beta * weights)
         forces = base_shear * (weights * heights) / np.sum(weights * heights)

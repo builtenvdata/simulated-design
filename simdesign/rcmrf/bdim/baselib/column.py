@@ -1,19 +1,6 @@
+"""This module provides the base class for representing columns
+within the BDIM layer.
 """
-Base routines for defining and designing columns in buildings.
-
-Section view of columns.
-y
-|__x
-    --------------    ----
-    |     y      |    |
-    |     |      |    |
-    |     +--x   |    by
-    |            |    |
-    |            |    |
-    --------------    ----
-    |---- bx ----|
-"""
-
 # Imports from installed packages
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -34,30 +21,44 @@ from ....utils.units import MPa, m
 @dataclass
 class ColumnForces:
     """Data class for storing element forces.
+
+    Attributes
+    ----------
+    N1 : float
+        Axial force at 1st gauss point (start-section).
+    Mx1 : float
+        Moment around local-x at 1st gauss point (start-section).
+    Vy1 : float
+        Shear in local-y at 1st gauss point (start-section).
+    My1 : float
+        Moment around local-y at 1st gauss point (start-section).
+    Vx1 : float
+        Shear in local-x at 1st gauss point (start-section).
+    N9 : float
+        Axial force at 9th gauss point (end-section).
+    Mx9 : float
+        Moment around local-x at 9th gauss point (end-section).
+    Vy9 : float
+        Shear in local-y at 9th gauss point (end-section).
+    My9 : float
+        Moment around local-y at 9th gauss point (end-section).
+    Vx9 : float
+        Shear in local-x at 9th gauss point (end-section).
+    case : Literal['gravity', 'seismic', None], optional
+        Type of load combination if forces are computed for a combo,
+        otherwise None. By default None.
     """
     N1: float
-    """Axial force at 1st gauss point (start-section)."""
     Mx1: float
-    """Moment around local-x at 1st gauss point (start-section)."""
     Vy1: float
-    """Shear in local-y at 1st gauss point (start-section)."""
     My1: float
-    """Moment around local-y at 1st gauss point (start-section)."""
     Vx1: float
-    """Shear in local-x at 1st gauss point (start-section)."""
     N9: float
-    """Axial force at 9th gauss point (end-section)."""
     Mx9: float
-    """Moment around local-x at 9th gauss point (end-section)."""
     Vy9: float
-    """Shear in local-y at 9th gauss point (end-section)."""
     My9: float
-    """Moment around local-y at 9th gauss point (end-section)."""
     Vx9: float
-    """Shear in local-x at 9th gauss point (end-section)."""
     case: Literal['gravity', 'seismic', None] = None
-    """If forces are computed for load combo, defines the type of
-    load combination, otherwise, None. By default None."""
 
     def __add__(self, other: 'ColumnForces') -> 'ColumnForces':
         """The addition operator “+” (object is left operand).
@@ -95,17 +96,17 @@ class ColumnForces:
                             "'{}' and '{}'".format(type(self), type(other)))
 
     def __sub__(self, other: 'ColumnForces') -> 'ColumnForces':
-        """The substraction operator “-” (object is left operand).
+        """The subtraction operator “-” (object is left operand).
 
         Parameters
         ----------
         other : ColumnForces
-            Other ColumnForces object.
+            Other `ColumnForces` object.
 
         Returns
         -------
         ColumnForces
-            Substraction of the other two `ColumnForces` objects.
+            Subtraction of the other two `ColumnForces` objects.
 
         Raises
         ------
@@ -199,182 +200,299 @@ class ColumnForces:
 
 @dataclass
 class ColumnEnvelopeForces:
-    """Data class for storing element forces.
+    """Data class for storing element envelope forces.
+
+    Attributes
+    ----------
+    N1_neg : float
+        Negative axial force envelope (maximum compression force) at
+        1st gauss point (start-section).
+    N1_pos : float
+        Positive axial force envelope (maximum tension force) at
+        1st gauss point (start-section).
+    Mx1_neg : float
+        Negative moment envelope around local-x at 1st gauss point
+        (start-section).
+    Mx1_pos : float
+        Positive moment envelope around local-x at 1st gauss point
+        (start-section).
+    Vy1 : float
+        Shear force envelope in local-y at 1st gauss point
+        (start-section).
+    My1_neg : float
+        Negative moment envelope around local-y at 1st gauss point
+        (start-section).
+    My1_pos : float
+        Positive moment envelope around local-y at 1st gauss point
+        (start-section).
+    Vx1 : float
+        Shear force envelope in local-x at 1st gauss point
+        (start-section).
+    N9_neg : float
+        Negative axial force envelope (maximum compression force) at
+        9th gauss point (end-section).
+    N9_pos : float
+        Positive axial force envelope (maximum tension force) at
+        9th gauss point (end-section).
+    Mx9_neg : float
+        Negative moment envelope around local-x at
+        9th gauss point (end-section).
+    Mx9_pos : float
+        Positive moment envelope around local-x at
+        9th gauss point (end-section).
+    Vy9 : float
+        Shear force envelope in local-y at 9th gauss point
+        (end-section).
+    My9_neg : float
+        Negative moment envelope around local-y at
+        9th gauss point (end-section).
+    My9_pos : float
+        Positive moment envelope around local-y at
+        9th gauss point (end-section).
+    Vx9 : float
+        Shear force envelope in local-x at 9th gauss point
+        (end-section).
     """
     N1_neg: float
-    """Negative axial force envelope (maximum compression force) at
-    1st gauss point (start-section)."""
     N1_pos: float
-    """Positive axial force envelope (maximum tension force) at
-    1st gauss point (start-section)."""
     Mx1_neg: float
-    """Negative moment envelope around local-x at 1st gauss point
-    (start-section)."""
     Mx1_pos: float
-    """Positive moment envelope around local-x at 1st gauss point
-    (start-section)."""
     Vy1: float
-    """Shear force envlope in local-y at 1st gauss point (start-section)."""
     My1_neg: float
-    """Negative moment envelope around local-y at 1st gauss point
-    (start-section)."""
     My1_pos: float
-    """Positive moment envelope around local-y at 1st gauss point
-    (start-section)."""
     Vx1: float
-    """Shear force envlope in local-x at 1st gauss point (start-section)."""
     N9_neg: float
-    """Negative axial force envelope (maximum compression force) at
-    9th gauss point (end-section)."""
     N9_pos: float
-    """Positive axial force envelope (maximum tension force) at
-    9th gauss point (end-section)."""
     Mx9_neg: float
-    """Negative moment envelope around local-x at
-    9th gauss point (end-section)."""
     Mx9_pos: float
-    """Positive moment envelope around local-x at
-    9th gauss point (end-section)."""
     Vy9: float
-    """Shear force envlope in local-y at 9th gauss point (end-section)."""
     My9_neg: float
-    """Negative moment envelope around local-y at
-    9th gauss point (end-section)."""
     My9_pos: float
-    """Positive moment envelope around local-y at
-    9th gauss point (end-section)."""
     Vx9: float
-    """Shear force envlope in local-x at 9th gauss point (end-section)."""
 
 
 class ColumnBase(ABC):
     """Abstract base class for columns.
 
-    Must be inherited by design class specific columns.
+    Must be inherited by design-class-specific columns.
+
+    Attributes
+    ----------
+    steel : SteelBase
+        Steel material.
+    concrete : ConcreteBase
+        Concrete material.
+    bx : float
+        Breadth (width) along global X.
+    by : float
+        Breadth (width) along global Y.
+    section : Literal[1, 2]
+        Column cross-section type:
+        1: square solid section.
+        2: rectangular solid section.
+    line : ~simdesign.rcmrf.geometry.base.Line
+        Line representation of column (tag and points).
+    gamma_rc : float
+        Reinforced concrete unit weight.
+    pre_Nq_pos : float
+        Expected axial force due to variable loads (factored for
+        position).
+    pre_Ng_pos : float
+        Expected axial force due to permanent loads (factored for
+        position).
+    pre_Nq : float
+        Expected axial force due to variable loads (unfactored).
+    pre_Ng : float
+        Expected axial force due to permanent loads (unfactored).
+    pre_Nd : float
+        Expected preliminary design axial force.
+    orient : Literal['x', 'y', None]
+        Direction of greater dimension in global axis.
+    ok_x : bool
+        Flag to check section adequacy in x direction.
+    ok_y : bool
+        Flag to check section adequacy in y direction.
+    pre_bx : float
+        Preliminary design breadth (width) along global X.
+    pre_by : float
+        Preliminary design breadth (width) along global Y.
+    cover : float
+        Concrete cover.
+    Aslx_req : float
+        Required longitudinal reinforcement area at bottom or top side
+        of the section. In other words, required area of bars
+        distributed along -x on one side.
+    Asly_req : float
+        Required longitudinal reinforcement area at left or right side
+        of the section. In other words, required area of bars
+        distributed along -y on one side.
+    Ashx_sbh_req : float
+        Required ratio of transverse reinforcement area along -x axis
+        (i.e., parallel to -x axis) to the bar spacing.
+    Ashy_sbh_req : float
+        Required ratio of transverse reinforcement area along -y axis
+        (i.e., parallel to -y axis) to the bar spacing.
+    dbl_cor : float
+        Diameter of corner longitudinal bars (reinforcement).
+    dbl_int : float
+        Diameter of internal longitudinal bars (reinforcement).
+    nblx_int : int
+        Number of internal longitudinal bars at bottom or top side of
+        the section. In other words, half of the total number of
+        internal bars distributed along X (on one side).
+    nbly_int : int
+        Number of internal longitudinal bars at left or right side of
+        the section. In other words, half of the total number of
+        internal bars distributed along Y (on one side).
+    dbh : float
+        Diameter of horizontal bars (transverse reinforcement).
+    sbh : float
+        Spacing of horizontal bars (transverse reinforcement).
+    nbh_x : float
+        Number of horizontal bars (stirrup legs) along -x axis.
+    nbh_y : float
+        Number of horizontal bars (stirrup legs) along -y axis.
+    MAX_B_SQUARE : float
+        The default maximum square column dimension.
+    MAX_B_RECTANGLE : float
+        The default maximum rectangular column dimension.
+    MIN_B_SQUARE : float
+        The default minimum square column dimension.
+    MIN_B_RECTANGLE : float
+        The default minimum rectangular column dimension.
+    BX_INCR : float
+        Controls amount of ``bx`` increase in design iterations.
+    BY_INCR : float
+        Controls amount of ``by`` increase in design iterations.
+    forces : Dict[str, ColumnForces]
+        Dictionary containing forces obtained from unique load cases
+        (in load combos), e.g., 'G', 'Q', 'E+X', 'E-X', 'E+Y',
+        'E-Y'.
+    design_forces : List[ColumnForces]
+        List of forces obtained each load combination (design forces).
+    fc_q : float
+        In-situ (quality adjusted) concrete compressive strength.
+    fsyl_q : float
+        In-situ (quality adjusted) longitudinal reinforcement yield
+        strength.
+    fsyh_q : float
+        In-situ (quality adjusted) transverse reinforcement yield
+        strength.
+    sbh_q : float
+        In-situ (quality adjusted) spacing of transverse bars.
+    dbh_q : float
+        In-situ (quality adjusted) diameter of transverse bars.
+    nbh_x_q : float
+        In-situ (quality adjusted) number of horizontal bars (stirrup
+        legs) along -x axis.
+    nbh_y_q : float
+        In-situ (quality adjusted) number of horizontal bars (stirrup
+        legs) along -y axis.
+    cover_q : float
+        In-situ (quality adjusted) concrete cover.
+    dbl_cor_q : float
+        In-situ (quality adjusted) diameter of corner longitudinal
+        bars.
+    dbl_int_q : float
+        In-situ (quality adjusted) diameter of internal longitudinal
+        bars.
+    nblx_int_q : int
+        In-situ (quality adjusted) number of internal longitudinal
+        bars at bottom or top side of the section.
+    nbly_int_q : int
+        In-situ (quality adjusted) number of internal longitudinal
+        bars at left or right side of the section.
+    position_factor : float
+        Position factor considered to account for the column axial
+        force increase during seismic loading.
+    hinge_Nq : float
+        Expected axial force due to variable loads in nonlinear model
+        (used in hinge calculations).
+    hinge_Ng : float
+        Expected axial force due to permanent loads in nonlinear model
+        (used in hinge calculations).
+
+    Notes
+    -----
+    Section view:
+
+    .. code-block:: text
+
+        Y (2)
+        |__X (1)
+            --------------    ----
+            |     y      |    |
+            |     |      |    |
+            |     +--x   |    by
+            |            |    |
+            |            |    |
+            --------------    ----
+            |---- bx ----|
     """
     steel: SteelBase
-    """Steel material."""
     concrete: ConcreteBase
-    """Concrete material."""
     bx: float
-    """Breadth (width) along global x."""
     by: float
-    """Breadth (width) along global y."""
     section: Literal[1, 2]
-    """Column cross-section
-    1: square solid section.
-    2: rectangular solid section."""
     line: Line
-    """Line representation of column (tag and points)."""
     gamma_rc: float
-    """Reinforced concrete unit weight."""
     pre_Nq_pos: float
-    """Expected axial force due to variable loads (factored for position)."""
     pre_Ng_pos: float
-    """Expected axial force due to permanent loads (factored for position)."""
     pre_Nq: float
-    """Expected axial force due to variable loads (unfactored)."""
     pre_Ng: float
-    """Expected axial force due to permanent loads (unfactored)."""
     pre_Nd: float
-    """Expected preliminary design axial force."""
     orient: Literal['x', 'y', None]
-    """Direction of greater dimension in global axis."""
     ok_x: bool
-    """Flag to check section adequacy in x direction."""
     ok_y: bool
-    """Flag to check section adequacy in y direction."""
     pre_bx: float
-    """Preliminary design breadth (width) along global x."""
     pre_by: float
-    """Preliminary design breadth (width) along global y."""
     cover: float
-    """Concrete cover."""
     Aslx_req: float
-    """Required longitudinal reinforcement area at
-    bottom or top side of the section. In other words,
-    required area of bars distributed along -x on one side."""
     Asly_req: float
-    """Required longitudinal reinforcement area at
-    left or right side of the section. In other words,
-    required area of bars distributed along -y on one side."""
     Ashx_sbh_req: float
-    """Required ratio of transverse reinforcement area along -x
-    axis (i.e., parallel to -x axis) to the bar spacing."""
     Ashy_sbh_req: float
-    """Required ratio of transverse reinforcement area along -y
-    axis (i.e., parallel to -y axis) to the bar spacing."""
     dbl_cor: float
-    """Diameter of corner longitudinal bars (reinforcement)."""
     dbl_int: float
-    """Diameter of internal longitudinal bars (reinforcement)."""
     nblx_int: int
-    """Number of internal longitudinal bars (reinforcement) at
-    bottom or top side of the section. In other words,
-    half of the total number of internal longitudinal bars (reinforcement)
-    distributed along X (on one side of the section)."""
     nbly_int: int
-    """Number of internal longitudinal bars (reinforcement) at
-    left or right side of the section. In other words,
-    half of the total number of internal longitudinal bars (reinforcement)
-    distributed along Y (on one side of the section)."""
     dbh: float
-    """Diameter of horizontal bars (transverse reinforcement)."""
     sbh: float
-    """Spacing of horizontal bars (transverse reinforcement)."""
     nbh_x: float
-    """Number of horizontal bars (stirrup legs) along -x axis."""
     nbh_y: float
-    """Number of horizontal bars (stirrup legs) along -y axis."""
     MAX_B_SQUARE: float = 0.80 * m
-    """The default maximum square column dimension."""
     MAX_B_RECTANGLE: float = 1.30 * m
-    """The default maximum rectangular column dimension."""
     MIN_B_SQUARE: float = 0.25 * m
-    """The default minimum square column dimension."""
     MIN_B_RECTANGLE: float = 0.25 * m
-    """The default minimum rectangular column dimension."""
     BX_INCR: float = 0.05 * m
-    """Controls amount of `bx` increase in design iterations."""
     BY_INCR: float = 0.05 * m
-    """Controls amount of `by` increase in design iterations."""
     __bx: float
-    """Private attribute for restoring `bx` attribute."""
     __by: float
-    """Private attribute for restoring `by` attribute."""
     forces: Dict[str, ColumnForces]
-    """Dictionary containing forces obtained from unique load cases
-    (in load combos), e.g., 'G', 'Q', 'E+X', 'E-X', 'E+Y', 'E-Y'."""
     design_forces: List[ColumnForces]
-    """List of forces obtained each load combination (design forces)."""
     fc_q: float
-    """In-situ concrete compressive strength (quality adjusted)."""
     fsyl_q: float
-    """In-situ longitudinal reinforcement yield strength (quality adjusted)."""
     fsyh_q: float
-    """In-situ transverse reinforcement yield strength (quality adjusted)."""
     sbh_q: float
-    """In-situ spacing of transverse reinforcement (quality adjusted)."""
+    dbh_q: float
+    nbh_x_q: float
+    nbh_y_q: float
     cover_q: float
-    """In-situ concrete cover (quality adjusted)."""
+    dbl_cor_q: float
+    dbl_int_q: float
+    nblx_int_q: int
+    nbly_int_q: int
     position_factor: float
-    """Position factor considered to account for the column axial force
-    increase during seismic loading."""
     hinge_Nq: float
-    """Expected axial force due to variable loads in nonlinear model
-    (Used in hinge calculations)."""
     hinge_Ng: float
-    """Expected axial force due to permanent loads in nonlinear model
-    (Used in hinge calculations)."""
 
     def __init__(
         self, line: Line, section: Literal[1, 2], gamma_rc: float
     ) -> None:
-        """Initialises the column object.
+        """Initialize a new instance of ColumnBase.
 
         Parameters
         ----------
-        line : Line
+        line : ~simdesign.rcmrf.geometry.base.Line
             Geometric mesh representation of column.
         section : Literal[1, 2]
             Column cross-section type
@@ -396,7 +514,8 @@ class ColumnBase(ABC):
         self.forces = {}
 
     def __str__(self) -> str:
-        """
+        """Return string representation of the column object.
+
         Returns
         -------
         str
@@ -409,7 +528,8 @@ class ColumnBase(ABC):
 
     @property
     def fck(self) -> float:
-        """
+        """Characteristic concrete compressive strength (in base units).
+
         Returns
         -------
         float
@@ -420,7 +540,8 @@ class ColumnBase(ABC):
 
     @property
     def fsyk(self) -> float:
-        """
+        """Characteristic steel yield strength (in base units).
+
         Returns
         -------
         float
@@ -431,7 +552,8 @@ class ColumnBase(ABC):
 
     @property
     def fsym(self) -> float:
-        """
+        """Mean steel yield strength (in base units).
+
         Returns
         -------
         float
@@ -442,7 +564,8 @@ class ColumnBase(ABC):
 
     @property
     def fcd(self) -> float:
-        """
+        """Design value of concrete compressive strength (in base units).
+
         Returns
         -------
         float
@@ -452,7 +575,8 @@ class ColumnBase(ABC):
 
     @property
     def fcm(self) -> float:
-        """
+        """Mean value of concrete compressive strength (in base units).
+
         Returns
         -------
         float
@@ -462,7 +586,8 @@ class ColumnBase(ABC):
 
     @property
     def fsyd(self) -> float:
-        """
+        """Design value of steel yield strength (in base units).
+
         Returns
         -------
         float
@@ -472,28 +597,30 @@ class ColumnBase(ABC):
 
     @property
     def Ecm(self) -> float:
-        """
+        """Mean elastic Young's modulus of concrete (in base units).
+
         Returns
         -------
         float
-            Mean value of elastic young's modulus of concrete (in base units).
+            Mean elastic Young's modulus of concrete (in base units).
         """
         return self.concrete.Ecm
 
     @property
     def Ecd(self) -> float:
-        """
+        """Design elastic Young's modulus of concrete (in base units).
+
         Returns
         -------
         float
-            Design value of elastic young's modulus of concrete
-            (in base units).
+            Design elastic Young's modulus of concrete (in base units).
         """
         return self.concrete.Ecd
 
     @property
     def Gcm(self) -> float:
-        """
+        """Mean value of elastic shear modulus of concrete (in base units).
+
         Returns
         -------
         float
@@ -503,7 +630,8 @@ class ColumnBase(ABC):
 
     @property
     def Gcd(self) -> float:
-        """
+        """Design value of elastic shear modulus of concrete (in base units).
+
         Returns
         -------
         float
@@ -513,17 +641,19 @@ class ColumnBase(ABC):
 
     @property
     def Es(self) -> float:
-        """
+        """Elastic Young's modulus of steel (in base units).
+
         Returns
         -------
         float
-            Elastic young's modulus of steel (in base units).
+            Elastic Young's modulus of steel (in base units).
         """
         return self.steel.Es
 
     @property
     def Ag(self) -> float:
-        """
+        """Gross area of the column cross-section.
+
         Returns
         -------
         float
@@ -533,47 +663,52 @@ class ColumnBase(ABC):
 
     @property
     def Ix(self) -> float:
-        """
+        """Column moment of inertia around x-axis.
+
         Returns
         -------
         float
             Column moment of inertia around x-axis.
         """
-        return (self.by * self.bx**3) / 12
+        return (self.bx * self.by**3) / 12
 
     @property
     def Iy(self) -> float:
-        """
+        """Column moment of inertia around y-axis.
+
         Returns
         -------
         float
             Column moment of inertia around y-axis.
         """
-        return (self.bx * self.by**3) / 12
+        return (self.by * self.bx**3) / 12
 
     @property
     def Ix_eff(self) -> float:
-        """
+        """Effective (cracked) column moment of inertia around x-axis.
+
         Returns
         -------
         float
-            Effective column moment of inertia around x-axis.
+            Effective (cracked) column moment of inertia around x-axis.
         """
         return self.Ix
 
     @property
     def Iy_eff(self) -> float:
-        """
+        """Effective (cracked) column moment of inertia around y-axis.
+
         Returns
         -------
         float
-            Effective column moment of inertia around y-axis.
+            Effective (cracked) column moment of inertia around y-axis.
         """
         return self.Iy
 
     @property
     def H(self) -> float:
-        """
+        """Column height.
+
         Returns
         -------
         float
@@ -583,7 +718,8 @@ class ColumnBase(ABC):
 
     @property
     def J(self) -> float:
-        """
+        """Column second polar moment of area.
+
         Returns
         -------
         float
@@ -597,7 +733,8 @@ class ColumnBase(ABC):
 
     @property
     def self_wg(self) -> float:
-        """
+        """Column unit weight per length.
+
         Returns
         -------
         float
@@ -607,7 +744,8 @@ class ColumnBase(ABC):
 
     @property
     def elastic_nodes(self) -> List[Point]:
-        """
+        """Column element nodes (points) in elastic model.
+
         Returns
         -------
         List[Point]
@@ -617,11 +755,12 @@ class ColumnBase(ABC):
 
     @property
     def max_b(self) -> float:
-        """
+        """Computed maximum allowed column dimension.
+
         Returns
         -------
         float
-            Computer maximum allowed column dimension.
+            Computed maximum allowed column dimension.
         """
         if self.section == 1:  # Square columns
             return self.MAX_B_SQUARE
@@ -630,11 +769,12 @@ class ColumnBase(ABC):
 
     @property
     def min_b(self) -> float:
-        """
+        """Computed minimum allowed column dimension.
+
         Returns
         -------
         float
-            Computer minimum allowed column dimension.
+            Computed minimum allowed column dimension.
         """
         if self.section == 1:  # Square columns
             return self.MIN_B_SQUARE
@@ -643,7 +783,8 @@ class ColumnBase(ABC):
 
     @property
     def rhol_max(self) -> float:
-        """
+        """Maximum allowed longitudinal reinforcement ratio.
+
         Returns
         -------
         float
@@ -653,7 +794,8 @@ class ColumnBase(ABC):
 
     @property
     def rhol_min(self) -> float:
-        """
+        """Minimum longitudinal reinforcement ratio.
+
         Returns
         -------
         float
@@ -663,13 +805,14 @@ class ColumnBase(ABC):
 
     @property
     def rhol(self) -> float:
-        """
+        """Longitudinal reinforcement area ratio.
+
         Returns
         -------
         float
             Longitudinal reinforcement area ratio.
         """
-        Abl_cor = (np.pi * self.dbl_int**2) / 4
+        Abl_cor = (np.pi * self.dbl_cor**2) / 4
         Abl_int = (np.pi * self.dbl_int**2) / 4
         nbl_int = 2 * (self.nbly_int + self.nblx_int)
         nbl_cor = 4
@@ -677,7 +820,8 @@ class ColumnBase(ABC):
 
     @property
     def rhoh_x(self) -> float:
-        """
+        """Transverse reinforcement area (in x) ratio.
+
         Returns
         -------
         float
@@ -688,7 +832,8 @@ class ColumnBase(ABC):
 
     @property
     def rhoh_y(self) -> float:
-        """
+        """Transverse reinforcement area (in y) ratio.
+
         Returns
         -------
         float
@@ -699,11 +844,12 @@ class ColumnBase(ABC):
 
     @property
     def envelope_forces(self) -> ColumnEnvelopeForces:
-        """
+        """Envelope forces computed from ``design_forces``.
+
         Returns
         -------
         ColumnEnvelopeForces
-            Returns the envelope forces computed from `combo_forces`.
+            Envelope forces computed from ``design_forces``.
         """
         # Get a list of all attributes
         attributes = ['N1', 'Mx1', 'Vy1', 'My1', 'Vx1',
@@ -755,10 +901,10 @@ class ColumnBase(ABC):
         Used in design iterations.
         Can be overwritten for each design class.
         """
-        # Modify dimension in global x
+        # Modify dimension in global X
         if not self.ok_x:
             self.bx = ceil(20 * (self.bx + self.BX_INCR)) / 20
-        # Modify dimension in global y
+        # Modify dimension in global Y
         if not self.ok_y:
             self.by = ceil(20 * (self.by + self.BY_INCR)) / 20
         # Make dimensions compatible with the section type (square, rect)
@@ -785,9 +931,7 @@ class ColumnBase(ABC):
                 self.bx = ceil(20 * self.bx) / 20
 
     def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for column section dimensions.
 
         Notes
         -----
@@ -797,8 +941,8 @@ class ColumnBase(ABC):
         min_area = self.pre_Nd / self.fcd
         # Determine initial dimensions
         if self.section == 1:  # Square section
-            self.bx = (min_area**0.5)
-            self.by = (min_area**0.5)
+            self.bx = min_area**0.5
+            self.by = min_area**0.5
         elif self.section == 2:  # Rectangular section
             if self.orient == "x":  # Longer dimension is bx
                 self.bx = (2 * min_area) ** 0.5
@@ -887,8 +1031,9 @@ class ColumnBase(ABC):
 
         References
         ----------
-        REBAP (1983) Regulamento de Estruturas de Betão Armado e PréEsforçado.
-        Decreto-Lei N.° 349-C/83, Lisbon, Portugal
+        d'Arga e Lima, J., Monteiro, V., Mun, M. (2005).
+        Betão armado: esforços normais e de flexão: REBAP-83.
+        Laboratório Nacional de Engenharia Civil, Lisboa.
         """
         # Stress block coefficients for different axial load ratio (REBAP 1983)
         BETA_FC_VECTOR = [1.00, 0.93, 0.88, 0.88, 0.93]
@@ -896,12 +1041,12 @@ class ColumnBase(ABC):
         NIU_VECTOR = [0.40, 0.50, 0.60, 0.70, 0.85]
         # Axis dependent section properties
         if axis == 'x':  # Around local x-axis
-            h = self.bx
-            b = self.by
+            h = self.by
+            b = self.bx
             nbl_int = self.nblx_int
         elif axis == 'y':  # Around local y-axis
-            b = self.by
             h = self.bx
+            b = self.by
             nbl_int = self.nbly_int
         # Total steel area, ignoring the intermediate steel
         Asl = 2 * np.pi * 0.25 * (
@@ -932,7 +1077,6 @@ class ColumnBase(ABC):
     def verify_section_adequacy(self) -> None:
         """Abstract method for verifying adequacy of section dimensions.
         """
-        pass
 
     @abstractmethod
     def compute_required_longitudinal_reinforcement(self) -> None:
@@ -941,7 +1085,6 @@ class ColumnBase(ABC):
         Final solution is determined after finding rebar solution to meet
         the detailing requirements.
         """
-        pass
 
     @abstractmethod
     def compute_required_transverse_reinforcement(self) -> None:
@@ -950,4 +1093,3 @@ class ColumnBase(ABC):
         Final solution is determined after finding rebar solution to meet
         the detailing requirements.
         """
-        pass

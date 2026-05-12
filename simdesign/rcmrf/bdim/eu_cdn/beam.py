@@ -1,17 +1,6 @@
+"""This module provides the beam class implementation for the ``eu_cdn``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdn beams.
-
-Methodology follows the case of DCL (REBAP-83) beam design.
-Design based on working stress method.
-
-References
-----------
-RBA (1935) Regulamento para o Emprego de Betão Armado. Decreto-Lei N.° 4036,
-Lisbon, Portugal.
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -32,40 +21,58 @@ ECONOMIC_MU_WB: float = 0.25
 """Maximum mu value considered for the economic wide beam design."""
 TAU_C = 0.40 * MPa
 """Allowable shear stress carried by the concrete or
-the design shear strength of concrete."""
+the design shear strength of concrete.
+Specified in the Article 23 of RBA (1935)."""
 TAU_MAX = 1.40 * MPa
-"""Allowable shear stress carried by the beam section."""
+"""Allowable shear stress carried by the beam section.
+Specified in the Article 23 of RBA (1935)."""
 MODULAR_RATIO = 15
-"""Assumed steel to concrete elastic modular ratio for reinf. computation."""
+"""Assumed steel to concrete elastic modular ratio for reinforcement
+computation."""
 
 
 class Beam(BeamBase):
-    """Beam object for design class: eu_cdn.
+    """Beam implementation for design class ``eu_cdn``.
+
+    This class extends ``BeamBase`` by narrowing the attribute types
+    and overriding design methods per RBA (1935).
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdn.materials.Steel
+        Steel material assigned to the beam.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdn.materials.Concrete
+        Concrete material assigned to the beam.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.beam.BeamBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    RBA (1935) Regulamento do Betão Armado.
+    Decreto N.° 25:948, Lisbon, Portugal.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
-        """Makes preliminary design of beam.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for beam section dimensions.
 
         Parameters
         ----------
-        columns : List[ColumnBase]
-            Columns connected to beam end nodes.
         slab_h : float
             Slab thickness.
 
         Notes
         -----
-        It is overwritten for eu_cdn design class with following changes:
-        - Allows different constants.
-        - It retrieves design concrete strength from concrete attributes.
-        - It uses a single expression for computing height to control emergent
-        beam deformations `def_h` under gravity loads.
+        This method overrides ``BeamBase.predesign_section_dimensions``
+        with the following changes:
+
+        - Uses a single expression for computing the height to control
+          emergent beam deformations under gravity loads, assuming
+          ``d' = 0.1h`` for the cover depth.
         """
         # Bending moment used for preliminary design of section dimensions
         Md = self.pre_Md * kN * m
@@ -118,11 +125,11 @@ class Beam(BeamBase):
         self.b = ceil(20 * self.b) / 20
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the beam section dimensions for design forces.
+        """Verify the beam section dimensions for design forces.
 
-        TODO
-        ----
-        Add specific reference pages and equation numbers.
+        Notes
+        -----
+        Based on Article 23 of RBA (1935).
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
@@ -140,20 +147,26 @@ class Beam(BeamBase):
             self.ok = False  # Not ok
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
         Notes
         -----
-        1. Top reinforcement is calculated as the maximum of required
-        reinforcement in tension for maximum of negative bending moments
-        and required reinforcement in compression for maximum of positive
-        bending moments.
-        2. Bottom reinforcement is calculated as the maximum of required
-        reinforcement in compression for maximum of negative bending moments
-        and required reinforcement in tension for maximum of positive
-        bending moments.
-        3. Required reinforcement is computed at different sections:
-        start, mid, end.
+        - Top reinforcement is calculated as the maximum of required
+          reinforcement in tension for maximum of negative bending moments
+          and required reinforcement in compression for maximum of positive
+          bending moments.
+
+        - Bottom reinforcement is calculated as the maximum of required
+          reinforcement in compression for maximum of negative bending moments
+          and required reinforcement in tension for maximum of positive
+          bending moments.
+
+        - For doubly reinforced beams, the balanced moment capacity is
+          used to split the moment into a singly reinforced contribution
+          and an excess moment resisted by the compression reinforcement.
+
+        - Required reinforcement is computed at three different sections:
+          start, middle, end.
 
         References
         ----------
@@ -231,12 +244,14 @@ class Beam(BeamBase):
         self.Asl_bot_req = Asl_bot
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
 
         Notes
         -----
-        1. Required reinforcement is computed at different sections:
-        start, mid, end.
+        - Reinforcement is computed at three sections: start, mid, and end.
+        - The shear threshold ``Vrd = TAU_C * b * d`` is derived from
+          Article 23 of RBA (1935), which defines ``TAU_C`` as the stress
+          level above which transverse reinforcement becomes mandatory.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.

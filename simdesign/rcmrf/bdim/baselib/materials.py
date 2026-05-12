@@ -1,7 +1,6 @@
+"""This module provides base classes for representing materials
+within the BDIM layer.
 """
-Base module for defining materials in buildings.
-"""
-
 # Imports from installed packages
 from abc import ABC, abstractmethod
 import json
@@ -33,17 +32,11 @@ class SteelBase(BaseModel, ABC):
         Partial factor for steel, by default 1.0.
     """
     grade: str
-    """Grade of the steel material."""
     fsyk: float
-    """Characteristic value of steel yield strength (in MPa)."""
     fsyd: float | None = None
-    """"Design value of steel yield strength (in MPa)."""
     fsym: float | None = None
-    """Mean value of steel yield strength (in MPa)."""
     Es: float | None = None
-    """Steel elastic youngs' modulus (in base units, kPa)."""
     PARTIAL_FACTOR: float = 1.0
-    """Partial factor for steel, by default 1.0."""
 
     @model_validator(mode='after')
     def set_fsyd(cls: Type['SteelBase'], instance: 'SteelBase'
@@ -61,9 +54,14 @@ class SteelBase(BaseModel, ABC):
         """
         If not provided, sets the mean value of yield strength (fsym)
 
+        Notes
+        -----
+        Wisniewski (2007), Tables 4.10 and 4.14.
+
         References
         ----------
-        Table 4.10 and table 4.14 from Wisniewski D (2007) PhD thesis.
+        Wisniewski, D. (2007). Safety formats for the assessment of concrete
+        bridges. Phd Thesis, Guimarães, University of Minho.
         """
         if instance.fsym is None:
             instance.fsym = 1.2 * instance.fsyk
@@ -74,6 +72,16 @@ class SteelBase(BaseModel, ABC):
                            ) -> 'SteelBase':
         """
         If not provided, sets Young's modulus (E).
+
+        Notes
+        -----
+        EN 1992-1-1:2004, Section 3.2.7(4).
+
+        References
+        ----------
+        Comité Européen de Normalisation, CEN (2004). Eurocode 2: Design of
+        Concrete Structures — Part 1-1: General Rules and Rules for Buildings.
+        European Committee for Standardization, Brussels, Belgium.
         """
         if instance.Es is None:
             instance.Es = 200 * GPa
@@ -108,28 +116,15 @@ class ConcreteBase(BaseModel, ABC):
         Poisson's ratio for concrete, by default 0.2.
     """
     grade: str
-    """Grade of the concrete material."""
     fck: float
-    """Characteristic value of the compressive strength of concrete
-    cylinders (in MPa)."""
     fcd: float | None = None
-    """Design value of concrete compressive strength (in MPa)."""
     fcm: float | None = None
-    """Mean value of the compressive strength of concrete cylinders (in MPa).
-    """
     Ecm: float | None = None
-    """Mean value of concrete elastic youngs' modulus (in base units, kPa)."""
     Gcm: float | None = None
-    """Mean value of Concrete elastic shear modulus (in base units, kPa)."""
     Ecd: float | None = None
-    """Design value of concrete elastic youngs' modulus (in base units, kPa).
-    """
     Gcd: float | None = None
-    """Design value of Concrete elastic shear modulus (in base units, kPa)."""
     POISSONS_RATIO: float = 0.2
-    """Poisson's ratio for concrete, by default 0.2."""
     PARTIAL_FACTOR: float = 1.0
-    """Partial factor for concrete, by default 1.0."""
 
     @model_validator(mode='after')
     def set_fcd(cls: Type['ConcreteBase'], instance: 'ConcreteBase'
@@ -146,6 +141,16 @@ class ConcreteBase(BaseModel, ABC):
                 ) -> 'ConcreteBase':
         """
         If not provided, set the mean value of compressive strength (fcm).
+
+        Notes
+        -----
+        EN 1992-1-1:2004, Table 3.1.
+
+        References
+        ----------
+        Comité Européen de Normalisation, CEN (2004). Eurocode 2: Design of
+        Concrete Structures — Part 1-1: General Rules and Rules for Buildings.
+        European Committee for Standardization, Brussels, Belgium.
         """
         if instance.fcm is None:
             instance.fcm = instance.fck + 8
@@ -168,6 +173,21 @@ class ConcreteBase(BaseModel, ABC):
     ) -> 'ConcreteBase':
         """
         If not provided, sets Young's modulus (E).
+
+        Notes
+        -----
+        Ecm is based on the CEB-FIP MC90, Eq. 2.1-23. This formula differs
+        from the EN 1992-1-1:2004 expression (Ecm = 22*(fcm/10)^0.3 GPa).
+
+        Ecd is based on ACI 318-19, Section 19.2.2.1.
+
+        References
+        ----------
+        Comité Euro-International du Béton (1993). CEB-FIP Model Code
+        1990. Thomas Telford, London.
+
+        American Concrete Institute. (2019). Building code requirements for
+        structural concrete (ACI 318-19). American Concrete Institute.
         """
         if instance.Ecm is None:
             if instance.fcm is None:
@@ -211,55 +231,35 @@ class MaterialDataBase(BaseModel, ABC):
     ----------
     concrete : List[ConcreteBase]
         List of concrete materials.
-    steel : steel: List[SteelBase]
+    steel : List[SteelBase]
         List of steel materials.
     """
     concrete: List[ConcreteBase]
-    """List of concrete material instances."""
     steel: List[SteelBase]
-    """List of steel material instances."""
 
 
 class MaterialsBase(ABC):
-    """Abstract base class representing the collection of steel and concrete
-    materials defined for a design class.
+    """Abstract base class representing the steel and concrete materials
+    defined for a design class.
 
     Attributes
     ----------
-    _data_blueprint: MaterialDataBase
-        Subclass representing the blueprint for materials data.
-    _data_path: Path
-        Path to the json file containing material data.
-    concrete : List[BaseConcrete]
+    concrete : List[ConcreteBase]
         List of concrete material instances.
-    steel : List[BaseSteel]
+    steel : List[SteelBase]
         List of steel material instances.
-
-    Methods
-    ----------
-    __init__()
-        Initialize a new instance of MaterialsBase.
-    get_steel(grade: str) -> Optional[BaseSteel]
-        Find and return the steel material instance with the specified grade.
-    get_concrete(grade: str) -> Optional[BaseConcrete]
-        Find and return the concrete material instance with the specified
-        grade.
-    get_next_concrete(concrete: ConcreteBase) -> ConcreteBase
-        Returns the concrete material coming after the given.
-    get_next_steel(steel: SteeBase) -> SteelBase
-        Returns the concrete material coming after the given.
+    _data_blueprint : MaterialDataBase
+        Subclass representing the blueprint for materials data.
+    _data_path : Path or str
+        Path to the JSON file containing material data.
     """
-    _data_blueprint: MaterialDataBase
-    """Subclass representing the blueprint for materials data."""
-    _data_path: Path | str
-    """Path to the json file containing material data."""
     concrete: List[ConcreteBase]
-    """List of concrete material instances."""
     steel: List[SteelBase]
-    """List of steel material instances."""
+    _data_blueprint: MaterialDataBase
+    _data_path: Path | str
 
     def __init__(self) -> None:
-        """Initialize a new instance of Materials class.
+        """Initialize a new instance of MaterialsBase.
         """
         with open(self._data_path, 'r') as json_file:
             # Load the JSON data into a Python dictionary
@@ -276,7 +276,7 @@ class MaterialsBase(ABC):
         Parameters
         ----------
         grade : str
-            grade or identifier of the steel material to find.
+            Grade of the steel material to find.
 
         Returns
         -------
@@ -296,7 +296,7 @@ class MaterialsBase(ABC):
         Parameters
         ----------
         grade : str
-            grade or identifier of the steel material to find.
+            Grade of the steel material to find.
 
         Returns
         -------
@@ -304,7 +304,6 @@ class MaterialsBase(ABC):
             The steel material instance with the specified grade, if found;
             otherwise None.
         """
-        pass
 
     def _get_concrete(self, grade: str) -> Optional[ConcreteBase]:
         """Find and return the concrete material instance with the specified
@@ -313,7 +312,7 @@ class MaterialsBase(ABC):
         Parameters
         ----------
         grade : str
-            grade or identifier of the concrete material to find.
+            Grade of the concrete material to find.
 
         Returns
         -------
@@ -333,7 +332,7 @@ class MaterialsBase(ABC):
         Parameters
         ----------
         grade : str
-            grade or identifier of the concrete material to find.
+            Grade of the concrete material to find.
 
         Returns
         -------
@@ -341,11 +340,10 @@ class MaterialsBase(ABC):
             The concrete material instance with the specified grade, if found;
             otherwise None.
         """
-        pass
 
     def _get_next_concrete(self, concrete: ConcreteBase
                            ) -> Optional[ConcreteBase]:
-        """Returns the concrete material coming after the given.
+        """Return the concrete material coming after the given.
 
         Parameters
         ----------
@@ -365,7 +363,7 @@ class MaterialsBase(ABC):
     @abstractmethod
     def get_next_concrete(self, concrete: ConcreteBase
                           ) -> Optional[ConcreteBase]:
-        """Returns the concrete material coming after the given.
+        """Return the concrete material coming after the given.
 
         Parameters
         ----------
@@ -378,10 +376,9 @@ class MaterialsBase(ABC):
             The next concrete material instance if the given is not
             the final option; otherwise None.
         """
-        pass
 
     def _get_next_steel(self, steel: SteelBase) -> Optional[SteelBase]:
-        """Returns the concrete material coming after the given.
+        """Return the steel material coming after the given.
 
         Parameters
         ----------
@@ -400,7 +397,7 @@ class MaterialsBase(ABC):
 
     @abstractmethod
     def get_next_steel(self, steel: SteelBase) -> Optional[SteelBase]:
-        """Returns the concrete material coming after the given.
+        """Return the steel material coming after the given.
 
         Parameters
         ----------
@@ -413,4 +410,3 @@ class MaterialsBase(ABC):
             The next steel material instance if the given is not
             the final option; otherwise None.
         """
-        pass

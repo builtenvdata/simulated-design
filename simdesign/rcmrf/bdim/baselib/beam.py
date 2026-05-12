@@ -1,31 +1,6 @@
+"""This module provides the base class for representing the beams within the
+BDIM layer.
 """
-Base routines for defining and designing beams in buildings.
-
-Section view of beams along X direction.
-z
-|__y
-    --------------    ----
-    |     y      |    |
-    |     |      |    |
-    |     +--x   |    h
-    |            |    |
-    |            |    |
-    --------------    ----
-    |---- b -----|
-
-Section view of beams along Y direction.
-z
-|__x
-    --------------    ----
-    |     y      |    |
-    |     |      |    |
-    |     +--x   |    h
-    |            |    |
-    |            |    |
-    --------------    ----
-    |---- b -----|
-"""
-
 # Imports from installed packages
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -53,22 +28,33 @@ Array3 = Annotated[npt.NDArray[DType], Literal[3]]
 
 @dataclass
 class BeamForces:
-    """Data class for storing element forces."""
+    """Data class for storing element forces.
+
+    Attributes
+    ----------
+    M1 : float
+        Moment around local-z at 1st gauss point (start-section).
+    M5 : float
+        Moment around local-z at 5th gauss point (mid-section).
+    M9 : float
+        Moment around local-z at 9th gauss point (end-section).
+    V1 : float
+        Shear in local-y at 1st gauss point (start-section).
+    V5 : float
+        Shear in local-y at 5th gauss point (mid-section).
+    V9 : float
+        Shear in local-y at 9th gauss point (end-section).
+    case : Literal['gravity', 'seismic', None], optional
+        Type of load combination if forces are computed for a combo,
+        otherwise None. By default None.
+    """
     M1: float
-    """Moment around local-x at 1st gauss point (start-section)."""
     M5: float
-    """Moment around local-x at 5th gauss point (mid-section)."""
     M9: float
-    """Moment around local-x at 9th gauss point (end-section)."""
     V1: float
-    """Shear in local-y at 1st gauss point (start-section)."""
     V5: float
-    """Shear in local-y at 5th gauss point (mid-section)."""
     V9: float
-    """Shear in local-y at 9th gauss point (end-section)."""
     case: Literal['gravity', 'seismic', None] = None
-    """If forces are computed for load combo, defines the type of
-    load combination, otherwise, None. By default None."""
 
     def __add__(self, other: 'BeamForces') -> 'BeamForces':
         """The addition operator “+” (object is left operand).
@@ -102,7 +88,7 @@ class BeamForces:
                             "'{}' and '{}'".format(type(self), type(other)))
 
     def __sub__(self, other: 'BeamForces') -> 'BeamForces':
-        """The substraction operator “-” (object is left operand).
+        """The subtraction operator “-” (object is left operand).
 
         Parameters
         ----------
@@ -112,7 +98,7 @@ class BeamForces:
         Returns
         -------
         BeamForces
-            Substraction of the other two `BeamForces` objects.
+            Subtraction of the other two `BeamForces` objects.
 
         Raises
         ------
@@ -194,177 +180,308 @@ class BeamForces:
 
 @dataclass
 class BeamEnvelopeForces:
-    """Data class for storing element envelope forces."""
+    """Data class for storing element envelope forces.
+
+    Attributes
+    ----------
+    M1_neg : float
+        Negative moment envelope around local-z at 1st gauss point
+        (start-section).
+    M5_neg : float
+        Negative moment envelope around local-z at 5th gauss point
+        (mid-section).
+    M9_neg : float
+        Negative moment envelope around local-z at 9th gauss point
+        (end-section).
+    M1_pos : float
+        Positive moment envelope around local-z at 1st gauss point
+        (start-section).
+    M5_pos : float
+        Positive moment envelope around local-z at 5th gauss point
+        (mid-section).
+    M9_pos : float
+        Positive moment envelope around local-z at 9th gauss point
+        (end-section).
+    V1 : float
+        Shear envelope in local-y at 1st gauss point (start-section).
+    V5 : float
+        Shear envelope in local-y at 5th gauss point (mid-section).
+    V9 : float
+        Shear envelope in local-y at 9th gauss point (end-section).
+    """
     M1_neg: float
-    """Negative moment envelope around local-x at 1st gauss point
-    (start-section)."""
     M5_neg: float
-    """Negative moment envelope around local-x at 5th gauss point
-    (mid-section)."""
     M9_neg: float
-    """Negative moment envelope around local-x at 9th gauss point
-    (end-section)."""
     M1_pos: float
-    """Positive moment envelope around local-x at 1st gauss point
-    (start-section)."""
     M5_pos: float
-    """Positive moment envelope around local-x at 5th gauss point
-    (mid-section)."""
     M9_pos: float
-    """Positive moment envelope around local-x at 9th gauss point
-    (end-section)."""
     V1: float
-    """Shear envelope in local-y at 1st gauss point (start-section)."""
     V5: float
-    """Shear envelope in local-y at 5th gauss point (mid-section)."""
     V9: float
-    """Shear envelope in local-y at 9th gauss point (end-section)."""
 
 
 class BeamBase(ABC):
     """Abstract base class for beams.
 
-    Must be inherited by design class specific beams.
+    Must be inherited by design-class-specific beams.
+
+    Attributes
+    ----------
+    ok : bool
+        Flag to check section adequacy.
+    line : ~simdesign.rcmrf.geometry.base.Line
+        Line representation of beam (tag and points).
+    h : float
+        Beam height (depth).
+    b : float
+        Beam breadth (width).
+    steel : SteelBase
+        Steel material.
+    concrete : ConcreteBase
+        Concrete material.
+    typology : Literal[1, 2]
+        Beam typology: 1 for wide beams, 2 for emergent beams.
+    exterior : bool
+        True if the beam is exterior.
+    slab_wg : List[float]
+        Uniformly distributed permanent loads transferred from slabs.
+    slab_wq : List[float]
+        Uniformly distributed variable loads transferred from slabs.
+    slab_alpha : List[float]
+        Beam load distribution coefficients, alpha.
+    stairs_wg : float
+        Uniformly distributed permanent loads transferred from stairs.
+    stairs_wq : float
+        Uniformly distributed variable loads transferred from stairs.
+    infill_wg : float
+        Infill loading on beams.
+    gamma_rc : float
+        Reinforced concrete unit weight.
+    pre_Md : float
+        Bending moment for preliminary design.
+    pre_Vd : float
+        Shear force for preliminary design.
+    forces : Dict[str, BeamForces]
+        Dictionary containing forces obtained from unique load cases
+        (in load combos), e.g., 'G', 'Q', 'E+X', 'E-X', 'E+Y', 'E-Y'.
+    design_forces : List[BeamForces]
+        List of forces obtained from each load combination (design forces).
+    pre_h : float
+        Preliminary design beam height.
+    pre_b : float
+        Preliminary design beam breadth (width).
+    cover : float
+        Concrete cover.
+    columns : List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase | None]
+        Columns connected to beam end nodes i and j:
+        [Ci_top, Ci_bot, Cj_top, Cj_bot].
+        Columns which are not found are equal to None.
+    Asl_top_req : Array3[np.float64]
+        Required longitudinal reinforcement area at top.
+    Asl_bot_req : Array3[np.float64]
+        Required longitudinal reinforcement area at bottom.
+    Ash_sbh_req : Array3[np.float64]
+        Required transverse reinforcement area to spacing ratio.
+    dbl_t1 : Array3[np.float64]
+        Diameter of top corner longitudinal bars.
+    nbl_t1 : Array3[np.int64]
+        Number of top corner longitudinal bars.
+    dbl_t2 : Array3[np.float64]
+        Diameter of top internal longitudinal bars.
+    nbl_t2 : Array3[np.int64]
+        Number of top internal longitudinal bars.
+    dbl_b1 : Array3[np.float64]
+        Diameter of bottom corner longitudinal bars.
+    nbl_b1 : Array3[np.int64]
+        Number of bottom corner longitudinal bars.
+    dbl_b2 : Array3[np.float64]
+        Diameter of bottom internal longitudinal bars.
+    nbl_b2 : Array3[np.int64]
+        Number of bottom internal longitudinal bars.
+    dbh : Array3[np.float64]
+        Diameter of horizontal bars (transverse reinforcement).
+    sbh : Array3[np.float64]
+        Spacing of horizontal bars (transverse reinforcement).
+    nbh_b : Array3[np.int64]
+        Number of horizontal bars (stirrup legs) parallel to section width.
+    nbh_h : Array3[np.int64]
+        Number of horizontal bars (stirrup legs) parallel to section height.
+    MIN_H_EB : float
+        Default minimum height (depth) of emergent beams.
+    MIN_B_EB : float
+        Default minimum breadth (width) of emergent beams.
+    MAX_B_EB : float
+        Default maximum breadth (width) of emergent beams.
+    MAX_H_EB : float
+        Default maximum height (depth) of emergent beams.
+    MIN_H_WB : float
+        Default minimum height (depth) of wide beams.
+    MIN_B_WB : float
+        Default minimum breadth (width) of wide beams.
+    MAX_B_WB : float
+        Default maximum breadth (width) of wide beams.
+    MAX_H_WB : float
+        Default maximum height (depth) of wide beams.
+    B_INCR_EB : float
+        Amount of breadth increase per design iteration for emergent beams.
+    H_INCR_EB : float
+        Amount of height increase per design iteration for emergent beams.
+    B_INCR_WB : float
+        Amount of breadth increase per design iteration for wide beams.
+    H_INCR_WB : float
+        Amount of height increase per design iteration for wide beams.
+    MAX_ASPECT_RATIO_EB : float
+        Maximum aspect ratio (height to breadth) for emergent beams.
+    MAX_ASPECT_RATIO_WB : float
+        Maximum aspect ratio (breadth to height) for wide beams.
+    fc_q : float
+        In-situ (quality adjusted) concrete compressive strength.
+    fsyl_q : float
+        In-situ (quality adjusted) longitudinal reinforcement yield strength.
+    fsyh_q : float
+        In-situ (quality adjusted) transverse reinforcement yield strength.
+    nbh_b_q : Array3[np.int64]
+        In-situ number of horizontal bars (stirrup legs) parallel to section
+        width.
+    nbh_h_q : Array3[np.int64]
+        In-situ (quality adjusted) number of horizontal bars (stirrup legs)
+        parallel to section height.
+    dbh_q : Array3[np.float64]
+        In-situ (quality adjusted) diameter of transverse bars.
+    sbh_q : Array3[np.float64]
+        In-situ (quality adjusted) spacing of transverse bars.
+    cover_q : float
+        In-situ (quality adjusted) concrete cover.
+    dbl_t1_q : Array3[np.float64]
+        In-situ (quality adjusted) diameter of top corner longitudinal bars.
+    nbl_t1_q : Array3[np.int64]
+        In-situ (quality adjusted) number of top corner longitudinal bars.
+    dbl_t2_q : Array3[np.float64]
+        In-situ (quality adjusted) diameter of top internal longitudinal bars.
+    nbl_t2_q : Array3[np.int64]
+        In-situ (quality adjusted) number of top internal longitudinal bars.
+    dbl_b1_q : Array3[np.float64]
+        In-situ (quality adjusted) diameter of bottom corner longitudinal bars.
+    nbl_b1_q : Array3[np.int64]
+        In-situ (quality adjusted) number of bottom corner longitudinal bars.
+    dbl_b2_q : Array3[np.float64]
+        In-situ (quality adjusted) diameter of bottom internal longitudinal
+        bars.
+    nbl_b2_q : Array3[np.int64]
+        In-situ (quality adjusted) number of bottom internal longitudinal
+        bars.
+
+    Notes
+    -----
+    Section view of beams along X direction:
+
+    .. code-block:: text
+
+        Z (3)
+        |__Y (2)
+            --------------    ----
+            |     y      |    |
+            |     |      |    |
+            |  z--+      |    h
+            |            |    |
+            |            |    |
+            --------------    ----
+            |---- b -----|
+
+    Section view of beams along Y direction:
+
+    .. code-block:: text
+
+        Z (3)
+        |__X (1)
+            --------------    ----
+            |     y      |    |
+            |     |      |    |
+            |     +--z   |    h
+            |            |    |
+            |            |    |
+            --------------    ----
+            |---- b -----|
     """
     ok: bool
-    """Flag to check section adequacy."""
     line: Line
-    """Line representation of beam (tag and points)."""
     h: float
-    """Beam height (depth)."""
     b: float
-    """Beam breadth (width)."""
     __h: float
-    """Private attribute for restoring `h` attribute."""
     __b: float
-    """Private attribute for restoring `b` attribute."""
     steel: SteelBase
-    """Steel material."""
     concrete: ConcreteBase
-    """Concrete material."""
     typology: Literal[1, 2]
-    """Beam typology
-    1: Wide beams.
-    2: Emergent beams."""
     exterior: bool
-    """True if the beam is exterior."""
     slab_wg: List[float]
-    """Uniformly distributed permanent loads transferred from slabs."""
     slab_wq: List[float]
-    """Uniformly distributed variable loads transferred from slabs."""
     slab_alpha: List[float]
-    """Beam load distribution coefficients, alpha."""
     stairs_wg: float
-    """Uniformly distributed permanent loads transferred from stairs."""
     stairs_wq: float
-    """Uniformly distributed variable loads transferred from stairs."""
     infill_wg: float
-    """Infill loading on beams."""
     gamma_rc: float
-    """Reinforced concrete unit weight."""
     pre_Md: float
-    """Bending moment for preliminary design."""
     pre_Vd: float
-    """Shear force for preliminary design."""
     forces: Dict[str, BeamForces]
-    """Dictionary containing forces obtained from unique load cases
-    (in load combos), e.g., 'G', 'Q', 'E+X', 'E-X', 'E+Y', 'E-Y'."""
     design_forces: List[BeamForces]
-    """List of forces obtained each load combination (design forces)."""
     pre_h: float
-    """Preliminary design beam height."""
     pre_b: float
-    """Preliminary design beam breadth (width)."""
     cover: float
-    """Concrete cover."""
     columns: List[ColumnBase | None]
-    """List of columns connected to beam end nodes, i and j
-    [Ci_top, Ci_bot, Cj_top, Cj_end].
-    Columns which are not found are equal to None.
-    """
     Asl_top_req: Array3[np.float64]
-    """Required longitudinal reinforcement area at top."""
     Asl_bot_req: Array3[np.float64]
-    """Required longitudinal reinforcement area at bottom."""
     Ash_sbh_req: Array3[np.float64]
-    """Required transverse reinforcement area to spacing ratio."""
     dbl_t1: Array3[np.float64]
-    """Diameter of top corner longitudinal bars (reinforcement)."""
     nbl_t1: Array3[np.int64]
-    """Number of top corner longitudinal bars (reinforcement)."""
     dbl_t2: Array3[np.float64]
-    """Diameter of top internal longitudinal bars (reinforcement)."""
     nbl_t2: Array3[np.int64]
-    """Number of top internal longitudinal bars (reinforcement)."""
     dbl_b1: Array3[np.float64]
-    """Diameter of bottom corner longitudinal bars (reinforcement)."""
     nbl_b1: Array3[np.int64]
-    """Number of bottom corner longitudinal bars (reinforcement)."""
     dbl_b2: Array3[np.float64]
-    """Diameter of bottom internal longitudinal bars (reinforcement)."""
     nbl_b2: Array3[np.int64]
-    """Number of bottom internal longitudinal bars (reinforcement)."""
     dbh: Array3[np.float64]
-    """Diameter of horizontal bars (transverse reinforcement)."""
     sbh: Array3[np.float64]
-    """Spacing of horizontal bars (transverse reinforcement)."""
     nbh_b: Array3[np.int64]
-    """Number of horizontal bars (stirrup legs) parallel to section width."""
     nbh_h: Array3[np.int64]
-    """Number of horizontal bars (stirrup legs) parallel to section height."""
     MIN_H_EB: float = 30 * cm
-    """The default minimum height (depth) of emergent beams."""
     MIN_B_EB: float = 20 * cm
-    """The default minimum breadth (width) of emergent beams."""
     MAX_B_EB: float = 1.0 * m
-    """The default maximum value of beam breadth (width) for emergent beams."""
     MAX_H_EB: float = 1.0 * m
-    """The default maximum value of beam height (depth) for emergent beams."""
     MIN_H_WB: float = 15 * cm
-    """The default minimum height (depth) of wide beams."""
     MIN_B_WB: float = 30 * cm
-    """The default minimum breadth (width) of wide beams."""
     MAX_B_WB: float = 80 * cm
-    """The default maximum value of beam breadth (width) for wide beams."""
     MAX_H_WB: float = 1.0 * m
-    """The default maximum value of beam height (depth) for wide beams."""
     B_INCR_EB: float = 5 * cm
-    """Controls amount of `b` increase for emergent beams
-    in each design iteration."""
     H_INCR_EB: float = 5 * cm
-    """Controls amount of `h` increase for emergent beams
-    in each design iteration."""
     B_INCR_WB: float = 5 * cm
-    """Controls amount of `b` increase for wide beams
-    in each design iteration."""
     H_INCR_WB: float = 5 * cm
-    """Controls amount of `h` increase for wide beams
-    in each design iteration."""
     MAX_ASPECT_RATIO_EB: float = 2.0
-    """Controls the maximum aspect ratio (height to breadth)
-    for emergent beams."""
     MAX_ASPECT_RATIO_WB: float = 3.0
-    """Controls the maximum aspect ratio (breadth to height)
-    for wide beams."""
     fc_q: float
-    """In-situ concrete compressive strength (quality adjusted)."""
     fsyl_q: float
-    """In-situ longitudinal reinforcement yield strength (quality adjusted)."""
     fsyh_q: float
-    """In-situ transverse reinforcement yield strength (quality adjusted)."""
+    nbh_b_q: Array3[np.int64]
+    nbh_h_q: Array3[np.int64]
+    dbh_q: Array3[np.float64]
     sbh_q: Array3[np.float64]
-    """In-situ spacing of transverse reinforcement (quality adjusted)."""
     cover_q: float
-    """In-situ concrete cover (quality adjusted)."""
+    dbl_t1_q: Array3[np.float64]
+    nbl_t1_q: Array3[np.int64]
+    dbl_t2_q: Array3[np.float64]
+    nbl_t2_q: Array3[np.int64]
+    dbl_b1_q: Array3[np.float64]
+    nbl_b1_q: Array3[np.int64]
+    dbl_b2_q: Array3[np.float64]
+    nbl_b2_q: Array3[np.int64]
 
     def __init__(
         self, line: Line, typology: Literal[1, 2], gamma_rc: float
     ) -> None:
-        """Initialises the beam object.
+        """Initialize a new instance of BeamBase.
 
         Parameters
         ----------
-        line : Line
+        line : ~simdesign.rcmrf.geometry.base.Line
             Geometric mesh representation of beam.
         typology : Literal[1, 2]
             Beam typology
@@ -395,7 +512,8 @@ class BeamBase(ABC):
         self.infill_wg = 0.0
 
     def __str__(self) -> str:
-        """
+        """Return string representation of the beam object.
+
         Returns
         -------
         str
@@ -408,7 +526,8 @@ class BeamBase(ABC):
 
     @property
     def fck(self) -> float:
-        """
+        """Characteristic concrete compressive strength.
+
         Returns
         -------
         float
@@ -418,7 +537,8 @@ class BeamBase(ABC):
 
     @property
     def fsyk(self) -> float:
-        """
+        """Characteristic steel yield strength.
+
         Returns
         -------
         float
@@ -428,7 +548,8 @@ class BeamBase(ABC):
 
     @property
     def fsym(self) -> float:
-        """
+        """Mean steel yield strength.
+
         Returns
         -------
         float
@@ -438,7 +559,8 @@ class BeamBase(ABC):
 
     @property
     def fcd(self) -> float:
-        """
+        """Design concrete compressive strength.
+
         Returns
         -------
         float
@@ -448,7 +570,8 @@ class BeamBase(ABC):
 
     @property
     def fcm(self) -> float:
-        """
+        """Mean concrete compressive strength.
+
         Returns
         -------
         float
@@ -458,7 +581,8 @@ class BeamBase(ABC):
 
     @property
     def fsyd(self) -> float:
-        """
+        """Design steel yield strength.
+
         Returns
         -------
         float
@@ -468,28 +592,31 @@ class BeamBase(ABC):
 
     @property
     def Ecm(self) -> float:
-        """
+        """Mean elastic Young's modulus of concrete.
+
         Returns
         -------
         float
-            Mean value of elastic young's modulus of concrete (in base units).
+            Mean value of elastic Young's modulus of concrete (in base units).
         """
         return self.concrete.Ecm
 
     @property
     def Ecd(self) -> float:
-        """
+        """Design elastic Young's modulus of concrete.
+
         Returns
         -------
         float
-            Design value of elastic young's modulus of concrete
+            Design value of elastic Young's modulus of concrete
             (in base units).
         """
         return self.concrete.Ecd
 
     @property
     def Gcm(self) -> float:
-        """
+        """Mean elastic shear modulus of concrete.
+
         Returns
         -------
         float
@@ -499,7 +626,8 @@ class BeamBase(ABC):
 
     @property
     def Gcd(self) -> float:
-        """
+        """Design elastic shear modulus of concrete.
+
         Returns
         -------
         float
@@ -509,27 +637,30 @@ class BeamBase(ABC):
 
     @property
     def Es(self) -> float:
-        """
+        """Elastic Young's modulus of steel.
+
         Returns
         -------
         float
-            Elastic young's modulus of steel (in base units).
+            Elastic Young's modulus of steel (in base units).
         """
         return self.steel.Es
 
     @property
     def Ag(self) -> float:
-        """
+        """Gross cross-sectional area of the beam.
+
         Returns
         -------
         float
-            Gross cross sectional area of the beam.
+            Gross cross-sectional area of the beam.
         """
         return self.b * self.h
 
     @property
     def Iy(self) -> float:
-        """
+        """Second moment of area about the y-axis.
+
         Returns
         -------
         float
@@ -538,18 +669,20 @@ class BeamBase(ABC):
         return (self.h * self.b**3) / 12
 
     @property
-    def Ix(self) -> float:
-        """
+    def Iz(self) -> float:
+        """Second moment of area about the z-axis.
+
         Returns
         -------
         float
-            Moment of inertia around x-axis of the beam.
+            Moment of inertia around z-axis of the beam.
         """
         return (self.b * self.h**3) / 12
 
     @property
     def Iy_eff(self) -> float:
-        """
+        """Effective (cracked) second moment of area about the y-axis.
+
         Returns
         -------
         float
@@ -558,18 +691,20 @@ class BeamBase(ABC):
         return self.Iy
 
     @property
-    def Ix_eff(self) -> float:
-        """
+    def Iz_eff(self) -> float:
+        """Effective (cracked) second moment of area about the z-axis.
+
         Returns
         -------
         float
-            Moment of inertia around x-axis of the beam.
+            Moment of inertia around z-axis of the beam.
         """
-        return self.Ix
+        return self.Iz
 
     @property
     def J(self) -> float:
-        """
+        """Second polar moment of area of the beam.
+
         Returns
         -------
         float
@@ -583,7 +718,8 @@ class BeamBase(ABC):
 
     @property
     def L(self) -> float:
-        """
+        """Beam length.
+
         Returns
         -------
         float
@@ -593,7 +729,8 @@ class BeamBase(ABC):
 
     @property
     def elastic_nodes(self) -> List[Point]:
-        """
+        """Beam nodes (points) in the elastic model.
+
         Returns
         -------
         List[Point]
@@ -603,7 +740,8 @@ class BeamBase(ABC):
 
     @property
     def self_wg(self) -> float:
-        """
+        """Self-weight per unit length.
+
         Returns
         -------
         float
@@ -613,7 +751,8 @@ class BeamBase(ABC):
 
     @property
     def wg_total(self) -> float:
-        """
+        """Total uniformly distributed permanent load (G).
+
         Returns
         -------
         float
@@ -624,7 +763,8 @@ class BeamBase(ABC):
 
     @property
     def wg_total_alpha(self) -> float:
-        """
+        """Total permanent load (G) with alpha-factored slab contributions.
+
         Returns
         -------
         float
@@ -640,7 +780,8 @@ class BeamBase(ABC):
 
     @property
     def wq_total(self) -> float:
-        """
+        """Total uniformly distributed variable load (Q).
+
         Returns
         -------
         float
@@ -650,7 +791,8 @@ class BeamBase(ABC):
 
     @property
     def wq_total_alpha(self) -> float:
-        """
+        """Total variable load (Q) with alpha-factored slab contributions.
+
         Returns
         -------
         float
@@ -665,51 +807,60 @@ class BeamBase(ABC):
 
     @property
     def simple_Mg(self) -> float:
-        """
+        """Mid-span bending moment of a simply-supported beam under permanent
+        loads.
+
         Returns
         -------
         float
-            Expected bending moment at mid-span of simply-support beam due to
+            Expected bending moment at mid-span of simply-supported beam due to
             permanent loads.
         """
-        return self.wg_total_alpha * (self.L**2) / 8
+        # return self.wg_total_alpha * (self.L**2) / 8
+        return self.wg_total_alpha * (self.L**2) / 16  # Interior span
 
     @property
     def simple_Mq(self) -> float:
-        """
+        """Mid-span bending moment of a simply-supported beam under variable
+        loads.
+
         Returns
         -------
         float
-            Expected bending moment at mid-span of simply-support beam due to
+            Expected bending moment at mid-span of simply-supported beam due to
             variable loads.
         """
-        return self.wq_total_alpha * (self.L**2) / 8
+        # return self.wq_total_alpha * (self.L**2) / 8
+        return self.wq_total_alpha * (self.L**2) / 16  # Interior span
 
     @property
     def simple_Vg(self) -> float:
-        """
+        """Support shear of a simply-supported beam under permanent loads.
+
         Returns
         -------
         float
-            Expected shear force at mid-span of simply-support beam due to
+            Expected shear force at support of a simply-supported beam due to
             permanent loads.
         """
         return self.wg_total * self.L / 2
 
     @property
     def simple_Vq(self) -> float:
-        """
+        """Support shear of a simply-supported beam under variable loads.
+
         Returns
         -------
         float
-            Expected shear force at mid-span of simply-support beam due to
+            Expected shear force at support of a simply-supported beam due to
             variable loads.
         """
         return self.wq_total * self.L / 2
 
     @property
     def direction(self) -> Optional[Literal['x', 'y']]:
-        """
+        """Global axis parallel to the beam's longitudinal axis.
+
         Returns
         -------
         Literal['x', 'y'] | None
@@ -722,11 +873,12 @@ class BeamBase(ABC):
 
     @property
     def envelope_forces(self) -> BeamEnvelopeForces:
-        """
+        """Envelope forces computed from all design load combinations.
+
         Returns
         -------
         BeamEnvelopeForces
-            Returns the envelope forces computed from `combo_forces`.
+            Envelope forces computed from `design_forces`.
         """
         # Get a list of all attributes
         attributes = ['M1', 'M5', 'M9', 'V1', 'V5', 'V9']
@@ -750,7 +902,8 @@ class BeamBase(ABC):
 
     @property
     def rhol_top(self) -> Array3[np.float64]:
-        """
+        """Top longitudinal reinforcement ratio.
+
         Returns
         -------
         Array3[np.float64]
@@ -763,7 +916,8 @@ class BeamBase(ABC):
 
     @property
     def rhol_bot(self) -> Array3[np.float64]:
-        """
+        """Bottom longitudinal reinforcement ratio.
+
         Returns
         -------
         Array3[np.float64]
@@ -776,7 +930,8 @@ class BeamBase(ABC):
 
     @property
     def rhol(self) -> Array3[np.float64]:
-        """
+        """Total longitudinal reinforcement ratio.
+
         Returns
         -------
         Array3[np.float64]
@@ -786,7 +941,8 @@ class BeamBase(ABC):
 
     @property
     def rhol_max_tens(self) -> float:
-        """
+        """Maximum allowable longitudinal reinforcement ratio.
+
         Returns
         -------
         float
@@ -795,19 +951,21 @@ class BeamBase(ABC):
         return 1.0
 
     @property
-    def rhoh_x(self) -> Array3[np.float64]:
-        """
+    def rhoh_z(self) -> Array3[np.float64]:
+        """Transverse reinforcement ratio in local-z.
+
         Returns
         -------
         Array3[np.float64]
-            Horizontal (transverse) reinforcement ratio in local-x.
+            Horizontal (transverse) reinforcement ratio in local-z.
         """
         Ash = self.nbh_b * np.pi * self.dbh**2 / 4
         return Ash / (self.h * self.sbh)
 
     @property
     def rhoh_y(self) -> Array3[np.float64]:
-        """
+        """Transverse reinforcement ratio in local-y.
+
         Returns
         -------
         Array3[np.float64]
@@ -818,7 +976,8 @@ class BeamBase(ABC):
 
     @property
     def max_b(self) -> float:
-        """
+        """Maximum allowed section breadth (width).
+
         Returns
         -------
         float
@@ -841,7 +1000,8 @@ class BeamBase(ABC):
 
     @property
     def max_h(self) -> float:
-        """
+        """Maximum allowed section height (depth).
+
         Returns
         -------
         float
@@ -858,7 +1018,8 @@ class BeamBase(ABC):
 
     @property
     def min_b(self) -> float:
-        """
+        """Minimum allowed section breadth (width).
+
         Returns
         -------
         float
@@ -875,7 +1036,8 @@ class BeamBase(ABC):
 
     @property
     def min_h(self) -> float:
-        """
+        """Minimum allowed section height (depth).
+
         Returns
         -------
         float
@@ -892,7 +1054,8 @@ class BeamBase(ABC):
 
     @property
     def mrd_pos(self) -> Array3[np.float64]:
-        """
+        """Design resistance moment in the positive (sagging) direction.
+
         Returns
         -------
         Array3[np.float64]
@@ -907,7 +1070,8 @@ class BeamBase(ABC):
 
     @property
     def mrd_neg(self) -> Array3[np.float64]:
-        """
+        """Design resistance moment in the negative (hogging) direction.
+
         Returns
         -------
         Array3[np.float64]
@@ -920,7 +1084,8 @@ class BeamBase(ABC):
         """
         return self._get_mrd('neg')
 
-    def _get_mrd(self, direction: Literal['neg', 'pos']) -> Array3[np.float64]:
+    def _get_mrd_fardis(self, direction: Literal['neg', 'pos']
+                        ) -> Array3[np.float64]:
         """
         Computes yield moment of the section in the given direction.
 
@@ -941,17 +1106,14 @@ class BeamBase(ABC):
         Deformations of reinforced concrete members at yielding and ultimate.
         Structural Journal, 98(2), 135-148.
 
+        ACI 318-25. (2025). Building Code for Structural Concrete-Code
+        Requirements and Commentary. American Concrete Institute.
+
         Notes
         -----
-        - Positive direction indicates that
-        bottom section is tension zone and top section is compression zone.
-        - Negative direction indicates that
-        top section is tension zone and bottom section is compression zone.
-
-        TODO
-        ----
-        Might need to switch to practice equations
-        rather than using those in research paper.
+        Positive direction indicates that bottom section is tension zone and
+        top section is compression zone. Negative direction indicates that top
+        section is tension zone and bottom section is compression zone.
         """
         # Set direction dependent parameters
         if direction == 'pos':  # positive direction case
@@ -961,6 +1123,11 @@ class BeamBase(ABC):
             # Longitudinal reinforcement area under compression
             As_comp = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2)
                        + self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+            # Dist. from concrete fiber in compression to the rebars in tension
+            if hasattr(self, 'dbh'):
+                dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_b1
+            else:
+                dd = 0.9 * self.h  # Assume
         elif direction == 'neg':  # negative direction case
             # Longitudinal reinforcement area under tension
             As_tens = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2)
@@ -968,16 +1135,15 @@ class BeamBase(ABC):
             # Longitudinal reinforcement area under compression
             As_comp = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2)
                        + self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
-
-        # Dist. from concrete fiber in compression to the rebars in tension
-        if hasattr(self, 'dbh'):
-            dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_t1
-        else:
-            dd = 0.9 * self.h  # Assume
+            # Dist. from concrete fiber in compression to the rebars in tension
+            if hasattr(self, 'dbh'):
+                dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_t1
+            else:
+                dd = 0.9 * self.h  # Assume
         # Concrete crushing strain used for computing section capacity
         EPS_CU = 0.0035
         # Stress-block coefficient used to compute section capacity
-        # TODO: Reference
+        # Table 22.2.2.4.3 of ACI 318-25
         if self.fcd < 27.6 * MPa:
             betac = 0.85
         elif self.fcd > 55.17 * MPa:
@@ -1043,6 +1209,70 @@ class BeamBase(ABC):
 
         return My
 
+    def _get_mrd(self, dir: Literal['neg', 'pos']) -> Array3[np.float64]:
+        """
+        Computes yield moment of the section in the given direction.
+
+        Parameters
+        ----------
+        dir : Literal['neg', 'pos']
+            Moment capacity direction (based on the sign convention).
+
+        Returns
+        -------
+        Mrd : np.ndarray
+            Yield moment of beam in the specified `direction`.
+            Computed for start, mid, end beam sections.
+
+        References
+        ----------
+        Fardis, M., Carvalho, E., Fajfar, P., & Pecker, A. (2015). Seismic
+        design of concrete buildings to Eurocode 8. Crc Press.
+
+        Notes
+        -----
+        Positive direction (sagging) indicates that bottom section is tension
+        zone and top section is compression zone. Negative direction (hogging)
+        indicates that top section is tension zone and bottom section is
+        compression zone.
+        """
+        # Section properties
+        fyd = self.fsyd
+        fcd = self.fcd
+        h = self.h
+        # Top longitudinal reinforcement area (under compression)
+        As1 = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2)
+               + self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+        # Centroidal distance of As1, from the top of the beam section
+        d1 = self.cover + 0.5 * self.dbl_t1
+        # Bottom longitudinal reinforcement area (under tension)
+        As2 = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2)
+               + self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
+        # Centroidal distance of As2, from the bottom of the beam section
+        d2 = self.cover + 0.5 * self.dbl_b1
+        # If dbh is known
+        if hasattr(self, 'dbh'):
+            d1 += self.dbh
+            d2 += self.dbh
+        # Equation 5.30a
+        if dir == 'neg':
+            bw = self.b
+            Mrd = np.minimum(As1, As2) * fyd * (h - d1 - d2) + (
+                np.maximum(0, As1 - As2) * fyd * (
+                    h - d1 - 0.5 * (As1 - As2) * fyd / (bw * fcd)
+                )
+            )
+        # Equation 5.30b
+        elif dir == 'pos':
+            # Assume effective width (beff) in compression of the top flange is
+            # equal to the that of the web (beff = bw)
+            beff = self.b
+            Mrd = As2 * fyd * np.maximum(
+                (h - d2 - 0.5 * As2 * fyd / (beff * fcd)),
+                (h - d1 - d2)
+            )
+        return Mrd
+
     def restore_dimensions(self) -> None:
         """Restore beam dimension attributes.
 
@@ -1093,7 +1323,7 @@ class BeamBase(ABC):
                     self.h += self.H_INCR_WB
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
-        """Does preliminary design of beam.
+        """Perform preliminary design of beam.
 
         This method makes initial guess for section dimensions.
 
@@ -1105,10 +1335,6 @@ class BeamBase(ABC):
         Notes
         -----
         It can be overwritten for specific design classes.
-
-        TODO
-        ----
-        Added aspect ratio limit for wide-beams. Discuss.
         """
         # Maximum mu value considered for the economic emergent beam design
         ECONOMIC_MU_EB = 0.25
@@ -1193,13 +1419,11 @@ class BeamBase(ABC):
 
         This method is intended to run after determining beam rebars.
         """
-        pass
 
     @abstractmethod
     def verify_section_adequacy(self) -> None:
         """Abstract method for verifying adequacy of section dimensions.
         """
-        pass
 
     @abstractmethod
     def compute_required_longitudinal_reinforcement(self) -> None:
@@ -1208,7 +1432,6 @@ class BeamBase(ABC):
         Final solution is determined after finding rebar solution to meet
         the detailing requirements.
         """
-        pass
 
     @abstractmethod
     def compute_required_transverse_reinforcement(self) -> None:
@@ -1217,4 +1440,3 @@ class BeamBase(ABC):
         Final solution is determined after finding rebar solution to meet
         the detailing requirements.
         """
-        pass

@@ -1,3 +1,6 @@
+"""This module provides the class implementation representing the elastic
+numerical model used in the BDIM layer for the ``tr_post18_dch`` design class.
+"""
 # Imports from installed packages
 from typing import List
 from itertools import product
@@ -11,28 +14,40 @@ from ..baselib.analysis import ElasticModelBase
 from ..baselib.beam import BeamForces
 from ..baselib.column import ColumnForces
 
-"""
-Notes
------
-1- The method named "analyze_for_all" has been overwritten here
-to include an overstrength factor of 3, which is the value for
-RCMRF buildings with high ductility in the case of DTS1 and DTS2.
-"""
-
 
 class ElasticModel(ElasticModelBase):
-    """Elastic model builder in OpenSees for design class tr_post18_dch.
+    """Elastic model implementation for design class ``tr_post18_dch``.
+
+    This class extends ``ElasticModelBase`` by narrowing the attribute types
+    and overriding ``analyze_for_all`` method.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.tr_post18_dch.beam.Beam]
+        List of beam objects of the building.
+    columns : List[~simdesign.rcmrf.bdim.tr_post18_dch.column.Column]
+        List of column objects of the building.
+    OVERSTRENGTH_FACTOR : float
+        Overstrength factor for buildings with high ductility.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.analysis.ElasticModelBase`
+        Base class defining the core behaviour and configuration.
+
+    Notes
+    -----
+    Overrides :meth:`analyze_for_all` method to include an overstrength factor
+    of 3, which is the value for RCMRF buildings with high ductility in the
+    case of DTS1 and DTS2.
     """
     beams: List[Beam]
-    """Beam objects of the building."""
     columns: List[Column]
-    """Column objects of the building."""
-    OVERSTRENGTH_FACTOR = 3
+    OVERSTRENGTH_FACTOR: float = 3.0
 
     def analyze_for_all(self):
-        """Analyzes the building all load cases and combinations.
-
-        Stores element forces for each.
+        """Analyze the building and store element forces for all load cases
+        and combinations.
         """
         # Seismic load cases
         seismic_load_cases = ["E+X", "E-X", "E+Y", "E-Y"]

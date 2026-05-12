@@ -1,7 +1,6 @@
+"""This module provides the column class implementation for the
+``tr_post18_dch`` design class in the BDIM layer.
 """
-Specific routines for defining and designing tr_post18_dch columns.
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -23,38 +22,65 @@ from ....utils.units import MPa, N, m, mm
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
 MAX_NIU = 0.40
-"""Maximum allowed value of axial load ratio."""
+"""Maximum allowed value of axial load ratio.
+Based on Section 7.3.1.2 in TBEC-2018."""
 
 
 class Column(ColumnBase):
-    """Column object for design class: tr_post18_dch."""
+    """Column implementation for design class ``tr_post18_dch``.
 
+    This class extends ``ColumnBase`` by narrowing the attribute types
+    and overriding design methods per TBEC-2018 and TS500-2000.
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.tr_post18_dch.materials.Steel
+        Steel material assigned to the column.
+    concrete : ~simdesign.rcmrf.bdim.tr_post18_dch.materials.Concrete
+        Concrete material assigned to the column.
+    design_forces_overstrength_adjusted : List[ColumnForces]
+        List of forces obtained for each load combination (design forces).
+    MIN_B_SQUARE : float
+        The default minimum square column dimension.
+    MIN_B_RECTANGLE : float
+        The default minimum rectangular column dimension.
+    Ve_x : float | None
+        Column capacity design shear force in local x direction.
+    Ve_y : float | None
+        Column capacity design shear force in local y direction.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.column.ColumnBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    TBEC (2018). *Deprem Etkisi Altında Binaların Tasarımı için Esaslar*.
+    Resmi Gazete, Türkiye.
+
+    TS500 (2000). *Requirements for Design and Construction of Reinforced
+    Concrete Structures*. Turkish Standards Institution (TSE), Ankara, Türkiye.
+    """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
-    MIN_B_SQUARE: float = 0.30 * m  # Section 7.3.1 in TBEC2018
-    """The default minimum square column dimension."""
-    MIN_B_RECTANGLE: float = 0.30 * m  # Section 7.3.1 in TBEC2018
-    """The default minimum rectangular column dimension."""
     design_forces_overstrength_adjusted: List[ColumnForces]
-    """List of forces obtained for each load combination (design forces)."""
+    MIN_B_SQUARE: float = 0.30 * m  # Section 7.3.1 in TBEC-2018
+    MIN_B_RECTANGLE: float = 0.30 * m  # Section 7.3.1 in TBEC-2018
     Ve_x: Optional[float] = None
-    """Column capacity design shear force through local x direction"""
     Ve_y: Optional[float] = None
-    """Column capacity design shear force through local y direction"""
 
     @property
     def fctk(self) -> float:
         """
-        Reference
-        ---------
-        Equation 3.1 in T5500-2000
-
         Returns
         -------
         float
             Characteristic value of tensional steel strength (in base units).
+
+        Notes
+        -----
+        Based on Equation 3.1 in T5500-2000.
         """
         return (0.35 * (self.concrete.fck) ** (1 / 2)) * MPa
 
@@ -71,56 +97,56 @@ class Column(ColumnBase):
     @property
     def Ix_eff(self) -> float:
         """
-        Reference
-        ---------
-        Table-4.2 in TBEC-2018
-
         Returns
         -------
         float
             Effective column moment of inertia around x-axis.
+
+        Notes
+        -----
+        Based on Table 4.2 in TBEC-2018.
         """
         return 0.7 * self.Ix
 
     @property
     def Iy_eff(self) -> float:
         """
-        Reference
-        ---------
-        Table-4.2 in TBEC-2018
-
         Returns
         -------
         float
             Effective column moment of inertia around y-axis.
+
+        Notes
+        -----
+        Based on Table 4.2 in TBEC-2018.
         """
         return 0.7 * self.Iy
 
     @property
     def rhol_max(self) -> float:
         """
-        Reference
-        ---------
-        Section 7.3.2 in TBEC-2018
-
         Returns
         -------
         float
             Maximum allowed longitudinal reinforcement ratio.
+
+        Notes
+        -----
+        Based on Section 7.3.2 in TBEC-2018.
         """
         return 0.04
 
     @property
     def rhol_min(self) -> float:
         """
-        Reference
-        ---------
-        Section 7.3.2 in TBEC-2018
-
         Returns
         -------
         float
             Minimum longitudinal reinforcement ratio.
+
+        Notes
+        -----
+        Based on Section 7.3.2 in TBEC-2018.
         """
         return 0.01
 
@@ -171,8 +197,15 @@ class Column(ColumnBase):
         )
 
     def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for column section dimensions.
+
+        Notes
+        -----
+        This method overrides ``ColumnBase.predesign_section_dimensions``
+        with the following changes:
+
+        - Minimum cross section area is calculated based on axial load ratio
+          limit from TBEC-2018.
         """
         # Unit conversions
         Nd = self.pre_Nd
@@ -194,7 +227,7 @@ class Column(ColumnBase):
         self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the column section dimensions for design forces."""
+        """Verify the adequacy of section dimensions for design forces."""
         # Maximum axial load ratio
         max_niu = max(
             self.envelope_forces.N1_pos,
@@ -255,7 +288,7 @@ class Column(ColumnBase):
             self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required reinforcement area for design forces."""
+        """Compute the required reinforcement area for design forces."""
         # Initial longitudinal reinforcement area
         Asl_x = 2 * np.pi * 0.25 * ((0.014 * m) ** 2)
         Asl_y = 2 * np.pi * 0.25 * ((0.014 * m) ** 2)
@@ -295,7 +328,7 @@ class Column(ColumnBase):
         self.Asly_req = Asl_y
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces."""
+        """Compute the required transverse reinforcement for design forces."""
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = (self.bx - 2 * self.cover - 0.008)
         dy = (self.by - 2 * self.cover - 0.008)

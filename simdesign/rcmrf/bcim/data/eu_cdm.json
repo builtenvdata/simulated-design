@@ -25,12 +25,12 @@
     },
   "steel":
     {
-      "grade": ["S400", "S500"],
+      "grade": ["A400", "A500"],
       "probability": [0.50, 0.50]
     },
   "concrete":
     {
-      "grade": ["C16", "C20", "C25"],
+      "grade": ["B20", "B25", "B30"],
       "probability": [0.30, 0.30, 0.40]
     },
   "ground_storey_height":

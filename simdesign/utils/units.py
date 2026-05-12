@@ -1,7 +1,6 @@
+"""This module provides the various units and their conversions to the
+basic units: m, kN, sec
 """
-Defines units and their conversions to the basic units: m, kN, sec
-"""
-
 # Basic Units
 m = 1.0
 kN = 1.0

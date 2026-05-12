@@ -30,7 +30,7 @@
     },
   "concrete":
     {
-      "grade": ["C20", "C25", "C30", "C35"],
+      "grade": ["C20/25", "C25/30", "C30/37", "C35/45"],
       "probability": [0.30, 0.45, 0.20, 0.05]
     },
   "ground_storey_height":

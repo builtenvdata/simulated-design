@@ -8,7 +8,7 @@ from simdesign.rcmrf import CustomGeometry  # noqa
 
 
 # Path to the geometry mesh file
-input_path = Path(__file__).parents[1] / 'data/example-custom-geometry.xlsx'
+input_path = Path(__file__).parents[1] / "tmp/simple-uniform-geometry.xlsx"
 custom_frame = CustomGeometry(input_path)
 # Making the bay widths and storey heights uniform
 num_storeys = 4
@@ -31,8 +31,8 @@ floor_id = 1
 custom_frame.modify_floor_height(floor_id, h_floor)
 # Adding new lines and points for stairs
 # Note that rectangles are specified in custom geometry
-custom_frame.add_new_lines_and_points_for_stairs()
+custom_frame.add_new_elements_for_stairs()
 # Show the mesh
 custom_frame.show_mesh()
-path = Path(__file__).parents[1] / 'tmp/modified-custom-geometry.html'
+path = Path(__file__).parents[1] / "tmp/modified-custom-geometry.html"
 custom_frame.export_mesh_to_html(path=str(path))

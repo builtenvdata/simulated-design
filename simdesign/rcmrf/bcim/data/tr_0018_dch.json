@@ -25,8 +25,8 @@
     },
   "steel":
     {
-      "grade": ["S220", "S420"],
-      "probability": [0.20, 0.80]
+      "grade": ["S420"],
+      "probability": [1.0]
     },
   "concrete":
     {
@@ -48,6 +48,19 @@
       "ss1_prob_given_ss1_or_hs": 1.0,
       "ss2_prob_given_ss2_or_hs": 1.0,
       "max_ss_short_span": 7.5
+    },
+  "infill_configuration":
+    {
+      "configuration": [1, 2],
+      "probability": [1.0, 0.0]
+    },
+  "exterior_infill_type":
+    {
+      "probability": [1.0, 0.0, 0.0]
+    },
+  "interior_infill_type":
+    {
+      "probability": [1.0, 0.0, 0.0]
     },
   "wb_prob_given_hs": 1.0,
   "square_column_prob": 0.05,

@@ -1,12 +1,17 @@
+"""This module provides the stairs class implementation for the
+``tr_post18_dcm`` design class in the BDIM layer.
 """
-Specific routines for defining tr_post18_dcm stairs.
-"""
-
 # Imports from bdim base library
 from ..baselib.stairs import StairsBase
 
 
 class Stairs(StairsBase):
-    """Stairs object for design class: tr_post18_dcm.
+    """Stairs implementation for the ``tr_post18_dcm`` design class.
+
+    This class directly uses the behaviour defined in ``StairsBase``.
+
+    See Also
+    --------
+    :class:`~StairsBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass

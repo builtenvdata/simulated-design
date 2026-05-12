@@ -9,7 +9,6 @@
         "floor": 1.5,
         "staircase": 1.5,
         "roof": 2.0,
-        "infill": 7.0,
         "gamma_rc": 25.0
     },
     "combinations": 

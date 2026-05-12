@@ -1,8 +1,12 @@
 # Built Environmenta Data (BED) - SimDesign Framework
+
+[![Documentation](https://img.shields.io/badge/docs-builtenvdata.github.io-blue)](https://builtenvdata.github.io/simulated-design/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31210/)
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL%203.0-blue.svg)](https://opensource.org/licenses/AGPL-3.0)
+[![DOI](https://img.shields.io/badge/DOI-10.1002%2Feqe.4378-blue)](https://doi.org/10.1002/eqe.4378)
+
 A Python package for the modeling the seismic vulnerability of buildings using the simulated design. Currently, it focuses on Reinforced Concrete (RC) Moment Resisting Frames (MRFs), but the workflow is adaptable to other structural systems. To ensure modularity and scalability for future extensions, the **rcmrf** framework is integrated within the broader **simdesign** library. The framework can accommodate the design of buildings using both historical and modern seismic design procedures and regulations, while capturing building-to-building variability. It generates Building Class Information Models (BCIM), Building Design Information Models (BDIM), and Building Nonlinear Structural Models (BNSM) that are analyzable in OpenSees.
-
-![Service](./Workflow.svg)
-
+![Service](./source/_static/images/Workflow.svg)
 ## Installation
 
 Follow the steps below to install the `simdesign` package:
@@ -17,29 +21,25 @@ Follow the steps below to install the `simdesign` package:
 ### 2. Set Up a Virtual Environment (Recommended)
    Create a virtual environment to manage dependencies:
    ```bash
-   python -m venv .venv  # On Windows
-   python3 -m venv .venv  # On Linux
+   python -m venv .venv
    ```
    Activate the virtual environment:
    ```bash
-   .venv\Scripts\activate  # On Windows
-   source .venv/Scripts/activate  # On Linux
+   .venv\Scripts\activate     # On Windows
+   source .venv/bin/activate  # Linux / macOS
    ```
 
 ### 3. Install Dependencies
-   Install the required packages listed in `requirements.txt`.
+   Install the dependencies using requirements file:
 
-   **For Windows Users:** Install the appropriate requirements file based on your Python version:
    ```bash
-   pip install -r requirements-py311-win64.txt  # Python 3.11
-   pip install -r requirements-py312-win64.txt  # Python 3.12
+   pip install -r requirements.txt
    ```
-   **For Linux Users:** Install the appropriate requirements file based on your Python version:
+
+**Note**: *Python 3.12* is required. Ensure that correct version is installed:
    ```bash
-   pip install -r requirements-py311-linux64.txt  # Python 3.11
-   pip install -r requirements-py312-linux64.txt  # Python 3.12
+   python --version  # should be 3.12.x
    ```
-   **For macOS Users:** OpenSeesPy is currently incompatible with macOS versions running on arm64 processors (e.g., M1 and M2 chips). Consequently, newer versions of OpenSeesPy are not released for the macOS platforms. It is recommended to use a virtual machine running Linux or Windows on Mac computers to utilize OpenSeesPy.
 
 ### 4. Install the Package
    Install the `simdesign` package:
@@ -62,26 +62,27 @@ from simdesign import rcmrf
 
 # The main inputs for each design class
 inputs = {
-    'bcim': {
-        'design_class': 'eu_cdl',
-        'sample_size': 30,
-        'num_storeys': 4,
-        'beta': 0.1,
-        'seed': 2
+    "bcim": {
+        "design_class": "eu_cdl",
+        "sample_size": 30,
+        "num_storeys": 4,
+        "beta": 0.1,
+        "seed": 2
     },
-    'bnsm': {
-        "scheme": 'FMP',
-        "dincr": 1e-4,
-        'max_drift': 0.1,
-        'opensees': 'py'
+    "bnsm": {
+        "model": "DP01",
+        "scheme": "EQL",
+        "dincr": 1e-3,
+        "max_drift": 0.1,
+        "opensees": "py",
+        "include_infills": False
     }
 }
-
 # Run the bed-workflow for rcmrf systems and save the outputs
 bcim, bdim, bnsm = rcmrf.generate(inputs=inputs, outdir="Outputs")
 ```
 
-For more examples please see the scripts folder.
+For more examples please see the scripts folder or see full [documentation](https://builtenvdata.github.io/simulated-design/) for advanced use.
 
 Moreover, it is possible to visualize and design buildings with specific geometries:
 
@@ -104,9 +105,9 @@ Contributions are welcome! If you’d like to contribute, follow these steps:
 ## References
 If you use the SimDesign tool, please be sure to cite the reference publication:
 
-Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics. https://doi.org/10.1002/eqe.4378
+Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics, 54(11), 2651-2670. https://doi.org/10.1002/eqe.4378
 
-Hasanoğlu, S., Ozsarac, V., & O’Reilly, G. J. (2025). A model for the simulated design of Turkish RC frame buildings in seismic vulnerability analysis. Bulletin of Earthquake Engineering. https://doi.org/10.1007/s10518-025-02301-y
+Hasanoğlu, S., Ozsarac, V., & O’Reilly, G. J. (2025). A model for the simulated design of Turkish RC frame buildings in seismic vulnerability analysis. Bulletin of Earthquake Engineering, 23(15), 6829-6856. https://doi.org/10.1007/s10518-025-02301-y
 
 ## License
 This project is licensed under the AGPL-3.0 license. See the LICENSE file for details.

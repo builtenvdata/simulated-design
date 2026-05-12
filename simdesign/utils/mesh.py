@@ -1,7 +1,6 @@
+"""This module provides the classes used for defining structural
+meshes with varying geometries.
 """
-Objects used to define structural meshes with varying geometries.
-"""
-
 # Imports from installed packages
 import numpy as np
 from typing import Union, Optional, List
@@ -15,17 +14,8 @@ class Shape(ABC):
     ----------
     tag : Optional[int]
         Unique identifier for the shape.
-
-    Methods
-    -------
-    __init__
-        Initialize a Shape object.
-    ndim
-        Abstract property to get the number of dimensions of the shape.
     """
-
     tag: Optional[int]
-    """Unique identifier for the shape."""
 
     def __init__(self, tag: int | None) -> None:
         """Initialize a Shape object.
@@ -40,18 +30,17 @@ class Shape(ABC):
     @property
     @abstractmethod
     def ndim(self) -> int:
-        """Abstract property to get the number of dimensions of the shape.
+        """Return the number of dimensions of the shape.
 
         Returns
         -------
         int
             Number of dimensions.
         """
-        pass
 
 
 class Point(Shape):
-    """Point object.
+    """Point in 3D space defined by grid IDs and coordinates.
 
     Attributes
     ----------
@@ -59,24 +48,9 @@ class Point(Shape):
         Point grid identifiers (x, y, z).
     coordinates : List[float]
         Point coordinates (x, y, z).
-
-    Methods
-    -------
-    __init__
-        Initialize a Point object.
-    __str__
-        String representation of the Point object.
-    ndim
-        Number of dimensions of the point.
-
-    Notes
-    -----
-    Inherits from Shape class.
     """
     grid_ids: List[Union[int, float]]
-    """Point grid identifiers (x, y, z)."""
     coordinates: List[float]
-    """Point coordinates (x, y, z)."""
 
     def __init__(self, grid: List[Union[int, float]], coordinates: List[float],
                  tag: int) -> None:
@@ -107,7 +81,8 @@ class Point(Shape):
 
     @property
     def ndim(self) -> int:
-        """
+        """Return the number of dimensions (always 0 for a point).
+
         Returns
         -------
         int
@@ -117,38 +92,14 @@ class Point(Shape):
 
 
 class Line(Shape):
-    """Line object.
+    """Straight line segment defined by two points.
 
     Attributes
     ----------
     points : List[Point]
         List of points defining the line.
-
-    Methods
-    -------
-    __init__
-        Initialize a Line object.
-    __str__
-        String representation of the Line object.
-    direction_vector
-        Get the direction vector of the line.
-    unit_vector
-        Unit vector of the line.
-    ndim
-        Number of dimensions of the line.
-    length
-        Line length.
-    sort_by_xy
-        Sort points to form a line in the xy plane.
-    _is_line
-        Check if the shape is a line.
-
-    Notes
-    -----
-    Inherits from Shape class.
     """
     points: List[Point]
-    """List of points defining the line."""
 
     def __init__(self, points: List[Point], tag: Optional[int] = None) -> None:
         """Initialize a Line object.
@@ -167,6 +118,8 @@ class Line(Shape):
             raise ValueError("The object contains undefined points.")
         else:
             self.points = points
+            self._is_line()
+            self.sort_points_xyz()
 
     def __str__(self) -> str:
         """Return a string representation of the Line object.
@@ -181,7 +134,8 @@ class Line(Shape):
 
     @property
     def direction_vector(self) -> np.ndarray:
-        """
+        """Return the direction vector of the line.
+
         Returns
         -------
         np.ndarray
@@ -193,7 +147,8 @@ class Line(Shape):
 
     @property
     def unit_vector(self) -> np.ndarray:
-        """
+        """Return the unit vector of the line.
+
         Returns
         -------
         np.ndarray
@@ -207,7 +162,8 @@ class Line(Shape):
 
     @property
     def ndim(self) -> int:
-        """
+        """Return the number of dimensions (always 1 for a line).
+
         Returns
         -------
         int
@@ -217,7 +173,8 @@ class Line(Shape):
 
     @property
     def length(self) -> np.float64:
-        """
+        """Return the line length.
+
         Returns
         -------
         np.float64
@@ -238,70 +195,31 @@ class Line(Shape):
         if len(self.points) != 2:
             ValueError("The points in shape is not 2."
                        "It cannot be a line.")
+        if self.length == 0:
+            ValueError("The points of line should have different coordinates.")
 
-    def sort_by_xy(self) -> None:
-        """Sort points such that they form a line with two points [p1, p2]
-        such that:
+    def sort_points_xyz(self) -> None:
+        """Sort points in increasing (x, y, z) lexicographic order."""
+        def xyz_key(p: Point):
+            return tuple(p.coordinates)
 
-        y
-        |__x
-                     l(p1, p2)
-        p1(x1,y1,zi) o-------->o p2(x2,y2,zi)
-        """
-        point1 = self.points[0]
-        point2 = self.points[1]
-        x1, y1, _ = point1.coordinates
-        x2, y2, _ = point2.coordinates
-        # Order the points
-        if x1 < x2 or (x1 == x2 and y1 <= y2):
-            self.points = [point1, point2]
-        else:
-            self.points = [point2, point1]
+        self.points = sorted(self.points, key=xyz_key)
 
 
 class Polygon(Shape):
-    """Polygon object.
+    """Flat polygon defined by an ordered list of coplanar points.
 
     Attributes
     ----------
     points : List[Point]
         List of points defining the polygon.
-    lines : List[Line]
+    lines : List[Line], optional
         List of lines composing the polygon.
-
-    Methods
-    -------
-    __init__
-        Initialize a Polygon object.
-    ndim
-        Number of dimensions of the polygon.
-    vertices
-        Vertices of the polygon.
-    centroid
-        Coordinates of the centroid of the polygon.
-    normal_vector
-        Normal vector of the polygon.
-    unit_normal_vector
-        Unit normal vector of the polygon.
-    perimeter
-        Polygon perimeter.
-    area
-        Polygon area.
-    _is_polygon
-        Check if the shape is a polygon.
-    _is_coplanar
-        Check if the polygon's points are coplanar.
-
-    Notes
-    -----
-    Inherits from Shape class.
     """
     points: List[Point]
-    """List of points defining the polygon."""
-    lines: List[Line]
-    """List of lines composing the polygon."""
+    lines: Optional[List[Line]]
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: List[Line] = None,
                  tag: Optional[int] = None) -> None:
         """Initialize a Polygon object.
 
@@ -309,8 +227,8 @@ class Polygon(Shape):
         ----------
         points : List[Point]
             List of points defining the polygon.
-        lines : List[Line]
-            List of lines composing the polygon.
+        lines : List[Line], optional
+            List of lines composing the polygon. By default None.
         tag : int, optional
             Unique identifier for the polygon. By default None.
         """
@@ -319,17 +237,17 @@ class Polygon(Shape):
         # Check for None points
         if None in points:
             raise ValueError("The object contains undefined points.")
-        elif None in lines:
-            raise ValueError("The object contains undefined lines.")
         else:
             self.points = points
             self.lines = lines
+            self.sort_points_xyz_ccw()
+            self.sort_lines()
             self._is_polygon()
-            self._is_coplanar()
 
     @property
     def ndim(self) -> int:
-        """
+        """Return the number of dimensions (always 2 for a polygon).
+
         Returns
         -------
         int
@@ -339,7 +257,8 @@ class Polygon(Shape):
 
     @property
     def vertices(self) -> np.ndarray:
-        """
+        """Return the vertices of the polygon as a 2D array.
+
         Returns
         -------
         np.ndarray
@@ -349,7 +268,8 @@ class Polygon(Shape):
 
     @property
     def centroid(self) -> np.ndarray:
-        """
+        """Return the centroid coordinates of the polygon.
+
         Returns
         -------
         np.ndarray
@@ -361,7 +281,8 @@ class Polygon(Shape):
 
     @property
     def normal_vector(self) -> np.ndarray:
-        """
+        """Return the normal vector of the polygon.
+
         Returns
         -------
         np.ndarray
@@ -380,7 +301,8 @@ class Polygon(Shape):
 
     @property
     def unit_normal_vector(self) -> np.ndarray:
-        """
+        """Return the unit normal vector of the polygon.
+
         Returns
         -------
         np.ndarray
@@ -391,7 +313,8 @@ class Polygon(Shape):
 
     @property
     def perimeter(self) -> float:
-        """
+        """Return the perimeter of the polygon.
+
         Returns
         -------
         float
@@ -401,7 +324,8 @@ class Polygon(Shape):
 
     @property
     def area(self) -> float:
-        """
+        """Return the area of the polygon.
+
         Returns
         -------
         float
@@ -429,7 +353,7 @@ class Polygon(Shape):
         Raises
         ------
         ValueError
-            If the shape is not a polygon.
+            If the shape cannot form a polygon.
         """
         # Check if polygon has enough points
         if len(self.vertices) < 3:
@@ -437,14 +361,25 @@ class Polygon(Shape):
             raise ValueError("The shape contains points less than 3."
                              "It cannot be a polygon")
 
-    def _is_coplanar(self) -> None:
-        """Check if the polygon's points are coplanar.
+        # Check for repeated points
+        coords = [tuple(p.coordinates) for p in self.points]
+        if len(set(coords)) != len(coords):
+            raise ValueError("Polygon contains repeated points.")
 
-        Raises
-        ------
-        ValueError
-            If the points are not coplanar.
-        """
+        # Check for colinearity
+        def is_colinear(p1: Point, p2: Point, p3: Point):
+            v1 = np.array(p2.coordinates) - np.array(p1.coordinates)
+            v2 = np.array(p3.coordinates) - np.array(p2.coordinates)
+            return np.allclose(np.cross(v1, v2), 0, atol=1e-6)
+        for i in range(len(self.points)):
+            p1 = self.points[i]
+            p2 = self.points[(i + 1) % len(self.points)]
+            p3 = self.points[(i + 2) % len(self.points)]
+            if is_colinear(p1, p2, p3):
+                raise ValueError(
+                    f"Points {p1.tag}, {p2.tag}, {p3.tag} are colinear."
+                )
+
         # Check if all points are coplanar
         for vertex in self.vertices[3:]:
             vector = vertex - self.vertices[0]
@@ -456,27 +391,91 @@ class Polygon(Shape):
                     "between consecutive points should not be in the same"
                     "direction.")
 
+    def sort_points_xyz_ccw(self) -> None:
+        """Sort the polygon's points counter-clockwise starting from the
+        lowest (x, y, z) point."""
+
+        origin = self.centroid
+        normal = self.unit_normal_vector
+
+        # Create local 2D coordinate system (u, v) in the polygon's plane
+        u = self.vertices[0] - origin
+        u = u / np.linalg.norm(u)
+        v = np.cross(normal, u)
+
+        # Project each point into 2D and store original point
+        def project_to_plane(p: Point):
+            vec = np.array(p.coordinates) - origin
+            return np.array([np.dot(vec, u), np.dot(vec, v)])
+
+        projected = [project_to_plane(p) for p in self.points]
+        centroid_2d = np.mean(projected, axis=0)
+
+        # Compute angle from centroid to each projected point
+        def angle_from_centroid(p2d):
+            return np.arctan2(p2d[1] - centroid_2d[1], p2d[0] - centroid_2d[0])
+
+        # Pair original points with their projections and angles
+        points_with_angles = list(zip(self.points, projected))
+        points_with_angles.sort(key=lambda item: angle_from_centroid(item[1]))
+
+        # Extract sorted points
+        sorted_points = [p for p, _ in points_with_angles]
+
+        # Find the index of the minimal (x, y, z) point
+        def xyz_key(p: Point):
+            return tuple(p.coordinates)  # (x, y, z) comparison
+
+        min_point = min(sorted_points, key=xyz_key)
+        min_index = sorted_points.index(min_point)
+
+        # Rotate the list so the minimal point comes first
+        self.points = sorted_points[min_index:] + sorted_points[:min_index]
+
+    def sort_lines(self) -> None:
+        """Sort Line objects to match the current ordered points in the
+        polygon."""
+        # Assuming they form a polygon
+        if self.lines and None not in self.lines:
+            n = len(self.points)
+            # Create sorted tuples of line endpoints
+            expected_pairs = [
+                tuple(
+                    sorted(
+                        [self.points[i], self.points[(i + 1) % n]],
+                        key=lambda p: tuple(p.coordinates),
+                    )
+                )
+                for i in range(n)
+            ]
+
+            def line_key(line: Line):
+                return tuple(
+                    sorted(line.points, key=lambda p: tuple(p.coordinates))
+                )
+
+            self.lines = sorted(
+                self.lines,
+                key=lambda line: expected_pairs.index(line_key(line))
+            )
+
+    def create_lines_from_points(self) -> None:
+        """Create Line objects from the current ordered points in the polygon.
+        """
+        n = len(self.points)
+        self.lines = []
+        for i in range(n):
+            line = Line([self.points[i], self.points[(i + 1) % n]])
+            line.sort_points_xyz()
+            self.lines.append(line)
+
 
 class Quadrilateral(Polygon):
-    """Quadrilateral object.
-
-    Methods
-    -------
-    __init__
-        Initialize a Quadrilateral object.
-    __str__
-        String representation of the Quadrilateral object.
-    _is_quadrilateral
-        Check if the shape is a quadrilateral.
-    sort_by_xy
-        Sort points to form a quadrilateral in the xy plane.
-
-    Notes
-    -----
-    Inherits from Polygon class.
+    """Quadrilateral defined as a polygon with exactly four sides and four
+    vertices.
     """
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: List[Line] = None,
                  tag: Optional[int] = None) -> None:
         """Initialize a Quadrilateral object.
 
@@ -484,8 +483,8 @@ class Quadrilateral(Polygon):
         ----------
         points : List[Point]
             List of points defining the quadrilateral.
-        lines : List[Line]
-            List of lines composing the quadrilateral.
+        lines : List[Line], optional
+            List of lines composing the quadrilateral. By default None.
         tag : int, optional
             Unique identifier for the quadrilateral. By default None.
         """
@@ -494,7 +493,7 @@ class Quadrilateral(Polygon):
         self._is_quadrilateral()
 
     def __str__(self) -> str:
-        """String representation of the Quadrilateral object.
+        """Return a string representation of the Quadrilateral object.
 
         Returns
         -------
@@ -518,54 +517,13 @@ class Quadrilateral(Polygon):
                 "The number of points in Polygon is not 4."
                 "It cannot be quadrilateral.")
 
-    def sort_by_xy(self) -> None:
-        """Sort points such that they form a quadrilateral with four points
-        [p1, p2, p3, p4] in the xy plane such that:
-
-        y
-        |__x
-                         l2(p2,p3)
-            p2(x2,y2,z2) o------>o p3(x3,y3,z3)
-                         ^       ^
-               l1(p1,p2) |       | l3(p4,p3)
-                         |       |
-            p1(x1,y1,z1) o------>o p4(x4,y4,z4)
-                         l4(p1,p4)
-        """
-
-        self.points = sorted(
-            self.points, key=lambda point: np.arctan2(
-                point.coordinates[0] - self.centroid[0],
-                point.coordinates[1] - self.centroid[1])
-        )
-
-        line_points = [
-            [self.points[0], self.points[1]],
-            [self.points[1], self.points[2]],
-            [self.points[3], self.points[2]],
-            [self.points[0], self.points[3]]
-        ]
-
-        self.lines = sorted(self.lines, key=lambda line: line_points.index(
-            line.points))
-
 
 class Parallelogram(Quadrilateral):
-    """Parallelogram object.
-
-    Methods
-    -------
-    __init__
-        Initialize a Parallelogram object.
-    _is_parallelogram
-        Check if the shape is a parallelogram.
-
-    Notes
-    -----
-    Inherits from Quadrilateral class.
+    """Parallelogram defined as a quadrilateral with both pairs of opposite
+    sides parallel.
     """
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: List[Line] = None,
                  tag: Optional[int] = None) -> None:
         """Initialize a Parallelogram object.
 
@@ -573,8 +531,8 @@ class Parallelogram(Quadrilateral):
         ----------
         points : List[Point]
             List of points defining the parallelogram.
-        lines : List[Line]
-            List of lines composing the parallelogram.
+        lines : List[Line], optional
+            List of lines composing the parallelogram. By default None.
         tag : int, optional
             Unique identifier for the parallelogram. By default None.
         """
@@ -604,21 +562,11 @@ class Parallelogram(Quadrilateral):
 
 
 class Rectangle(Parallelogram):
-    """Rectangle object.
-
-    Methods
-    -------
-    __init__
-        Initialize a Rectangle object.
-    _is_rectangle
-        Check if the shape is a rectangle.
-
-    Notes
-    -----
-    Inherits from Parallelogram class.
+    """Rectangled defined as a parallelogram whose four interior angles
+    are all right angles.
     """
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: Optional[List[Line]] = None,
                  tag: Optional[int] = None) -> None:
         """Initialize a Rectangle object.
 
@@ -626,8 +574,8 @@ class Rectangle(Parallelogram):
         ----------
         points : List[Point]
             List of points defining the rectangle.
-        lines : List[Line]
-            List of lines composing the rectangle.
+        lines : List[Line], optional
+            List of lines composing the rectangle. By default None.
         tag : int, optional
             Unique identifier for the rectangle. By default None.
         """
@@ -656,21 +604,10 @@ class Rectangle(Parallelogram):
 
 
 class Square(Rectangle):
-    """Square object.
-
-    Methods
-    -------
-    __init__
-        Initialize a Square object.
-    _is_square
-        Check if the shape is a square.
-
-    Notes
-    -----
-    Inherits from Rectangle class.
+    """Square defined as a rectangle whose four sides are all of equal length.
     """
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: Optional[List[Line]] = None,
                  tag: Optional[int] = None) -> None:
         """Initialize a Square object.
 
@@ -678,8 +615,8 @@ class Square(Rectangle):
         ----------
         points : List[Point]
             List of points defining the square.
-        lines : List[Line]
-            List of lines composing the square.
+        lines : List[Line], optional
+            List of lines composing the square. By default None.
         tag : int, optional
             Unique identifier for the square. By default None.
         """
@@ -708,31 +645,20 @@ class Square(Rectangle):
 
 
 class Trapezoid(Quadrilateral):
-    """Trapezoid object.
-
-    Methods
-    -------
-    __init__
-        Initialize a Trapezoid object.
-    _is_trapezoid
-        Check if the shape is a trapezoid.
-
-    Notes
-    -----
-    Inherits from Quadrilateral class.
+    """Trapezoid defined as a quadrilateral with at least one pair of parallel
+    opposite sides.
     """
 
-    def __init__(self, points: List[Point], lines: List[Line],
+    def __init__(self, points: List[Point], lines: Optional[List[Line]] = None,
                  tag: Optional[int] = None) -> None:
-        """
-        Initialize a Trapezoid object.
+        """Initialize a Trapezoid object.
 
         Parameters
         ----------
         points : List[Point]
             List of points defining the trapezoid.
-        lines : List[Line]
-            List of lines composing the trapezoid.
+        lines : List[Line], optional
+            List of lines composing the trapezoid. By default None.
         tag : int, optional
             Unique identifier for the trapezoid. By default None.
         """
@@ -740,8 +666,7 @@ class Trapezoid(Quadrilateral):
         self._is_trapezoid()
 
     def _is_trapezoid(self) -> None:
-        """
-        Check if the shape is a trapezoid.
+        """Check if the shape is a trapezoid.
 
         Raises
         ------

@@ -1,13 +1,6 @@
+"""This module provides the beam class implementation for the ``tr_0018_dcm``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing tr_0018_dcm beams.
-
-References
-----------
-TBEC-1998(TR)-Specification for Structures to be Built in Disaster Areas
-TBEC-2007(TR)-Specification for Structures to be Built in Disaster Areas
-TS500-2000(TR)-Design and Construction Rules for Reinfoced Concrete Buildings
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -27,21 +20,45 @@ ECONOMIC_MU_EB: float = 0.25
 """Maximum mu value considered for the economic emergent beam design."""
 ECONOMIC_MU_WB: float = 0.25
 """Maximum mu value considered for the economic wide beam design."""
-EPS_CU = 0.003
-"""Concrete crushing strain used for computing section capacity."""
 
 
 class Beam(BeamBase):
-    """Beam object for design class: tr_0018_dcm."""
+    """Beam implementation for design class ``tr_0018_dcm``.
 
+    This class extends ``BeamBase`` by narrowing the attribute types
+    and overriding design methods per TBEC-2007 and TS500-2000.
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.tr_0018_dcm.materials.Steel
+        Steel material assigned to the beam.
+    concrete : ~simdesign.rcmrf.bdim.tr_0018_dcm.materials.Concrete
+        Concrete material assigned to the beam.
+    MIN_B_EB: float
+        The default minimum breadth (width) of emergent beams.
+    MIN_H_EB: float
+        The default minimum height (depth) of emergent beams.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.beam.BeamBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    TBEC (1998). *Afet Bölgelerinde Yapılacak Yapılar Hakkında Yönetmelik*.
+    Resmi Gazete, Ankara, Türkiye.
+
+    TBEC (2007). *Deprem Bölgelerinde Yapılacak Binalar Hakkında Esaslar*.
+    Resmi Gazete, Ankara, Türkiye.
+
+    TS500 (2000). *Requirements for Design and Construction of Reinforced
+    Concrete Structures*. Turkish Standards Institution (TSE), Ankara, Türkiye.
+    """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
-    MIN_B_EB: float = 0.25 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-1998"""
-    MIN_H_EB: float = 0.30 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-1998"""
+    MIN_B_EB: float = 0.25 * m  # from TBEC-1998
+    MIN_H_EB: float = 0.30 * m  # from TBEC-1998
 
     @property
     def max_b(self) -> float:
@@ -73,15 +90,16 @@ class Beam(BeamBase):
     @property
     def max_h(self) -> float:
         """
-        Reference
-        ---------
-        Section 7.4.1 in TBEC-1998
-        Section 3.4.1 in TBEC-2007
-
         Returns
         -------
         float
             Computed maximum allowed section height (depth).
+
+        Notes
+        -----
+        Based on:
+            Section 7.4.1 in TBEC-1998,
+            Section 3.4.1 in TBEC-2007.
         """
         # Masks for finding emergent beams
         bool1 = self.typology == 2  # Emergent by default
@@ -94,13 +112,13 @@ class Beam(BeamBase):
             if self.direction == 'x':  # Beam is along x
                 bxmax = max(col.bx for col in self.columns if col)
                 bxmin = min(col.bx for col in self.columns if col)
-                Lnet = self.L - (bxmax + bxmin) / 2
+                clear_length = self.L - (bxmax + bxmin) / 2
             elif self.direction == 'y':  # Beam is along y
                 bymax = max(col.by for col in self.columns if col)
                 bymin = min(col.by for col in self.columns if col)
-                Lnet = self.L - (bymax + bymin) / 2
+                clear_length = self.L - (bymax + bymin) / 2
 
-            h_max_code = min(3.5 * self.b, Lnet / 4)
+            h_max_code = max(3.5 * self.b, clear_length / 4)
             if bool1 or bool2:
                 return min(self.MAX_H_EB, h_max_code)
             else:
@@ -109,14 +127,14 @@ class Beam(BeamBase):
     @property
     def fctk(self) -> float:
         """
-        Reference
-        ---------
-        Equation 3.1 in T5500-2000
-
         Returns
         -------
         float
             Characteristic tensional strength of concrete (in base units).
+
+        Notes
+        -----
+        Based on Equation 3.1 in T5500-2000.
         """
         return (0.35 * (self.concrete.fck) ** (1 / 2)) * MPa
 
@@ -134,54 +152,60 @@ class Beam(BeamBase):
     @property
     def rhol_min_tens(self) -> float:
         """
-        Reference
-        ----------
-        Equation 3.8 in TBEC-2007
-
         Returns
         -------
         float
-            Minimum longitudinal reinforcement ratio in tension zone
+            Minimum longitudinal reinforcement ratio in tension zone.
+
+        Notes
+        -----
+        Based on Equation 3.8 in TBEC-2007.
         """
         return 0.8 * (self.fctd / self.fsyd)
 
     @property
     def rhol_max_tens(self) -> float:
         """
-        Reference
-        ----------
-        Equation 7.5 in T5500-2000
-
         Returns
         -------
         float
-            Maximum longitudinal reinforcement ratio in tens. and comp. zones
+            Maximum longitudinal reinforcement ratio in tens. and comp. zones.
+
+        Notes
+        -----
+        Based on Equation 7.5 in T5500-2000.
         """
         return 0.02
 
     @property
     def rhoh_min(self) -> float:
         """
-        Reference
-        ----------
-        Equation 8.6 in T5500-2000
-
         Returns
         -------
         float
-            Minimum transverse reinforcement ratio
+            Minimum transverse reinforcement ratio.
+
+        Notes
+        -----
+        Based on Equation 8.6 in T5500-2000.
         """
         return 0.3 * (self.fctd) / (self.fsyd)
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
-        """Does preliminary design of beam.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for beam section dimensions.
 
         Parameters
         ----------
         slab_h : float
             Slab thickness.
+
+        Notes
+        -----
+        This method overrides ``BeamBase.predesign_section_dimensions``
+        with the following changes:
+
+        - It uses additional constraint on beam height based on Section
+          7.4.1 in TBEC-1998.
         """
         # Unit conversions
         Md = self.pre_Md
@@ -245,7 +269,7 @@ class Beam(BeamBase):
         self.b = ceil(20 * self.b) / 20
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the beam section dimensions for design forces."""
+        """Verify the beam section dimensions for design forces."""
         # mu values (dimensionless) for economic section (eng. practice)
         if self.typology == 1:
             mu_economic = ECONOMIC_MU_WB
@@ -257,10 +281,13 @@ class Beam(BeamBase):
         d = 0.90 * self.h
 
         # Maximum of envelope forces
-        Vmax = max(self.envelope_forces.V1, self.envelope_forces.V5,
-                   self.envelope_forces.V9)
+        max_shear = max(
+            self.envelope_forces.V1,
+            self.envelope_forces.V5,
+            self.envelope_forces.V9
+        )
 
-        Mmax = max(
+        max_moment = max(
             self.envelope_forces.M1_pos,
             self.envelope_forces.M5_pos,
             self.envelope_forces.M9_pos,
@@ -270,18 +297,17 @@ class Beam(BeamBase):
         )
 
         # Verify the adequacy of the section dimensions
-        mu = Mmax / (self.fcd * self.b * d**2)
         Vrd_max = 0.22 * self.b * d * self.fcd  # Equation 8.7 in TS500-2000
+        mu = max_moment / (self.fcd * self.b * d**2)
 
-        if mu < mu_economic and Vmax < Vrd_max:
+        if mu < mu_economic and max_shear < Vrd_max:
             self.ok = True  # Ok
         else:
             self.ok = False  # Not ok
 
     def _get_long_area(self, Md: Array3
                        ) -> Tuple[Array3[np.float64], Array3[np.float64]]:
-        """Beam design method to be used in compute_required_reinforcement
-        method.
+        """Get longitudinal reinforcement area given bending moment.
 
         Parameters
         ----------
@@ -337,22 +363,23 @@ class Beam(BeamBase):
         return As_required, Asprime_required
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required reinforcement area for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
         Notes
         -----
-        1. Top reinforcement is calculated as the maximum of required
-        reinforcement in tension for maximum of negative bending moments
-        and required reinforcement in compression for maximum of positive
-        bending moments.
-        2. Bottom reinforcement is calculated as the maximum of required
-        reinforcement in compression for maximum of negative bending moments
-        and required reinforcement in tension for maximum of positive
-        bending moments.
-        3. Required reinforcement is computed at different sections:
-        start, mid, end.
-        """
+        - Top reinforcement is calculated as the maximum of required
+          reinforcement in tension for maximum of negative bending moments
+          and required reinforcement in compression for maximum of positive
+          bending moments.
 
+        - Bottom reinforcement is calculated as the maximum of required
+          reinforcement in compression for maximum of negative bending moments
+          and required reinforcement in tension for maximum of positive
+          bending moments.
+
+        - Required reinforcement is computed at three different sections:
+          start, middle, end.
+        """
         # Design forces
         moment_pos = np.array(
             [
@@ -370,13 +397,10 @@ class Beam(BeamBase):
         )
         moment_neg = np.abs(moment_neg)
 
-        # Longitudinal reinforcement computation
-        # ...........................................................................
-
-        # For positive moment envelope (+)
+        # Required area for positive moment envelope (+)
         Asl_pos_bot, Asl_pos_top = self._get_long_area(moment_pos)
 
-        # For negative moment envelope (-)
+        # Required area for negative moment envelope (-)
         Asl_neg_top, Asl_neg_bot = self._get_long_area(moment_neg)
 
         # Determine required reinforcement at top and bottom
@@ -402,12 +426,11 @@ class Beam(BeamBase):
         self.Asl_bot_req = Asl_bot
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
 
         Notes
         -----
-        1. Required reinforcement is computed at different sections:
-        start, mid, end.
+        Reinforcement is computed at three sections: start, mid, and end.
         """
         # Design shear forces due to gravity and earthquake loads
         Vd = np.array(

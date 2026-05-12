@@ -51,11 +51,11 @@ regular_frame.set_continuous_stairs_rectangles(
     stairs_loc, stairs_width_x, stairs_width_y)
 # Modifying a floor height (ground floors are usually modified)
 regular_frame.modify_floor_height(floor_id, h_floor)
-path = Path(__file__).parents[1] / 'tmp/irregular-geometry.xlsx'
+path = Path(__file__).parents[1] / "tmp/irregular-geometry.xlsx"
 regular_frame.write_mesh_to_xlsx(path=path)
 # Add the new lines and points for stairs
-regular_frame.add_new_lines_and_points_for_stairs()
+regular_frame.add_new_elements_for_stairs(infills=False)
 # Show mesh
 regular_frame.show_mesh()
-path = Path(__file__).parents[1] / 'tmp/irregular-geometry.html'
+path = Path(__file__).parents[1] / "tmp/irregular-geometry.html"
 regular_frame.export_mesh_to_html(path=str(path))

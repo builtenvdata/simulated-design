@@ -15,7 +15,7 @@ bcim.to_csv(Path(__file__).parents[1]
 
 my_input = {
     "steel": {
-        "grade": ["S240", "S400", "S500"],
+        "grade": ["A24", "A40", "A50"],
         "probability": [0.40, 0.50, 0.10],
     },
     "beta": 0.20,

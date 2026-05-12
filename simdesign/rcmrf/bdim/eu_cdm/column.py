@@ -1,22 +1,7 @@
+"""This module provides the column class implementation for the ``eu_cdm``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdm columns.
-
-Notes
------
-Methodology follows the case of DCM (REBAP-83) column design.
-Design based on limit state design.
-Material qualities are higher compared CDL.
-
-References
-----------
-REBAP (1983) Regulamento de Estruturas de Betão Armado e PréEsforçado.
-Decreto-Lei N.° 349-C/83, Lisbon, Portugal
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-"""
-
 # Imports from installed packages
-from math import ceil
 import numpy as np
 from typing import Tuple
 
@@ -33,8 +18,8 @@ ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
 MAX_NIU = 1.0
 """Maximum allowed value of axial load ratio."""
-TAU_C_VECT = np.array(
-    [0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15]) * MPa
+TAU_C_VECT = np.array([0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15]
+                      ) * MPa
 """Vector of allowable shear stresses that carried by the concrete or
 vector of the design shear strength values of concrete."""
 TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]) * MPa
@@ -51,12 +36,34 @@ NIU_VECTOR = [0.40, 0.50, 0.60, 0.70, 0.85]
 
 
 class Column(ColumnBase):
-    """Column object for design class: eu_cdm.
+    """Column implementation for design class ``eu_cdm``.
+
+    This class extends ``ColumnBase`` by narrowing the attribute types
+    and overriding design methods per REBAP (1983).
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdm.materials.Steel
+        Steel material assigned to the column.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdm.materials.Concrete
+        Concrete material assigned to the column.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.column.ColumnBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    REBAP (1983). Regulamento de Estruturas de Betão Armado e Pré-Esforçado.
+    Decreto-Lei N.° 349-C/83, Lisbon, Portugal.
+
+    d'Arga e Lima, J., Monteiro, V., Mun, M. (2005).
+    Betão armado: esforços normais e de flexão: REBAP-83.
+    Laboratório Nacional de Engenharia Civil, Lisboa.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     @property
     def rhol_max(self) -> float:
@@ -65,11 +72,8 @@ class Column(ColumnBase):
         -------
         float
             Maximum longitudinal reinforcement ratio.
-
-        References
-        ----------
-        Article 90.2 REBAP 1983
         """
+        # Art 90.2 in REBAP (1983)
         return 0.04
 
     @property
@@ -82,35 +86,8 @@ class Column(ColumnBase):
         """
         return 0.01
 
-    def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-
-        This method makes initial guess for section dimensions.
-
-        Notes
-        -----
-        It is overwritten for eu_cdm design class with following changes:
-        - It retrieves design concrete strength from concrete attributes.
-        """
-        # Initial guess for column concrete area
-        min_area = self.pre_Nd / self.fcd
-        # Determine initial dimensions
-        if self.section == 1:  # Square section
-            self.bx = min_area**0.5
-            self.by = min_area**0.5
-        elif self.section == 2:  # Rectangular section
-            if self.orient == "x":  # Longer dimension is bx
-                self.bx = (2 * min_area) ** 0.5
-                self.by = 0.5 * self.bx
-            elif self.orient == "y":  # Longer dimension is by
-                self.by = (2 * min_area) ** 0.5
-                self.bx = 0.5 * self.by
-        # Check against minimum dimensions
-        self.bx = max(ceil(20 * self.bx) / 20, self.min_b)
-        self.by = max(ceil(20 * self.by) / 20, self.min_b)
-
     def verify_section_adequacy(self) -> None:
-        """Verifies the adequacy of section dimensions for design forces.
+        """Verify the adequacy of section dimensions for design forces.
 
         Notes
         -----
@@ -163,12 +140,12 @@ class Column(ColumnBase):
         else:
             self.ok_y = True
         if max_niu > MAX_NIU and self.ok_x and self.ok_y:
-            # May increase both dimensions or random one?
+            # May increase both dimensions or only one of them
             self.ok_x = False
             self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
         """
         # Initial longitudinal reinforcement area
         Aslx_req = 0.000226195 * m**2  # 2 bars with diam of 12mm
@@ -224,7 +201,7 @@ class Column(ColumnBase):
         self.Asly_req = Asly_req
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
         """
         # Allowable shear stress that can be carried by the beam
         tau_c = np.interp(self.concrete.fck, FCK_VECT, TAU_C_VECT)
@@ -300,7 +277,7 @@ class Column(ColumnBase):
         self.Ashy_sbh_req = Ashy_sh_req
 
     def __get_min_transv_reinf(self) -> Tuple[float]:
-        """Retrieves minimum transverse reinforcement.
+        """Get minimum transverse reinforcement area to spacing ratio.
 
         Returns
         -------

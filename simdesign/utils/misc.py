@@ -1,17 +1,16 @@
+"""This module provides miscellaneous utility methods.
 """
-Miscellaneous utility methods.
-"""
-
 # Imports from installed packages
 import errno
 import numpy as np
 import os
 from pathlib import Path
 from time import time, gmtime
-from typing import Callable, Union, Any, Dict, List
+from typing import Callable, Union, Any, Dict, List, Mapping
 import shutil
 import sys
 import stat
+from inspect import Parameter, signature
 
 PRECISION = 8
 """Precision used in rounding of floating numbers."""
@@ -41,8 +40,8 @@ def update_nested_dict(d: Dict[str, Any], u: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run_time(start_time: int) -> str:
-    """Prints the time passed between start_time and finish_time (now)
-    in hours, minutes, seconds. startTime is a global variable.
+    """Print elapsed time between start_time and now in hours, minutes, and
+    seconds.
 
     Parameters
     ----------
@@ -69,8 +68,8 @@ def run_time(start_time: int) -> str:
 
 
 def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
-    """Upon granting file the permission (# 0777),
-    removes the file using given remove function.
+    """Grant write permission to a file and remove it using the provided
+    function.
 
     Parameters
     ----------
@@ -86,7 +85,6 @@ def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
     Warning
         Path is in use.
     """
-
     excvalue: OSError = exc[1]
     if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
         os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
@@ -97,7 +95,7 @@ def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
 
 
 def remove_dir(dir_path: Union[str, Path]) -> None:
-    """Removes a directory if it exists.
+    """Remove a directory if it exists.
 
     Parameters
     ----------
@@ -112,14 +110,13 @@ def remove_dir(dir_path: Union[str, Path]) -> None:
 
 
 def make_dir(dir_path: Union[str, Path]) -> None:
-    """Makes a clean directory by deleting it if it exists.
+    """Make a clean directory, deleting any existing one first.
 
     Parameters
     ----------
     dir_path : Union[str, Path]
         Name of directory to make.
     """
-
     if isinstance(dir_path, Path):
         dir_path = str(dir_path)
 
@@ -130,7 +127,7 @@ def make_dir(dir_path: Union[str, Path]) -> None:
 
 
 def signif(x: np.ndarray, p: int) -> np.ndarray:
-    """Significant figure rounding for arrays
+    """Round an array to the specified number of significant figures.
 
     Parameters
     ----------
@@ -144,7 +141,6 @@ def signif(x: np.ndarray, p: int) -> np.ndarray:
     np.ndarray
         Rounded array.
     """
-
     x = np.asarray(x)
     x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(p - 1))
     mags = 10 ** (p - 1 - np.floor(np.log10(x_positive)))
@@ -152,8 +148,8 @@ def signif(x: np.ndarray, p: int) -> np.ndarray:
 
 
 def check_parameters(parameters: dict, required_parameters: tuple) -> None:
-    """Checks if all the required parameters are defined
-    in the parameters dictionary.
+    """Check that all required parameters are present in the parameters
+    dictionary.
 
     Parameters
     ----------
@@ -167,7 +163,6 @@ def check_parameters(parameters: dict, required_parameters: tuple) -> None:
     KeyError
         A parameter is missing.
     """
-
     # Check the user entries
     for name in required_parameters:
         if name in parameters.keys():
@@ -177,7 +172,7 @@ def check_parameters(parameters: dict, required_parameters: tuple) -> None:
 
 
 def dot(a: List[float], b: List[float]) -> float:
-    """Dot products of two lists containing float numbers.
+    """Compute the dot product of two lists of floats.
 
     Parameters
     ----------
@@ -191,7 +186,6 @@ def dot(a: List[float], b: List[float]) -> float:
     float
         Dot product
     """
-
     if len(a) != len(b):
         return 0.0
 
@@ -199,27 +193,19 @@ def dot(a: List[float], b: List[float]) -> float:
 
 
 def get_time_based_seed():
-    """
-    Determine the random number generator set based on the date and time
+    """Return a random seed derived from the current date and time.
 
     Returns
     -------
     int
-        Summation of numbers based on time date a number.
+        Sum of time components from the current UTC time.
     """
-
     return sum(gmtime())
 
 
 def convert_numpy_types(input_list: List[Any]) -> List[Any]:
-    """
-    Converts NumPy-specific types in a list to regular Python types
-    (int or float).
-
-    This function iterates over the provided list and checks if the items are
-    of NumPy types such as `np.integer` or `np.floating`. If they are,
-    it converts them to standard Python types (`int` for `np.integer` and
-    `float` for `np.floating`). Any non-NumPy types are left unchanged.
+    """Convert NumPy integer and float types in a list to native Python int
+    and float.
 
     Parameters
     ----------
@@ -239,7 +225,6 @@ def convert_numpy_types(input_list: List[Any]) -> List[Any]:
     >>> convert_numpy_types(example_list)
     [3.14, 10, 5, 7.2]
     """
-
     result = []
     for item in input_list:
         if isinstance(item, np.integer):  # Check for NumPy int type
@@ -252,27 +237,121 @@ def convert_numpy_types(input_list: List[Any]) -> List[Any]:
     return result
 
 
-def round_list(input_list: List[Union[int, float]],
-               precision: int = PRECISION) -> List[float]:
-    """
-    Rounds each value in a list to the specified precision.
+def round_list(input_list: List[Any],
+               precision: int = PRECISION) -> List[Any]:
+    """Round each value in a list to the specified precision.
 
-    Parameters:
-    -----------
-    input_list : List[float]
+    Parameters
+    ----------
+    input_list : List[Any]
         A list of floating-point numbers to be rounded.
-    precision: int, optional
-        Specified precision, by default equal to the constant `PRECISION`.
+    precision : int
+        Number of decimal places, by default equal to the constant
+        ``PRECISION``.
 
-    Returns:
-    --------
-    List[float]
+    Returns
+    -------
+    List[Any]
         A new list with each value rounded to the specified precision.
 
-    Example:
+    Examples
     --------
-    >>> round_values([3.14159, 2.71828, 1.61803], 2)
+    >>> round_list([3.14159, 2.71828, 1.61803], 2)
     [3.14, 2.72, 1.62]
     """
     input_list = convert_numpy_types(input_list)
-    return [round(value, precision) for value in input_list]
+    return [
+        round(value, precision) if isinstance(value, (int, float)) else value
+        for value in input_list
+    ]
+
+
+def filter_args(method: Callable, data: Mapping[str, Any]) -> Dict[str, Any]:
+    """Filter and convert input values so they match the signature of a method.
+
+    Parameters
+    ----------
+    method : callable
+        The method whose signature is used for filtering and conversion.
+
+    data : Mapping[str, Any]
+        A dictionary-like object containing raw input values (e.g., JSON body,
+        query parameters, or user-provided input). Keys are expected to match
+        parameter names of the method.
+
+    Returns
+    -------
+    dict[str, Any]
+        A dictionary containing only the parameters expected by `method`,
+        with types converted based on annotations when possible. If `method`
+        defines ``**kwargs``, extra keys in `data` are also included so they
+        can be passed through via ``**filtered_data``.
+    """
+    params = dict(signature(method).parameters)
+    filtered_data: Dict[str, Any] = {}
+
+    # Does the method accept **kwargs?
+    has_var_kw = any(p.kind is Parameter.VAR_KEYWORD for p in params.values())
+
+    # Handle all explicitly declared parameters (except *args/**kwargs/self)
+    for name, param in params.items():
+        if name == "self":
+            continue
+
+        if param.kind in (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD):
+            continue
+
+        has_default = param.default is not Parameter.empty
+        is_provided = name in data
+
+        # Missing value
+        if not is_provided:
+            if has_default:
+                filtered_data[name] = param.default
+            # If no default and not provided, skip
+            continue
+
+        raw_value = data[name]
+        annotation = param.annotation
+
+        # Handle bool explicitly
+        if annotation is bool:
+            try:
+                filtered_data[name] = str(raw_value).lower() == "true"
+            except Exception:
+                filtered_data[name] = raw_value
+
+        # Handle integers
+        elif annotation is int:
+            try:
+                filtered_data[name] = int(raw_value)
+            except (ValueError, TypeError):
+                filtered_data[name] = raw_value
+
+        # Handle floats
+        elif annotation is float:
+            try:
+                filtered_data[name] = float(raw_value)
+            except (ValueError, TypeError):
+                filtered_data[name] = raw_value
+
+        # For any other annotation (or no annotation), just pass through
+        else:
+            filtered_data[name] = raw_value
+
+    # If the method accepts **kwargs, forward any extra keys from `data`
+    if has_var_kw:
+        # Names of "real" positional/keyword parameters that we already handled
+        known_param_names = {
+            n
+            for n, p in params.items()
+            if n != "self" and p.kind not in (Parameter.VAR_POSITIONAL,
+                                              Parameter.VAR_KEYWORD)
+        }
+
+        for key, value in data.items():
+            if key not in known_param_names:
+                # Extra keys go straight through (no conversion, no filtering)
+                filtered_data[key] = value
+
+    return filtered_data

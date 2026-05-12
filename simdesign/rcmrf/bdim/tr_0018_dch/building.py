@@ -1,24 +1,6 @@
+"""This module provides the Building Design Information Model (BDIM)
+implementation for the ``tr_0018_dch`` design class.
 """
-Specific routines for defining and designing tr_0018_dch buildings.
-
-Basic units are kN, m, sec
-
-NOTES
------
-1- The method named "_set_column_capacity_design_moments" has been
-overwritten because TBEC-1998 and TBEC-2007 enforce not considering
-roof-level columns in terms of capacity design principles.
-
-2- The method named "_set_column_capacity_design_shear_forces" has been
-overwritten to calculate column capacity shear forces using beam capacity
-moments, except for ground floor columns, which are treated as specified
-in TBEC-1998 and TBEC-2007.
-
-3- The method named "_set_beam_capacity_design_shear_forces" has been
-overwritten since the rules in TBEC-1998 and TBEC-2007 differ from those
-in EN 1998-1:2004.
-"""
-
 # Imports from installed packages
 from typing import List, Type, Tuple
 
@@ -33,6 +15,7 @@ from .loads import Loads
 from .rebars import Rebars
 from .slab import Slab
 from .stairs import Stairs
+from .infill import Infill
 
 # Imports from bdim base library
 from ..baselib.building import BuildingBase, TaxonomyData
@@ -42,48 +25,101 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: tr_0018_dch."""
+    """BDIM implementation for design class ``tr_0018_dch``.
 
+    This class extends ``BuildingBase`` by narrowing the attribute types
+    to the ``tr_0018_dch`` implementations and overriding design class-specific
+    methods.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.tr_0018_dch.beam.Beam]
+        List of beam instances.
+    columns : List[~simdesign.rcmrf.bdim.tr_0018_dch.column.Column]
+        List of column instances.
+    joints : List[~simdesign.rcmrf.bdim.tr_0018_dch.joint.Joint]
+        List of joint instances.
+    slabs : List[~simdesign.rcmrf.bdim.tr_0018_dch.slab.Slab]
+        List of slab instances.
+    stairs : List[~simdesign.rcmrf.bdim.tr_0018_dch.stairs.Stairs]
+        List of stairs instances.
+    infills : List[~simdesign.rcmrf.bdim.tr_0018_dch.infill.Infill]
+        List of infill wall instances.
+    steel : ~simdesign.rcmrf.bdim.tr_0018_dch.materials.Steel
+        Steel material instance used in the design of beams and columns.
+    concrete : ~simdesign.rcmrf.bdim.tr_0018_dch.materials.Concrete
+        Concrete material instance used in the design of beams and columns.
+    loads : ~simdesign.rcmrf.bdim.tr_0018_dch.loads.Loads
+        Loads instance used to apply building loads.
+    materials : ~simdesign.rcmrf.bdim.tr_0018_dch.materials.Materials
+        Materials instance used to set building materials.
+    rebars : ~simdesign.rcmrf.bdim.tr_0018_dch.rebars.Rebars
+        Rebars instance used to determine reinforcement arrangement.
+    quality : ~simdesign.rcmrf.bdim.tr_0018_dch.quality.Quality
+        Quality instance used to adjust properties of structural elements.
+    OVERSTRENGTH_FACTOR_COLUMN_MOMENT : float
+        Safety or overstrength factor considered in calculation of capacity
+        design moments for columns (strong-column weak-beam principle).
+    OVERSTRENGTH_FACTOR_BEAM_SHEAR : float
+        Safety or overstrength factor considered in calculation of capacity
+        design shear forces for beams.
+    OVERSTRENGTH_FACTOR_COLUMN_SHEAR : float
+        Safety or overstrength factor considered in calculation of capacity
+        design shear forces for columns.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.building.BuildingBase`
+        Base class defining the core behaviour and configuration.
+
+    Notes
+    -----
+    - Design follows limit state design approach.
+    - Capacity design principle is followed (weak-beam strong-column).
+    - Main reference building code is TBEC-2007 (high ductility class).
+    - Basic units are kN, m, sec
+    - Overrides :meth:`_set_column_capacity_design_moments` method
+      because TBEC-2007 does not enforce roof-level columns
+      to follow capacity design principles.
+    - Overrides :meth:`_set_column_capacity_design_shear_forces` method
+      to calculate column capacity shear forces using beam capacity
+      moments, except for ground floor columns, which are treated as specified
+      in TBEC-2007.
+    - Overrides :meth:`_set_beam_capacity_design_shear_forces` method
+      since the rules in TBEC-2007 differ from those in EN 1998-1:2004.
+    - Overrides :meth:`_set_maximum_column_dimensions` method to set
+      design-class specific maximum column dimensions.
+
+    References
+    ----------
+    TBEC (2007). *Deprem Bölgelerinde Yapılacak Binalar Hakkında Esaslar*.
+    Resmi Gazete, Ankara, Türkiye.
+    """
     beams: List[Beam]
-    """List of beam instances."""
     columns: List[Column]
-    """List of column instances."""
     joints: List[Joint]
-    """List of joint instances."""
     slabs: List[Slab]
-    """List of slab instances."""
     stairs: List[Stairs]
-    """List of stairs instances."""
+    infills: List[Infill]
     steel: Steel
-    """Steel material instance considered in design of beams and columns."""
     concrete: Concrete
-    """Concrete material instance considered in design of beams and columns."""
     loads: Loads
-    """Loads instance used to apply building loads."""
     materials: Materials
-    """Materials instance used to set building materials."""
     rebars: Rebars
-    """Rebars instance used to determine reinforcement arrangement."""
     quality: Quality
-    """Quality instance used to adjust properties of structural elements."""
     ColumnClass: Type[Column]
     BeamClass: Type[Beam]
     JointClass: Type[Joint]
     SlabClass: Type[Slab]
     StairsClass: Type[Stairs]
+    InfillClass: Type[Infill]
     ElasticModelClass: Type[ElasticModel]
     OVERSTRENGTH_FACTOR_COLUMN_MOMENT = 1.2
-    """Safety or overstrength factor considered in calculation of capacity
-    design moments for columns (strong-column weak-beam principle)."""
     OVERSTRENGTH_FACTOR_BEAM_SHEAR = 1.4
-    """Safety or overstrength factor considered in calculation of capacity
-    design shear forces for beams."""
     OVERSTRENGTH_FACTOR_COLUMN_SHEAR = 1.4
-    """Safety or overstrength factor considered in calculation of capacity
-    design shear forces for columns."""
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
-        """Initializes building object.
+        """Initialize the Building object.
 
         Parameters
         ----------
@@ -96,6 +132,7 @@ class Building(BuildingBase):
         self.JointClass = Joint
         self.SlabClass = Slab
         self.StairsClass = Stairs
+        self.InfillClass = Infill
         self.ElasticModelClass = ElasticModel
         # Set the available materials
         self.materials = Materials()
@@ -111,7 +148,7 @@ class Building(BuildingBase):
         self._set_maximum_column_dimensions()
 
     def _set_maximum_column_dimensions(self) -> None:
-        """Sets the maximum column dimensions based on number of storeys.
+        """Set the maximum column dimensions based on number of storeys.
 
         Notes
         -----
@@ -131,13 +168,14 @@ class Building(BuildingBase):
                 column.MAX_B_RECTANGLE = 1.30 * m
 
     def _set_column_capacity_design_moments(self) -> None:
-        """Appends the capacity design moments to the list of design forces
+        """Append the capacity design moments to the list of design forces
         for columns.
 
-        Reference
-        ---------
-        Section 7.3.5 in TBEC-1998
-        Section 3.3.5 in TBEC-2007
+        Notes
+        -----
+        Based on:
+            Section 7.3.5 in TBEC-1998,
+            Section 3.3.5 in TBEC-2007.
         """
         if self.OVERSTRENGTH_FACTOR_COLUMN_MOMENT is None:  # Do not add
             return
@@ -201,17 +239,18 @@ class Building(BuildingBase):
                     joint.top_column.design_forces.append(forces_top)
 
     def _set_column_capacity_design_shear_forces(self) -> None:
-        """Appends the column capacity design shear forces to the list of
+        """Append the column capacity design shear forces to the list of
         column design forces.
 
-        Reference
-        ---------
-        Section 7.3.7 in TBEC-1998
-        Section 3.3.7 in TBEC-2007
+        Notes
+        -----
+        Based on:
+            Section 7.3.5 in TBEC-1998,
+            Section 3.3.5 in TBEC-2007.
         """
 
         def get_column_clear_length() -> Tuple[float, float]:
-            """Gets column clear length (distance between column faces).
+            """Get column clear length (distance between column faces).
 
             Returns
             -------
@@ -305,17 +344,18 @@ class Building(BuildingBase):
                               column.envelope_forces.Vy9)
 
     def _set_beam_capacity_design_shear_forces(self) -> None:
-        """Appends the beam capacity design shear forces to the list of
+        """Append the beam capacity design shear forces to the list of
         beam design forces.
 
-        Reference
-        ---------
-        Section 7.4.5 in TBEC-1998
-        Section 3.4.5 in TBEC-2007
+        Notes
+        -----
+        Based on:
+            Section 7.4.5 in TBEC-1998,
+            Section 3.4.5 in TBEC-2007.
         """
 
         def get_beam_clear_length() -> float:
-            """Gets beam clear length (distance between column faces).
+            """Get beam clear length (distance between column faces).
 
             Returns
             -------

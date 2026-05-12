@@ -1,20 +1,14 @@
+"""This modules provide a Plotter for OpenSeesPy models. The module is
+inspired by the vfo package of Anurag Upadhyay. https://github.com/u-anurag
 """
-Plotter for OpenSeesPy models. The module is inspired by the vfo
-package of Anurag Upadhyay. https://github.com/u-anurag
-"""
-
 import numpy as np
-import pyvista as pv
 import openseespy.opensees as ops
+import pyvista as pv
 from typing import Literal, List, Optional, Tuple
 
 
-# Set PyVista theme
-# https://docs.pyvista.org/examples/02-plot/themes.html
-pv.set_plot_theme("document")
-
 # Base colours considered
-base_colors = [
+BASE_COLOURS = [
     "gray",
     "lightblue",
     "lightgreen",
@@ -228,7 +222,7 @@ def _get_pv_surfaces(ele_arr: List[np.ndarray], node_tags: np.ndarray,
 def _get_model_display(
     node_arr: np.ndarray, ele_arr: List[np.ndarray], ele_class_tags: np.ndarray
 ) -> Tuple[pv.PolyData, pv.PolyData, np.ndarray, np.ndarray]:
-    """Generates the 3D model display data for plotting using PyVista.
+    """Generate the 3D model display data for plotting using PyVista.
 
     Parameters
     ----------
@@ -276,7 +270,7 @@ def _get_model_display(
 
 
 def _node_coords(node_tag: int, node_arr: np.ndarray) -> np.ndarray:
-    """Returns an array of node coordinates.
+    """Return an array of node coordinates.
 
     Parameters
     ----------
@@ -301,8 +295,7 @@ def _node_coords(node_tag: int, node_arr: np.ndarray) -> np.ndarray:
 
 def _get_ele_tag_coord(ele_arr: List[np.ndarray], node_arr: np.ndarray
                        ) -> np.ndarray:
-    """Gets the average x, y, z coordinates for each element based on the node
-    coordinates.
+    """Get the average x, y, z coordinates for each element based on its nodes.
 
     Parameters
     ----------
@@ -461,7 +454,7 @@ def plot_model(
     filename: Optional[str] = None,
     show: bool = True,
 ) -> None:
-    """Plots the numerical model of the structure.
+    """Plot the numerical model of the structure.
 
     Parameters
     ----------
@@ -505,7 +498,11 @@ def plot_model(
         _get_model_display(node_array, element_array, ele_class_tags)
 
     # Initialize the PyVista plotter
-    pl = pv.Plotter()
+    if show:
+        off_screen = False
+    else:
+        off_screen = True
+    pl = pv.Plotter(off_screen=off_screen)
 
     # Set point size and sphere rendering if nodes are to be shown
     if show_nodes == "yes":
@@ -659,7 +656,7 @@ def plot_mode_shape(
     filename: Optional[str] = None,
     show: bool = True,
 ) -> None:
-    """Plots the shape of specified mode.
+    """Plot the shape of the specified mode.
 
     Parameters
     ----------
@@ -722,7 +719,11 @@ def plot_mode_shape(
     )
 
     # Start plotting the mode shape
-    pl = pv.Plotter()
+    if show:
+        off_screen = False
+    else:
+        off_screen = True
+    pl = pv.Plotter(off_screen=off_screen)
     point_size = 0.0
     spheres = False
 

@@ -1,7 +1,5 @@
+"""This module provides statistics related utility methods.
 """
-Statistics related utility methods.
-"""
-
 # Imports from installed packages
 from scipy.stats import lognorm, norm, uniform
 import numpy as np
@@ -12,8 +10,7 @@ from typing import List
 def random_truncated_lognormal(size: int, mu: np.ndarray, sigma: np.ndarray,
                                lower: np.ndarray, upper: np.ndarray
                                ) -> np.ndarray:
-    """
-    Samples the truncated (lower-upper) log-normal CDF.
+    """Sample from a truncated log-normal distribution.
 
     Parameters
     ----------
@@ -46,8 +43,8 @@ def random_truncated_lognormal(size: int, mu: np.ndarray, sigma: np.ndarray,
     probabilities within the cumulative distribution function (CDF) range
     defined by the lower and upper truncation limits.
 
-    Example
-    -------
+    Examples
+    --------
     >>> random_truncated_lognormal(
             100, mu=1.0, sigma=0.5, lower=2.0, upper=10.0)
     array([2.35, 4.17, 8.22, ...])  # Example output
@@ -79,15 +76,15 @@ def truncated_lognormal_cdf_inv(
     Parameters
     ----------
     cdf : np.ndarray
-        the value of the cumulative distribution.
+        The value of the cumulative distribution.
     mu : np.ndarray
-        mean of the log normal PDF.
+        Mean of the log-normal PDF.
     sigma : np.ndarray
-        standard deviation of the log normal PDF.
+        Standard deviation of the log-normal PDF.
     lower : np.ndarray
-        lower truncation limit.
+        Lower truncation limit.
     upper : np.ndarray
-        upper truncation limit.
+        Upper truncation limit.
 
     Returns
     -------
@@ -251,7 +248,7 @@ def random_uniform(size: int, lower: float, upper: float) -> np.ndarray:
     array([0.123, 0.456, 0.789, 0.234, 0.567])  # Example output
     """
     loc = lower
-    scale = lower - upper
+    scale = upper - lower
     prob = np.random.rand(size)
     sample = uniform.ppf(prob, loc=loc, scale=scale)
     return sample
@@ -261,8 +258,7 @@ def random_multivariate_truncated_lognormal(
     size: int, rho: np.ndarray, lower_bound: np.ndarray,
     upper_bound: np.ndarray, theta: np.ndarray, std_ln: np.ndarray,
 ) -> np.ndarray:
-    """
-    Sample from a multivariate truncated lognormal distribution.
+    """Sample from a multivariate truncated log-normal distribution.
 
     Parameters
     ----------
@@ -280,15 +276,15 @@ def random_multivariate_truncated_lognormal(
     std_ln : np.ndarray
         Logarithmic standard deviations of the log-normal distributions.
 
-    Notes
-    -----
-    ~LN(ln(theta), sigma)
-
     Returns
     -------
     np.ndarray
         Samples from the multivariate truncated log-normal distribution
         (size x n).
+
+    Notes
+    -----
+    ~LN(ln(theta), sigma)
     """
     n = len(theta)  # Number of dimensions
 
@@ -319,7 +315,7 @@ def random_multivariate_truncated_lognormal(
 
 
 def get_time_based_seed() -> int:
-    """Determines the random number generator set based on the date and time.
+    """Return a random seed derived from the current date and time.
 
     Returns
     -------

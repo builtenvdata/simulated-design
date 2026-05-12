@@ -1,14 +1,17 @@
 {
     "concrete" :
     [
-        {"grade": "C14", "fck": 14, "fck_cube": 180, "fcd": 7.0, "fcd_eq": 10.5},
-        {"grade": "C19", "fck": 19, "fck_cube": 225, "fcd": 8.5, "fcd_eq": 12.75},
-        {"grade": "C25", "fck": 25, "fck_cube": 300, "fcd": 11.5, "fcd_eq": 17.5}
+        {"grade": "B180", "fck": 14, "fck_cube": 180, "fcd": 7.0, "fcd_eq": 10.5},
+        {"grade": "B225", "fck": 19, "fck_cube": 225, "fcd": 8.5, "fcd_eq": 12.75},
+        {"grade": "B300", "fck": 25, "fck_cube": 300, "fcd": 11.5, "fcd_eq": 17.25},
+        {"grade": "B350", "fck": 30, "fck_cube": 350, "fcd": 13.0, "fcd_eq": 19.5},
+        {"grade": "B400", "fck": 35, "fck_cube": 400, "fcd": 15.0, "fcd_eq": 22.5}
     ],
     "steel" :
     [
-        {"grade": "S240", "fsyk": 240, "fsyd": 140, "fsyd_eq": 240},
-        {"grade": "S400", "fsyk": 400, "fsyd": 240, "fsyd_eq": 400},
-        {"grade": "S500", "fsyk": 500, "fsyd": 300, "fsyd_eq": 500}
+        {"grade": "A24", "fsyk": 240, "fsyd": 140, "fsyd_eq": 240},
+        {"grade": "A40", "fsyk": 400, "fsyd": 240, "fsyd_eq": 400},
+        {"grade": "A50", "fsyk": 500, "fsyd": 300, "fsyd_eq": 500},
+        {"grade": "A60", "fsyk": 600, "fsyd": 350, "fsyd_eq": 600}
     ]
 }

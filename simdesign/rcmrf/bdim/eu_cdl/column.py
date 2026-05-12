@@ -1,22 +1,6 @@
+"""This module provides the column class implementation for the ``eu_cdl``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdl columns.
-
-Notes
------
-Design based on working stress method.
-Material qualities are higher compared CDN.
---> REBA is the French book followed by the most of EUROPE in that time
-Seismic loading is considered with q=1.0, 1.0 DEAD + 1.0 LIVE
-
-References
-----------
-RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal
-André Guerrin (1966) Traité de béton armé. Dunod, Paris.
-REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
-Traité de béton armé by A Guerrin, Dunod, Paris, 1966. pp 146.
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -97,7 +81,7 @@ rho_interpolator = RegularGridInterpolator(
 
 def get_rhol(niu: float, mu_x: float, mu_y: float,
              fcd: float, fsyd: float) -> Tuple[float, float]:
-    """ Computes required reinforcement ratio for given dimensionless forces.
+    """Get required reinforcement ratio for given dimensionless forces.
 
     Parameters
     ----------
@@ -119,8 +103,9 @@ def get_rhol(niu: float, mu_x: float, mu_y: float,
 
     References
     ----------
-    Traité de béton armé by A Guerrin, Dunod, Paris, 1966. pp 146
+    Guerrin, A. (1966). Traité de Béton Armé. Dunod, Paris, France.
     """
+    # Page 146
     if niu < 0.0:  # for tensile force
         rhol_xm = rho_interpolator((mu_x, 0.001))
         rhol_ym = rho_interpolator((mu_y, 0.001))
@@ -135,12 +120,33 @@ def get_rhol(niu: float, mu_x: float, mu_y: float,
 
 
 class Column(ColumnBase):
-    """Column object for design class: eu_cdl.
+    """Column implementation for design class ``eu_cdl``.
+
+    This class extends ``ColumnBase`` by narrowing the attribute types
+    and overriding design methods per REBA (1967).
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdl.materials.Steel
+        Steel material assigned to the column.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdl.materials.Concrete
+        Concrete material assigned to the column.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.column.ColumnBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    REBA (1967). Regulamento de Estruturas de Betão Armado.
+    Decreto N.° 47:723, Lisbon, Portugal.
+
+    Guerrin, A. (1966). Traité de Béton Armé.
+    Dunod, Paris, France.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     @property
     def fcd_eq(self) -> float:
@@ -170,6 +176,7 @@ class Column(ColumnBase):
         float
             Maximum longitudinal reinforcement ratio.
         """
+        # Art 70 in REBA (1967)
         if self.concrete.fck_cube <= 180:
             return 0.03
         elif 180 < self.concrete.fck_cube <= 225:
@@ -186,23 +193,15 @@ class Column(ColumnBase):
         -------
         float
             Minimum longitudinal reinforcement ratio.
-
-        References
-        ----------
-        REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal
         """
-        # Assuming the area of core concrete = 80% total area of the section
         return 0.01 * 0.66
 
     def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for column section dimensions.
 
         Notes
         -----
         It is overwritten for eu_cdl design class with following changes:
-        - It retrieves design concrete strength from concrete attributes.
         - In case of the rectangular sections, the longer dimension does no
         longer need to be twice of shorter one.
         """
@@ -224,7 +223,7 @@ class Column(ColumnBase):
         self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def apply_section_compatibility(self) -> None:
-        """Modifies the section dimensions for square section compatibility.
+        """Modify the section dimensions for square section compatibility.
 
         This method is used in design iterations while increasing section
         dimensions.
@@ -243,11 +242,7 @@ class Column(ColumnBase):
             pass
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the adequacy of section dimensions for design forces.
-
-        Notes
-        -----
-        The original code does not enforce checks for axial load ratio.
+        """Verify the adequacy of section dimensions for design forces.
         """
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = 0.9 * self.bx
@@ -304,7 +299,7 @@ class Column(ColumnBase):
             self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
         """
         # fc and fsy to use for calculations
         fc_map = {'gravity': self.fcd,
@@ -340,7 +335,7 @@ class Column(ColumnBase):
         self.Asly_req = Asly_req
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
         """
         # fsy to use for calculations
         fsy_map = {'gravity': self.fsyd,

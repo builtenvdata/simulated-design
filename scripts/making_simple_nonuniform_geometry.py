@@ -31,12 +31,12 @@ regular_frame.set_continuous_stairs_rectangles(
 # Modifying a floor height (ground floors are usually modified)
 regular_frame.modify_floor_height(floor_id, h_floor)
 # Modifying a bay_width (ground floors are usually modified)
-regular_frame.modify_bay_width(bay_id=3, width=5, direction='y')
+regular_frame.modify_bay_width(bay_id=3, width=5, direction="y")
 # Save the basic frame
-path = Path(__file__).parents[1] / 'tmp/simple-nonuniform-geometry.xlsx'
+path = Path(__file__).parents[1] / "tmp/simple-nonuniform-geometry.xlsx"
 regular_frame.write_mesh_to_xlsx(path=path)
 # Add the new lines and points for stairs (For now do this in the end)
-regular_frame.add_new_lines_and_points_for_stairs()
+regular_frame.add_new_elements_for_stairs(infills=False)
 regular_frame.show_mesh()
-path = Path(__file__).parents[1] / 'tmp/simple-nonuniform-geometry.html'
+path = Path(__file__).parents[1] / "tmp/simple-nonuniform-geometry.html"
 regular_frame.export_mesh_to_html(path=str(path))

@@ -1,10 +1,9 @@
-"""
-Pydantic models for defining loads in eu_cdh buildings.
+"""This module provides the class implementations representing loads for the
+``eu_cdh`` design class in the BDIM layer.
 """
 # Imports from installed packages
-import numpy as np
 from pathlib import Path
-from typing import Tuple, List, Type
+from typing import List, Type
 
 # Imports from bdim base library
 from ..baselib.loads import VariableBase, PermanentBase
@@ -12,68 +11,45 @@ from ..baselib.loads import CombinationBase, LoadsDataBase, LoadsBase
 
 
 class Variable(VariableBase):
-    """
-    Model representing live loads (Q) for design class eu_cdh.
+    """Variable load (Q) model implementation for the ``eu_cdh`` design class.
 
-    Attributes
-    ----------
-    floor : float
-        Live load on the floor.
-    roof : float
-        Live load on the roof.
-    staircase : float
-        Live load on the staircase.
+    This class directly uses the behaviour defined in ``VariableBase``.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.VariableBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class Permanent(PermanentBase):
-    """
-    Model representing superimposed dead loads (G) for design class eu_cdh.
+    """Permanent load (G) model implementation for the ``eu_cdh`` design class.
 
-    Attributes
-    ----------
-    floor : float
-        Superimposed dead load on the floor.
-    roof : float
-        Superimposed dead load on the roof.
-    staircase : float
-        Superimposed dead load on the staircase.
-    infill : float
-        Superimposed dead load due to infill walls.
-    gamma_rc : float
-        Unit weight of reinforced concrete.
+    This class directly uses the behaviour defined in ``PermanentBase``.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.PermanentBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class Combination(CombinationBase):
-    """
-    Model representing a load combination for design class eu_cdh.
+    """Load combination model implementation for the ``eu_cdh`` design class.
 
-    This combination includes:
-    - Dead loads (G)
-    - Live loads (Q)
-    - Seismic loads (E+X, E-X, E+Y, E-Y)
+    This class directly uses the behaviour defined in ``CombinationBase``.
 
-    Attributes
-    ----------
-    tag : str
-        Tag identifying the load combination.
-    loads : Dict[Literal["G", "Q", "E+X", "E-X", "E+Y", "E-Y"], float]
-        Dictionary containing load tags and factors corresponding to
-        each load type in the load combination.
-    masses : Dict[Literal["G", "Q"], float]
-        Dictionary containing mass sources and factors used to compute
-        seismic loads considered in the load combination.
-        Default is None.
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.CombinationBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class LoadsData(LoadsDataBase):
-    """
-    Model representing the format of loads data for design class eu_cdh.
+    """Loads data model implementation for the ``eu_cdh`` design class.
+
+    This class extends ``LoadsDataBase`` by narrowing the attribute types.
 
     Attributes
     ----------
@@ -83,21 +59,21 @@ class LoadsData(LoadsDataBase):
         Object representing permanent (dead) loads.
     combinations : List[Combination]
         List of load combination objects.
-    eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction, by default 0.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.LoadsDataBase`
+        Base class defining the core behaviour and configuration.
     """
     variable: Variable
-    """Object representing variable (live) loads."""
     permanent: Permanent
-    """Object representing permanent (dead) loads."""
     combinations: List[Combination]
-    """List of load combination objects."""
 
 
 class Loads(LoadsBase):
-    """Class for retrieving loads data from a json file
-    for design class eu_cdh.
+    """Loads implementation for the ``eu_cdh`` design class.
+
+    This class extends ``LoadsBase`` by narrowing the attribute types.
 
     Attributes
     ----------
@@ -107,50 +83,16 @@ class Loads(LoadsBase):
         Object representing permanent (dead) loads.
     combinations : List[Combination]
         List of load combinations.
-    eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction.
     _data_path : Path
         Path to the file containing loads data.
-    _data_model : LoadsData
-        Pydantic model used for loading data format.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.LoadsBase`
+        Base class defining the core behaviour and configuration.
     """
     variable: Variable
-    """Object representing variable (live) loads."""
     permanent: Permanent
-    """Object representing permanent (dead) loads."""
     combinations: List[Combination]
-    """List of load combinations."""
     _data_path = Path(__file__).parent / 'data' / 'loads.json'
-    """Path to the file containing loads data."""
-    _data_model: Type[LoadsData]
-
-    def __init__(self) -> None:
-        """Initializes Loads object.
-        """
-        self._data_model = LoadsData
-        super().__init__()
-
-    def get_seismic_loads(
-        self, beta: float, weights: np.ndarray, heights: np.ndarray
-    ) -> Tuple[np.float64, np.ndarray]:
-        """Calculate and return seismic loads (E).
-
-        Parameters
-        ----------
-        beta : float
-            Design lateral load factor (in g).
-        weights : np.ndarray
-            Array of weights.
-        heights : np.ndarray
-            Array of heights corresponding to each mass.
-
-        Returns
-        -------
-        Tuple[np.float64, np.ndarray]
-            Base shear and seismic forces acting at each mass.
-        """
-        base_shear = np.sum(beta * weights)
-        forces = base_shear * (weights * heights) / np.sum(weights * heights)
-
-        return base_shear, forces
+    _data_model: Type[LoadsData] = LoadsData

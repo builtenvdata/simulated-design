@@ -26,12 +26,12 @@
   "steel":
     {
       "grade": ["S220", "S420"],
-      "probability": [0.90, 0.10]
+      "probability": [0.60, 0.40]
     },
   "concrete":
     {
       "grade": ["C14", "C16", "C18", "C20", "C25"],
-      "probability": [0.40, 0.25, 0.20, 0.10, 0.05]
+      "probability": [0.20, 0.30, 0.30, 0.15, 0.05]
     },
   "ground_storey_height":
     {
@@ -41,17 +41,30 @@
     },
   "construction_quality":
     {
-      "probability": [0.20, 0.30, 0.50]
+      "probability": [0.20, 0.40, 0.40]
     },
   "slab_typology":
     {
       "ss1_prob_given_ss1_or_hs": 0.6,
       "ss2_prob_given_ss2_or_hs": 0.8
     },
+  "infill_configuration":
+    {
+      "configuration": [5, 6],
+      "probability": [1.0, 0.0]
+    },
+  "exterior_infill_type":
+    {
+      "probability": [0.0, 1.0, 0.0]
+    },
+  "interior_infill_type":
+    {
+      "probability": [1.0, 0.0, 0.0]
+    },
   "wb_prob_given_hs": 1.0,
   "square_column_prob": 0.05,
   "layout": "all",
-  "beta": 0.064,
+  "beta": 0.06,
   "num_storeys": 4,
   "design_class": "tr_7599",
   "seed": 1994,

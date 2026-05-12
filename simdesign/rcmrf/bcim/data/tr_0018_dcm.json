@@ -25,13 +25,13 @@
     },
   "steel":
     {
-      "grade": ["S220", "S420"],
-      "probability": [0.20, 0.80]
+      "grade": ["S420"],
+      "probability": [1.0]
     },
   "concrete":
     {
-      "grade": ["C16", "C20", "C25", "C30", "C35"],
-      "probability": [0.20, 0.30, 0.30, 0.15, 0.05]
+      "grade": ["C20", "C25", "C30", "C35"],
+      "probability": [0.40, 0.40, 0.15, 0.05]
     },
   "ground_storey_height":
     {
@@ -47,6 +47,19 @@
     {
       "ss1_prob_given_ss1_or_hs": 0.6,
       "ss2_prob_given_ss2_or_hs": 0.8
+    },
+  "infill_configuration":
+    {
+      "configuration": [1, 2],
+      "probability": [1.0, 0.0]
+    },
+  "exterior_infill_type":
+    {
+      "probability": [1.0, 0.0, 0.0]
+    },
+  "interior_infill_type":
+    {
+      "probability": [1.0, 0.0, 0.0]
     },
   "wb_prob_given_hs": 1.0,
   "square_column_prob": 0.05,

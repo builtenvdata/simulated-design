@@ -1,3 +1,6 @@
+"""This module provides base class representing beam-column
+joints within the BDIM layer.
+"""
 # Imports from installed packages
 from abc import ABC
 from typing import Optional
@@ -17,26 +20,38 @@ from ....utils.units import MPa
 class JointBase(ABC):
     """Abstract base class for joints.
 
-    Must be inherited by design class specific joints.
+    Must be inherited by design-class-specific joints.
+
+    Attributes
+    ----------
+    elastic_node : Point
+        Joint node (point) in the linear elastic numerical model.
+    steel : SteelBase
+        Steel material.
+    concrete : ConcreteBase
+        Concrete material.
+    left_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
+        Beam located on the left side of the joint (along global x-axis).
+    right_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
+        Beam located on the right side of the joint (along global x-axis).
+    front_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
+        Beam located in front of the joint (along global y-axis).
+    rear_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
+        Beam located behind the joint (along global y-axis).
+    top_column : ~simdesign.rcmrf.bdim.baselib.column.ColumnBase | None
+        Column located on top of the joint (along global z-axis).
+    bottom_column : ~simdesign.rcmrf.bdim.baselib.column.ColumnBase | None
+        Column located under the joint(along global z-axis).
     """
     elastic_node: Point
-    """Joint node (point) in the linear elastic numerical model."""
     steel: SteelBase
-    """Steel material."""
     concrete: ConcreteBase
-    """Concrete material."""
     left_beam: Optional[BeamBase]
-    """Beam located on the left side of the joint (along global x-axis)."""
     right_beam: Optional[BeamBase]
-    """Beam located on the right side of the joint (along global x-axis)."""
     front_beam: Optional[BeamBase]
-    """Beam located in front of the joint (along global y-axis)."""
     rear_beam: Optional[BeamBase]
-    """Beam located behind the joint (along global y-axis)."""
     top_column: Optional[ColumnBase]
-    """Column located on top of the joint (along global z-axis)."""
     bottom_column: Optional[ColumnBase]
-    """Column located under the joint(along global z-axis)."""
 
     def __init__(
         self,
@@ -48,24 +63,24 @@ class JointBase(ABC):
         top_column: Optional[ColumnBase],
         bottom_column: Optional[ColumnBase]
     ) -> None:
-        """Initialises the joint object.
+        """Initialize a JointBase object.
 
         Parameters
         ----------
         elastic_node : Point
             Joint node (point) in the linear elastic numerical model.
-        left_beam : Optional[BeamBase]
+        left_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
             Beam located on the left side of the joint (along global x-axis).
-        right_beam : Optional[BeamBase]
+        right_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
             Beam located on the right side of the joint (along global x-axis).
-        front_beam : Optional[BeamBase]
-            Beam located in front of the joint (along global y-axis)
-        rear_beam : Optional[BeamBase]
+        front_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
+            Beam located in front of the joint (along global y-axis).
+        rear_beam : ~simdesign.rcmrf.bdim.baselib.beam.BeamBase | None
             Beam located behind the joint (along global y-axis).
-        top_column : Optional[ColumnBase]
+        top_column : ~simdesign.rcmrf.bdim.baselib.column.ColumnBase | None
             Column located on top of the joint (along global z-axis).
-        bottom_column : Optional[ColumnBase]
-            Column located under the joint (along global z-axis).
+        bottom_column : ~simdesign.rcmrf.bdim.baselib.column.ColumnBase | None
+            Column located under the joint(along global z-axis).
         """
         self.elastic_node = elastic_node
         self.left_beam = left_beam
@@ -76,7 +91,8 @@ class JointBase(ABC):
         self.bottom_column = bottom_column
 
     def __str__(self) -> str:
-        """
+        """Return string representation of the joint.
+
         Returns
         -------
         str
@@ -88,7 +104,8 @@ class JointBase(ABC):
 
     @property
     def fcm(self) -> float:
-        """
+        """Mean concrete compressive strength.
+
         Returns
         -------
         float

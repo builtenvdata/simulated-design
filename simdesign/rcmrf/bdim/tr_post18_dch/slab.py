@@ -1,12 +1,17 @@
+"""This module provides the slab class implementation for the ``tr_post18_dch``
+design class in the BDIM layer.
 """
-Specific routines for defining tr_post18_dch slabs.
-"""
-
 # Imports from bdim base library
 from ..baselib.slab import SlabBase
 
 
 class Slab(SlabBase):
-    """Slab object for design class: tr_post18_dch.
+    """Slab implementation for the ``tr_post18_dch`` design class.
+
+    This class directly uses the behaviour defined in ``SlabBase``.
+
+    See Also
+    --------
+    :class:`~SlabBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass

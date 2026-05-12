@@ -1,3 +1,6 @@
+"""This module provides the base class implementation for the elastic
+numerical model used in the BDIM layer.
+"""
 # Imports from installed packages
 from abc import ABC
 from typing import List, Literal, Tuple
@@ -11,7 +14,7 @@ from .column import ColumnBase, ColumnForces
 from .loads import LoadsBase
 
 # Imports from geometry library
-from ...geometry.base import FrameBase
+from ...geometry.base import GeometryBase
 
 # Imports from utils library
 from ....utils.misc import PRECISION
@@ -19,34 +22,46 @@ from ....utils.units import grav_acc
 
 
 class ElasticModelBase(ABC):
-    """Abstract base class for elastic model builder in OpenSees.
+    """Abstract base class for the elastic model builder in the BDIM layer.
+
+    Provides common OpenSees model building logic shared across all design
+    classes. Must be inherited by design-class-specific elastic model
+    implementations.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
+        Beam objects of the building.
+    columns : List[~simdesign.rcmrf.bdim.baselib.column.ColumnBase]
+        Column objects of the building.
+    geometry : GeometryBase
+        General building geometry (elastic frame geometry).
+    loads : LoadsBase
+        Loads instance for the current design class.
+    beta : float
+        Design lateral load factor (in g).
     """
     beams: List[BeamBase]
-    """Beam objects of the building."""
     columns: List[ColumnBase]
-    """Column objects of the building."""
-    geometry: FrameBase
-    """Loads instance for the current design class."""
+    geometry: GeometryBase
     loads: LoadsBase
-    """General building geometry (elastic frame geometry)."""
     beta: float
-    """Design lateral load factor (in g)."""
 
     def __init__(
         self, beams: List[BeamBase], columns: List[ColumnBase],
-        loads: LoadsBase, geometry: FrameBase, beta: float
+        loads: LoadsBase, geometry: GeometryBase, beta: float
     ) -> None:
-        """Initialize elastic model object.
+        """Initialize an ElasticModelBase object.
 
         Parameters
         ----------
-        beams : List[BeamBase]
+        beams : List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
             Beam objects of the building.
-        columns : List[ColumnBase]
+        columns : List[~simdesign.rcmrf.bdim.baselib.column.ColumnBase]
             Column objects of the building.
         loads : LoadsBase
             Loads instance for the current design class.
-        geometry : FrameBase
+        geometry : GeometryBase
             General building geometry (elastic frame geometry).
         beta : float
             Design lateral load factor (in g).
@@ -62,7 +77,7 @@ class ElasticModelBase(ABC):
 
         Returns
         -------
-        List[Tuple[float, float]]
+        all_factors : List[Tuple[float, float]]
             Unique mass factors in combinations for gravity loads (G, Q).
         """
         seismic_combos = self.loads.get_seismic_load_combos()
@@ -84,11 +99,13 @@ class ElasticModelBase(ABC):
 
         Returns
         -------
-        Tuple[List[float], List[float]]
-            Nodal masses from permanent loads and from live loads.
+        masses_g : List[float]
+            Nodal masses from permanent loads.
+        masses_q : List[float]
+            Nodal masses from live loads.
 
-        Note
-        ----
+        Notes
+        -----
         Alternative is to compute the masses from element forces
         or nodal reaction forces. Previous version uses this approach.
         """
@@ -118,11 +135,11 @@ class ElasticModelBase(ABC):
         return masses_g, masses_q
 
     def _get_nodal_heights(self) -> List[float]:
-        """Computes nodal heights.
+        """Compute nodal heights.
 
         Returns
         -------
-        List[float]
+        heights : List[float]
             Heights of structural nodes measured from the ground level.
         """
         z0 = min(self.geometry.system_grid_data.z.ordinates)
@@ -135,14 +152,14 @@ class ElasticModelBase(ABC):
         return heights
 
     def _init_ops_model(self) -> None:
-        """Start a clean opensees model.
+        """Initialize a new OpenSees numerical model.
         """
         ops.wipe()
         ops.wipeAnalysis()
         ops.model('basic', '-ndm', 3, '-ndf', 6)
 
     def _add_ops_nodes(self) -> None:
-        """Defines structural nodes.
+        """Add structural nodes to the OpenSees numerical model.
         """
         # Nodes connecting beam-column elements
         for node in self.geometry.points:
@@ -150,36 +167,87 @@ class ElasticModelBase(ABC):
 
     def _add_ops_beam_column_elements(self, cracked_section: bool = False
                                       ) -> None:
-        """Create beam-column elements in the numerical model.
+        """Add beam-column elements to the OpenSees numerical model.
 
         Parameters
         ----------
         cracked_section : bool, optional
             Flag for using cracked section properties, by default False.
 
-        References
-        ----------
-        https://openseespydoc.readthedocs.io/en/latest/src/LinearTransf.html
-        https://openseespydoc.readthedocs.io/en/latest/src/elasticSection.html
-        https://openseespydoc.readthedocs.io/en/latest/src/beamIntegration.html
-        https://openseespydoc.readthedocs.io/en/latest/src/ForceBeamColumn.html
-
         Notes
         -----
-        Outside the analysis routine, for design purposes local axes are named
-        as x and y. On the other hand, herein, OpenSees always labels the axis
-        as z and y.
-        Thus, x-axis is called as z axis in OpenSees
-        y
-        |__x
-            --------------    ----
-            |     y      |    |
-            |     |      |    |
-            |     +--z   |    by
-            |            |    |
-            |            |    |
-            --------------    ----
-            |---- bx ----|
+        ``ForceBeamColumn`` element is used with 9 integration points
+        and Lobatto integration scheme. When ``cracked_section=True``,
+        effective (cracked) section stiffness is applied to both beams
+        and columns. Sections are defined with the following configurations.
+        In the diagrams, uppercase (X, Y, Z) denotes global axes and
+        lowercase (x, y, z) denotes local principal axes.
+
+        Section view of beams along X direction:
+        .. code-block:: text
+            Z (3)
+            |__Y (2)
+                --------------    ----
+                |     y      |    |
+                |     |      |    |
+                |  z--+      |    h
+                |            |    |
+                |            |    |
+                --------------    ----
+                |---- b -----|
+
+            Vectors defining the local axes in Global Coordinate System:
+                vx = np.array([1.0, 0.0, 0.0])
+                vy = np.array([0.0, 0.0, 1.0])
+                vz = np.array([0.0, -1.0, 0.0])
+                vecxz = np.array([0.0, -1.0, 0.0])
+            Compatibility check:
+                np.allclose(vy, np.cross(vecxz, vx))
+                np.allclose(vz, np.cross(vx,vy))
+
+        Section view of beams along Y direction:
+        .. code-block:: text
+            Z (3)
+            |__X (1)
+                --------------    ----
+                |     y      |    |
+                |     |      |    |
+                |     +--z   |    h
+                |            |    |
+                |            |    |
+                --------------    ----
+                |---- b -----|
+
+            Vectors defining the local axes in Global Coordinate System:
+                vx = np.array([0.0, 1.0, 0.0])
+                vy = np.array([0.0, 0.0, 1.0])
+                vz = np.array([1.0, 0.0, 0.0])
+                vecxz = np.array([1.0, 0.0, 0.0])
+            Compatibility check:
+                np.allclose(vy, np.cross(vecxz, vx))
+                np.allclose(vz, np.cross(vx,vy))
+
+        Section view of columns:
+        .. code-block:: text
+            Y (2)
+            |__X (1)
+                --------------    ----
+                |     y      |    |
+                |     |      |    |
+                |  z--+      |    by
+                |            |    |
+                |            |    |
+                --------------    ----
+                |---- bx ----|
+
+            Vectors defining the local axes in Global Coordinate System:
+                vx = np.array([0.0, 0.0, 1.0])
+                vy = np.array([0.0, 1.0, 0.0])
+                vz = np.array([-1.0, 0.0, 0.0])
+                vecxz = np.array([-1.0, 0.0, 0.0])
+            Compatibility check:
+                np.allclose(vy, np.cross(vecxz, vx))
+                np.allclose(vz, np.cross(vx,vy))
         """
         # COLUMNS
         TRANSF_TAG = 1  # Geometric transformation tag
@@ -234,10 +302,10 @@ class ElasticModelBase(ABC):
             Ag = beam.Ag  # gross section area
             Jxx = beam.J  # torsional moment of inertia
             if cracked_section:  # using cracked section properties
-                Iz = beam.Ix_eff  # moment of inertia about the local z-axis
+                Iz = beam.Iz_eff  # moment of inertia about the local z-axis
                 Iy = beam.Iy_eff  # moment of inertia about the local y-axis
             else:  # using gross section properties
-                Iz = beam.Ix  # moment of inertia about the local z-axis
+                Iz = beam.Iz  # moment of inertia about the local z-axis
                 Iy = beam.Iy  # moment of inertia about the local y-axis
             # Transformation for beams along global X
             if beam.direction == 'x':
@@ -255,7 +323,7 @@ class ElasticModelBase(ABC):
             ops.element('forceBeamColumn', ele, *nodes, transf_tag, int_tag)
 
     def _add_ops_sp_constraints(self) -> None:
-        """Define single-point (SP) constraints.
+        """Add single-point (SP) constraints to the OpenSees numerical model.
 
         Ground nodes are restrained in all DOFs.
         """
@@ -264,28 +332,28 @@ class ElasticModelBase(ABC):
             ops.fix(node.tag, 1, 1, 1, 1, 1, 1)
 
     def _add_ops_mp_constraints(self, masses: np.ndarray = None) -> None:
-        """Define multi-point (MP) constraints.
-
-        Notes
-        -----
-        - Floor centre of mass may differ depending on the masses
-        considered in seismic loading. If nodal masses are not specified,
-        the centre of mass is computed based on 1.0G + 1.0Q
-        - To define rigid diapragms, also retained nodes and corresponding
-        single-point constraints are added.
+        """Add multi-point (MP) constraints to the OpenSees numerical model.
 
         Returns
         -------
-        List[int]
+        rnodes : List[int]
             List of floor retained node tags
-        np.ndarray
+        floor_weights : np.ndarray
             List of total floor weights
-        np.ndarray
+        floor_heights : np.ndarray
             List of floor heights
-        np.ndarray
+        floor_lx : np.ndarray
             Diaphragm length along -X
-        np.ndarray
+        floor_ly : np.ndarray
             Diaphragm length along -Y
+
+        Notes
+        -----
+        Floor centre of mass may differ depending on the masses considered
+        in seismic loading. If nodal masses are not specified, the centre of
+        mass is computed based on 1.0G + 1.0Q. To define rigid diaphragms,
+        also retained nodes and corresponding single-point constraints are
+        added.
         """
         perp_dirn = 3
         if masses is None:  # Set the masses for finding the center of mass
@@ -341,7 +409,7 @@ class ElasticModelBase(ABC):
 
     def _add_ops_gravity_loads(self, load_case: Literal['G', 'Q'],
                                alpha: bool = False) -> None:
-        """Adds gravity loads to opensees model for given load situation.
+        """Add gravity loads to the numerical model for given loading case.
 
         Parameters
         ----------
@@ -392,7 +460,7 @@ class ElasticModelBase(ABC):
         rnodes: List[int],
         ecc_mom: List[float]
     ) -> None:
-        """Adds seismic loads to the OpenSees model for a given load case.
+        """Add seismic loads to the numerical model for given loading case.
 
         Parameters
         ----------
@@ -406,7 +474,7 @@ class ElasticModelBase(ABC):
             List of node tags for retained floor nodes where torsional
             moments resulting from accidental eccentricity are applied.
         ecc_mom : List[float]
-            List of torsional moments applied at ach retained floor node
+            List of torsional moments applied at each retained floor node
             due to accidental eccentricity from the center of mass.
             Must be in the same order as `rnodes`.
         """
@@ -434,7 +502,7 @@ class ElasticModelBase(ABC):
             ops.load(node, 0.0, 0.0, 0.0, 0.0, 0.0, ecc_mom[i])
 
     def _build_ops_model_gravity(self) -> None:
-        """Builds the model for load cases of gravity load combos.
+        """Build the model for load cases of gravity load combos.
         """
         self._init_ops_model()
         self._add_ops_nodes()
@@ -443,7 +511,7 @@ class ElasticModelBase(ABC):
         self._add_ops_mp_constraints()
 
     def _build_ops_model_seismic(self) -> None:
-        """Builds the model for load cases of seismic load combos.
+        """Build the model for load cases of seismic load combos.
         """
         self._init_ops_model()
         self._add_ops_nodes()
@@ -465,7 +533,8 @@ class ElasticModelBase(ABC):
         ops.loadConst('-time', 0.0)
 
     def _run_gravity_load_cases(self) -> None:
-        """Saves the results from gravity load cases.
+        """Run linear static analyses associated with all the gravity load
+        cases and save the results.
         """
         # Analysis with gross section properties
         # Using slab loads without alpha factor
@@ -501,7 +570,8 @@ class ElasticModelBase(ABC):
         self._get_element_forces(load_case="Q/seismic/alpha")
 
     def _run_seismic_load_cases(self) -> None:
-        """Saves the results from seismic load cases.
+        """Run linear static analyses associated with all the seismic load
+        cases and save the results.
         """
         # Accidental eccentricity
         if self.loads.eccentricity != 0:
@@ -547,7 +617,8 @@ class ElasticModelBase(ABC):
                     self._get_element_forces(load_case=load_tag)
 
     def _get_element_forces(self, load_case: str) -> None:
-        """Gets the element forces and saves with specified tag.
+        """Get the element forces from all the load cases and save them with
+        associated load case tag.
 
         Parameters
         ----------
@@ -568,20 +639,20 @@ class ElasticModelBase(ABC):
         for column in self.columns:
             ele = column.line.tag  # element tag
             N1 = ops.sectionForce(ele, 1, 1)
-            Mx1 = ops.sectionForce(ele, 1, 2)  # z is renamed as x outside
+            Mz1 = ops.sectionForce(ele, 1, 2)
             Vy1 = ops.sectionForce(ele, 1, 3)
             My1 = ops.sectionForce(ele, 1, 4)
-            Vx1 = ops.sectionForce(ele, 1, 5)  # z is renamed as x outside
+            Vz1 = ops.sectionForce(ele, 1, 5)
             N9 = ops.sectionForce(ele, 9, 1)
-            Mx9 = ops.sectionForce(ele, 9, 2)  # z is renamed as x outside
+            Mz9 = ops.sectionForce(ele, 9, 2)
             Vy9 = ops.sectionForce(ele, 9, 3)
             My9 = ops.sectionForce(ele, 9, 4)
-            Vx9 = ops.sectionForce(ele, 9, 5)  # z is renamed as x outside
-            column.forces[load_case] = ColumnForces(N1, Mx1, Vy1, My1, Vx1,
-                                                    N9, Mx9, Vy9, My9, Vx9)
+            Vz9 = ops.sectionForce(ele, 9, 5)
+            column.forces[load_case] = ColumnForces(N1, Mz1, Vy1, My1, Vz1,
+                                                    N9, Mz9, Vy9, My9, Vz9)
 
     def _reset_state_remove_loads(self, p_tag: int, ts_tag: int) -> None:
-        """Removes specified loads, and then resets the model state to initial.
+        """Remove specified loads and reset the model state to initial.
 
         Parameters
         ----------
@@ -596,9 +667,8 @@ class ElasticModelBase(ABC):
         ops.wipeAnalysis()
 
     def analyze_for_all(self):
-        """Analyzes the building all load cases and combinations.
-
-        Stores element forces for each.
+        """Analyze the building and store element forces for all load cases
+        and combinations.
         """
         # Seismic load cases
         seismic_load_cases = ["E+X", "E-X", "E+Y", "E-Y"]

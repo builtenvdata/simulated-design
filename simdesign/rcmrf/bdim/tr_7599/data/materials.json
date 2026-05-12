@@ -1,9 +1,9 @@
 {
     "concrete" :
     [
-        {"grade": "C14", "fck": 14, "fcm": 9},
+        {"grade": "C14", "fck": 14, "fcm": 13},
         {"grade": "C16", "fck": 16, "fcm": 15},
-        {"grade": "C18", "fck": 18, "fcm": 20},
+        {"grade": "C18", "fck": 18, "fcm": 18},
         {"grade": "C20", "fck": 20, "fcm": 25},
         {"grade": "C25", "fck": 25, "fcm": 30}
     ],

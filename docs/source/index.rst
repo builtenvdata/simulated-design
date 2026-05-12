@@ -30,7 +30,7 @@ assessment studies, such as the `European Seismic Risk Model (ESRM20) <https://e
    :width: 600px
    :align: center
 
-   General overview of the SimDesign frramework
+   General overview of the SimDesign framework
 
 License
 -------
@@ -44,10 +44,10 @@ https://www.gnu.org/licenses/agpl-3.0.html
 References
 ----------
 
-If you make use of the SimDesign framework in academic or professional work, please cite following publications:
+If you make use of the SimDesign framework in academic or professional work, please cite any relevant publications.
 
-- Ozsarac, V., Pereira, N., Mohamed, H., Romão, X. and O'Reilly, G.J. (2025). *The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering*. **Earthquake Engineering & Structural Dynamics**, 54, 2651–2670. https://doi.org/10.1002/eqe.4378
-- Hasanoğlu, S., Ozsarac, V., and O'Reilly, G.J. (2025). *A model for the simulated design of Turkish RC frame buildings in seismic vulnerability analysis*. **Bulletin of Earthquake Engineering**, 23, 6829–6856. https://doi.org/10.1007/s10518-025-02301-y
+- Ozsarac, V., Pereira, N., Mohamed, H., Romão, X., & O’Reilly, G. J. (2025). The Built Environment Data Framework for Simulated Design and Vulnerability Modelling in Earthquake Engineering. Earthquake Engineering & Structural Dynamics, 54(11), 2651-2670. https://doi.org/10.1002/eqe.4378
+- Hasanoğlu, S., Ozsarac, V., & O’Reilly, G. J. (2025). A model for the simulated design of Turkish RC frame buildings in seismic vulnerability analysis. Bulletin of Earthquake Engineering, 23(15), 6829-6856. https://doi.org/10.1007/s10518-025-02301-y
 
 Contributions
 -------------
@@ -78,7 +78,15 @@ please follow the steps below:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents
+   :caption: User Guide
 
-   getting-started/index
-   api/index
+   user/installation
+   user/quickstart
+   user/inputs
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+
+   api/rcmrf/index
+   api/utils/index

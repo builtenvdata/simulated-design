@@ -1,3 +1,6 @@
+"""This module provides the base class for representing
+the detailing of structural members in the BDIM layer.
+"""
 # Imports from installed packages
 from abc import ABC
 import json
@@ -15,65 +18,56 @@ from ....utils.misc import PRECISION
 
 
 class RebarData(BaseModel):
-    """Abstract base class representing a steel material.
+    """Pydantic model for available rebar sizes and spacings.
 
     Attributes
     ----------
-    beam_long_bar_diameters : List[float]
-        Possible beam longitudinal bar diameters.
-    beam_trans_bar_diameters : List[float]
-        Possible beam transverse bar diameters.
-    beam_trans_bar_spacings : List[float]
-        Possible beam transverse bar spacings.
-    column_long_bar_diameters : List[float]
-        Possible column longitudinal bar diameters.
-    column_trans_bar_diameters : List[float]
-        Possible column transverse bar diameters.
-    column_trans_bar_spacings : List[float]
-        Possible column transverse bar spacings.
+    beam_longitudinal_bar_diameters : List[float]
+        Possible beams longitudinal bar diameters (nominal).
+    beam_transverse_bar_diameters : List[float]
+        Possible beams transverse bar diameters (nominal).
+    beam_transverse_bar_spacings : List[float]
+        Possible beams transverse bar spacings.
+    column_longitudinal_bar_diameters : List[float]
+        Possible columns longitudinal bar diameters (nominal).
+    column_transverse_bar_diameters : List[float]
+        Possible columns transverse bar diameters (nominal).
+    column_transverse_bar_spacings : List[float]
+        Possible columns transverse bar spacings.
     units : Literal['mm', 'in']
-        Units of bar diameters and spacing.
+        Units of bar diameters and spacings.
     """
     beam_longitudinal_bar_diameters: List[float]
-    """Possible beams longitudinal bar diameters (nominal)."""
     beam_transverse_bar_diameters: List[float]
-    """Possible beams transverse bar diameters (nominal)."""
     beam_transverse_bar_spacings: List[float]
-    """Possible beams transverse bar spacings."""
     column_longitudinal_bar_diameters: List[float]
-    """Possible columns longitudinal bar diameters (nominal)."""
     column_transverse_bar_diameters: List[float]
-    """Possible columns transverse bar diameters (nominal)."""
     column_transverse_bar_spacings: List[float]
-    """Possible columns transverse bar spacings."""
     units: Literal['mm', 'in']
-    """Units of bar diameters and spacing."""
 
 
 class RebarsBase(ABC):
-    """The abstract base class for RebarDetailer.
+    """Abstract base class for rebar detailing of structural members.
 
-    The class is used to determine rebar solutions for elements.
-    The functions within RebarDetailer are very important because this is
-    the place where the final solutions are obtained before uniformisation.
-    The assumptions considered can have significant impact on the final
-    solutions.
+    Determines rebar configurations for beams and columns. The assumptions
+    made in these processes can have a significant impact on the final
+    reinforcement solutions.
 
     Attributes
     ----------
     _data_path : Path | str
-        Path to the json file containing rebar data.
-    beam_long_bar_dias : List[float]
+        Path to the JSON file containing rebar data.
+    beam_long_bar_diams : np.ndarray
         Possible beam longitudinal bar diameters.
-    beam_trans_bar_diams : List[float]
+    beam_trans_bar_diams : np.ndarray
         Possible beam transverse bar diameters.
-    beam_trans_bar_spacings : List[float]
+    beam_trans_bar_spacings : np.ndarray
         Possible beam transverse bar spacings.
-    col_long_bar_diams : List[float]
+    col_long_bar_diams : np.ndarray
         Possible column longitudinal bar diameters.
-    col_trans_bar_diams : List[float]
+    col_trans_bar_diams : np.ndarray
         Possible column transverse bar diameters.
-    col_trans_bar_spacings : List[float]
+    col_trans_bar_spacings : np.ndarray
         Possible column transverse bar spacings.
     concrete : ConcreteBase
         Concrete material instance considered in design of beams and columns.
@@ -101,48 +95,26 @@ class RebarsBase(ABC):
         Concrete cover for columns.
     """
     _data_path: Path | str
-    """Path to the json file containing rebar data."""
     beam_long_bar_diams: np.ndarray
-    """Possible beam longitudinal bar diameters."""
     beam_trans_bar_diams: np.ndarray
-    """Possible beam transverse bar diameters."""
     beam_trans_bar_spacings: np.ndarray
-    """Possible beam transverse bar spacings."""
     col_long_bar_diams: np.ndarray
-    """Possible column longitudinal bar diameters."""
     col_trans_bar_diams: np.ndarray
-    """Possible column transverse bar diameters."""
     col_trans_bar_spacings: np.ndarray
-    """Possible column transverse bar spacings."""
     concrete: ConcreteBase
-    """Concrete material instance considered in design of beams and columns."""
     steel: SteelBase
-    """Steel material instance considered in design of beams and columns."""
     beam_max_sbl: float = 2000 * mm
-    """Maximum spacing between longitudinal bars (reinforcement) for beams."""
     beam_min_sbl: float = 40 * mm
-    """Minimum spacing between longitudinal bars (reinforcement) for beams."""
     beam_max_leg_dist: float = 2000 * mm
-    """For beams, maximum distance between longitudinal bars within a beam
-    section that can be considered to be confined without the need to have
-    an extra stirrup leg around them."""
     beam_cover: float = 30 * mm
-    """Concrete cover for beams."""
     col_max_sbl: float = 2000 * mm
-    """Maximum spacing between longitudinal bars (reinforcement) for columns.
-    """
     col_min_sbl: float = 35 * mm
-    """Minimum spacing between longitudinal bars (reinforcement) for columns.
-    """
     col_max_leg_dist: float = 2000 * mm
-    """Maximum distance between longitudinal bars within a column
-    section that can be considered to be confined without the need to have
-    an extra stirrup leg around them."""
     col_cover: float = 30 * mm
-    """Concrete cover for columns."""
 
     def __init__(self) -> None:
-        """Initialize the available bar diameters, and transf, bar spacing.
+        """Initialize available bar diameters and transverse bar spacings from
+        JSON.
         """
         with open(self._data_path, 'r') as json_file:
             # Load the JSON data into a Python dictionary
@@ -184,7 +156,13 @@ class RebarsBase(ABC):
         self.col_trans_bar_spacings[::-1].sort()  # descending order
 
     def _get_min_beam_dbh(self, **kwargs) -> float | np.ndarray:
-        """Gets the minimum transverse reinforcement diameter in beams.
+        """Get the minimum transverse reinforcement diameter in beams.
+
+        Parameters
+        ----------
+        **kwargs
+            dbl : float or np.ndarray
+                Longitudinal reinforcement diameter.
 
         Returns
         -------
@@ -195,7 +173,13 @@ class RebarsBase(ABC):
         return np.maximum(dbl / 4, 6 * mm)
 
     def _get_min_col_dbh(self, **kwargs) -> float | np.ndarray:
-        """Gets the minimum transverse reinforcement diameter in columns.
+        """Get the minimum transverse reinforcement diameter in columns.
+
+        Parameters
+        ----------
+        **kwargs
+            dbl : float or np.ndarray
+                Longitudinal reinforcement diameter.
 
         Returns
         -------
@@ -206,8 +190,18 @@ class RebarsBase(ABC):
         return np.maximum(dbl / 4, 6 * mm)
 
     def _get_col_max_sbh(self, **kwargs) -> float | np.ndarray:
-        """Gets maximum spacing between horizontal bars
+        """Get maximum spacing between horizontal bars
         (transverse reinforcement) for columns.
+
+        Parameters
+        ----------
+        **kwargs
+            by : float or np.ndarray
+                Column width along the Y-axis.
+            bx : float or np.ndarray
+                Column width along the X-axis.
+            dbl : float or np.ndarray
+                Longitudinal reinforcement diameter.
 
         Returns
         -------
@@ -222,13 +216,27 @@ class RebarsBase(ABC):
         return max_sbh
 
     def _get_beam_max_sbh(self, **kwargs) -> float | np.ndarray:
-        """Gets maximum spacing between horizontal bars
+        """Get maximum spacing between horizontal bars
         (transverse reinforcement) for beams.
+
+        Parameters
+        ----------
+        **kwargs
+            h : float or np.ndarray
+                Beam depth.
+            dbh : float or np.ndarray
+                Transverse reinforcement diameter.
+            dbl : float or np.ndarray
+                Longitudinal reinforcement diameter.
 
         Returns
         -------
         float | np.ndarray
             Maximum spacing between transverse reinforcement.
+
+        TODO
+        ----
+        Add another function for max_sbh at midspans.
         """
         # maximum allowed spacing in current iteration
         h = kwargs['h']  # beam depth
@@ -242,8 +250,8 @@ class RebarsBase(ABC):
     def get_beam_long_rebars(
         self, Asl_top: np.ndarray, Asl_bot: np.ndarray, b: np.ndarray
     ) -> tuple[np.ndarray]:
-        """Selects the longitudinal reinforcement solution for a generic
-        beam with dimension `b` and `h` over an alignment with N sections.
+        """Select the longitudinal reinforcement solution for a generic
+        beam with dimension `b` over an alignment with N sections.
 
         Parameters
         ----------
@@ -251,7 +259,7 @@ class RebarsBase(ABC):
             Required longitudinal reinforcement area at top.
         Asl_bot : np.ndarray
             Required longitudinal reinforcement area at bottom.
-        b : float
+        b : np.ndarray
             Beam breadth (width).
 
         Returns
@@ -285,50 +293,52 @@ class RebarsBase(ABC):
         -----------
         - Always starts with top reinforcement
         - At top or bottom of the beam sections at most two type of bars can
-        be used (e.g., dbl_t1, dbl_t2, dbl_b1, dbl_b2).
+          be used (e.g., dbl_t1, dbl_t2, dbl_b1, dbl_b2).
         - The diameter of 1st type long. bar is always greater than or equal to
-        the diameter of 2nd type long. bar (dbl1 >= dbl2). Even if 2nd diam is
-        smaller, choose the closest one to dbl1 from the available bars.
+          the diameter of 2nd type long. bar (dbl1 >= dbl2). Even if 2nd diam
+          is smaller, choose the closest one to dbl1 from the available bars.
         - dbl1's and dbl2's at bottom and top parts of the sections do not
-        necessarily have to be the same. (e.g., dbl_t1=0.020, dbl_b1=0.025)
+          necessarily have to be the same. (e.g., dbl_t1=0.020, dbl_b1=0.025)
         - Along the beam which is continuous over the multiple spans maximum of
-        two rebar diameter is allowed.
+          two rebar diameter is allowed.
         - At the two ends of beam sections, the provided reinforcement could be
-        different.
+          different.
         - Number of 1st type longitudinal bars is equal for all the sections.
-        Number of 1st type longitudinal bars at bottom and also at top
-        can be minimum of two. Hence, at least four corner bars of 1st type
-        are provided.
+          Number of 1st type longitudinal bars at bottom and also at top
+          can be minimum of two. Hence, at least four corner bars of 1st type
+          are provided.
 
-        Example section
+        Example Section
         ---------------
-                   Y
-                   ^
-                   |
-        -----------------------     -------------
-        | #t1  #t2   #t2  #t1 |     |   -- cover
-        |                     |     |
-        |                     |     |
-        |          +          |     h
-        |                     |     |
-        |                     |     |
-        | #b1 #b2 #b1 #b2 #b1 |     |   -- cover
-        -----------------------     -------------  ----> X
-        |--------- b ---------|
+        ::
 
-        Asl_top = 2.Ab_#t1 + 2.Ab_#t2
-        Asl_bot = 3.Ab_#b1 + 2.Ab_#b2
+                       Y
+                       ^
+                       |
+            -----------------------     -------------
+            | @t1  @t2   @t2  @t1 |     |   -- cover
+            |                     |     |
+            |                     |     |
+            |          +          |     h
+            |                     |     |
+            |                     |     |
+            | @b1 @b2 @b1 @b2 @b1 |     |   -- cover
+            -----------------------     -------------  ----> Z
+            |--------- b ---------|
 
-        Number of unique diameter values at a section can be one or two
-        unique(db_#t1), db_#t2), db_#b1), db_#b2)) = (dbl_1, dbl_2)
-        OR
-        unique(db_#t1), db_#t2), db_#b1), db_#b2)) = dbl
+            Asl_top = 2.Ab_@t1 + 2.Ab_@t2
+            Asl_bot = 3.Ab_@b1 + 2.Ab_@b2
+
+            Number of unique diameter values at a section can be one or two
+            unique(db_@t1), db_@t2), db_@b1), db_@b2)) = (dbl_1, dbl_2)
+            OR
+            unique(db_@t1), db_@t2), db_@b1), db_@b2)) = dbl
 
         TODO
         ----
         1. Allow use of 3rd diameter for longitudinal reinforcement
-        2. Possibly limit the number of #t1's and #b1's to 2 (corner bars only)
-        3. Enforce continuous #t1 and #b1 (corner bars) in all beam sections.
+        2. Possibly limit the number of @t1's and @b1's to 2 (corner bars only)
+        3. Enforce continuous @t1 and @b1 (corner bars) in all beam sections.
         """
         def get_two_type_long_bar_solution(
             Asl_req: np.ndarray, nbl_1: int, dbl_1: float, dbl_2: float,
@@ -401,7 +411,7 @@ class RebarsBase(ABC):
         1) TOP LONGITUDINAL REBARS (TOP FLEXURAL REINFORCEMENT)
         """
         top_Asl_rat_dict = {}  # Ratio of top long. reinf. to required area
-        nbl_t2_dict = {}  # Number of #t2 long. reinf. bars per solution
+        nbl_t2_dict = {}  # Number of @t2 long. reinf. bars per solution
         # ...........................................................................
         # 1.A) Solutions with only one diameter (#1t)
         # ...........................................................................
@@ -446,7 +456,7 @@ class RebarsBase(ABC):
         2) BOTTOM LONGITUDINAL REBARS (BOTTOM FLEXURAL REINFORCEMENT)
         """
         bot_Asl_rat_dict = {}  # Ratio of bot long. reinf. to required area
-        nbl_b2_dict = {}  # Number of #b2 long. reinf. bars per solution
+        nbl_b2_dict = {}  # Number of @b2 long. reinf. bars per solution
 
         # Add solutions with only one diameter
         m = 2
@@ -510,7 +520,7 @@ class RebarsBase(ABC):
         dbl_b1: np.ndarray, b: np.ndarray, h: np.ndarray
     ) -> tuple[np.ndarray]:
         """
-        Selects transverse reinforcement solution for a generic beam with
+        Select transverse reinforcement solution for a generic beam with
         dimension `b` and `h` over an alignment with N sections.
 
         Parameters
@@ -529,9 +539,9 @@ class RebarsBase(ABC):
             Diameter of 1st type of longitudinal bars at top.
         dbl_b1 : np.ndarray
             Diameter of 1st type of longitudinal bars at bottom.
-        b : float
+        b : np.ndarray
             Beam breadth (width).
-        h : float
+        h : np.ndarray
             Beam height (depth).
 
         Returns
@@ -547,11 +557,11 @@ class RebarsBase(ABC):
 
         Abbreviations for rebars
         ------------------------
-        - The same of `get_beam_long_rebars`.
+        - Same as `get_beam_long_rebars`.
 
         Assumptions
         -----------
-        - The same of `get_beam_long_rebars`.
+        - Same as `get_beam_long_rebars`.
         """
         # Initialization
         num_sec = len(Ash_sbh)  # Number of beam sections
@@ -619,9 +629,8 @@ class RebarsBase(ABC):
             self, Aslx_req: np.ndarray, Asly_req: np.ndarray,
             rhol_min: np.ndarray, bx: np.ndarray, by: np.ndarray
     ) -> tuple[np.ndarray]:
-        """Selects the longitudinal and transverse reinforcement solution for a
-        generic column with dimension `bx` and `by` over an alignment with
-        N sections.
+        """Select the longitudinal reinforcement solution for a generic
+        column with dimension `bx` and `by` over an alignment with N sections.
 
         Parameters
         ----------
@@ -645,7 +654,7 @@ class RebarsBase(ABC):
         dbl_c : np.ndarray
             Diameter of corner longitudinal bars.
         dbl_i : np.ndarray
-            Diameter of internal longitudinal bars
+            Diameter of internal longitudinal bars.
         nbl_ix : np.ndarray
             Number of internal longitudinal bars (reinforcement) at
             bottom or top side of the section. In other words,
@@ -656,14 +665,6 @@ class RebarsBase(ABC):
             left or right side of the section. In other words,
             half of the total number of internal longitudinal bars
             distributed along Y (on one side of the section).
-        dbh : np.ndarray
-            Diameter of horizontal bars (transverse reinforcement).
-        sbh : np.ndarray
-            Spacing of horizontal bars (transverse reinforcement).
-        nbh_x : np.ndarray
-            Number of horizontal bars (stirrup legs) along -x axis.
-        nbh_y : np.ndarray
-            Number of horizontal bars (stirrup legs) along -y axis.
 
         Abbreviations for rebars
         ------------------------
@@ -682,33 +683,35 @@ class RebarsBase(ABC):
         - All internal bars have the same diameter.
         - Internal bars may or may not be continuous.
         - Internal bars can have either the same diameters as corner bars or
-        can have a smaller diameter which is still closest to the corner one.
+          can have a smaller diameter which is still closest to the corner one.
 
-        Example section
+        Example Section
         ---------------
-                   Y
-                   ^
-                   |
-        -----------------------     -------------
-        | #c    #i    #i   #c |     |  ---- cover
-        |                     |     |
-        | #i               #i |     |
-        |                     |     |
-        | #i       +       #i |     by
-        |                     |     |
-        | #i               #i |     |
-        |                     |     |
-        | #c    #i    #i   #c |     |  ---- cover
-        -----------------------     -------------  ----> X
-        |-------- bx ---------|
+        ::
 
-        Aslx_req = 2.Ab_#c + 2.Ab_#i
-        Asly_req = 2.Ab_#c + 3.Ab_#i
+                      Y
+                      ^
+                      |
+            -----------------------     -------------
+            | @c    @i    @i   @c |     |  ---- cover
+            |                     |     |
+            | @i               @i |     |
+            |                     |     |
+            | @i       +       @i |     by
+            |                     |     |
+            | @i               @i |     |
+            |                     |     |
+            | @c    @i    @i   @c |     |  ---- cover
+            -----------------------     -------------  ----> X
+            |-------- bx ---------|
 
-        Number of unique diameter values at a section can be one or two
-        unique(db_#c, db_#i) = (dbl_c, dbl_i)
-        OR
-        unique(db_#c, db_#i) = dbl_c
+            Aslx_req = 2.Ab_@c + 2.Ab_@i
+            Asly_req = 2.Ab_@c + 3.Ab_@i
+
+            Number of unique diameter values at a section can be one or two
+            unique(db_@c, db_@i) = (dbl_c, dbl_i)
+            OR
+            unique(db_@c, db_@i) = dbl_c
         """
 
         def get_two_type_long_bar_solution(
@@ -798,7 +801,7 @@ class RebarsBase(ABC):
             # Check for min. long. reinf. and increase reinf.
             for i in np.where(Asl_min > Asl)[0].tolist():
                 while Asl_min[i] > Asl[i]:
-                    if Aslx[i] / Asly[i] > bx[i] / by[i]:
+                    if Aslx[i] / Asly[i] < bx[i] / by[i]:
                         nbl_2x[i] += 1
                         dist_x[i] = (bx[i] - (
                             nbl_1x * dbl_1 + nbl_2x[i] * dbl_2
@@ -857,7 +860,7 @@ class RebarsBase(ABC):
                 Asl_dict[key] = Asl
                 nbl_ix_dict[key] = nbl_ix
                 nbl_iy_dict[key] = nbl_iy
-        # Get the final soltuion based on the lowest total bar area
+        # Get the final solution based on the lowest total bar area
         # NOTE: The issue is that we do not really check the compatibility of
         # columns e.g., for lap-splices
         area = {key: np.sum(Asl) for key, Asl in Asl_dict.items()}
@@ -876,7 +879,7 @@ class RebarsBase(ABC):
             Ashx_sbh_req: np.ndarray, Ashy_sbh_req: np.ndarray,
             dbl_c: np.ndarray, nbl_ix: np.ndarray, nbl_iy: np.ndarray
     ) -> tuple[np.ndarray]:
-        """Selects transverse (horizontal/shear) reinforcement solution
+        """Select transverse (horizontal/shear) reinforcement solution
         for a generic column with dimension `bx` and `by` over an alignment
         with N sections.
 
@@ -918,11 +921,11 @@ class RebarsBase(ABC):
 
         Abbreviations for rebars
         ------------------------
-        - The same of `get_column_long_rebars`.
+        - Same as `get_column_long_rebars`.
 
         Assumptions
         -----------
-        - The same of `get_column_long_rebars`.
+        - Same as `get_column_long_rebars`.
         """
         # Initialization
         nbl_cy = 2  # Number of corner bars parallel to y-axis on one side

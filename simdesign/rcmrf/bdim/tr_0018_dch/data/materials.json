@@ -8,7 +8,6 @@
     ],
     "steel" :
     [
-        {"grade": "S220", "fsyk": 220, "fsym": 264},
         {"grade": "S420", "fsyk": 420, "fsym": 504}
     ]
 }

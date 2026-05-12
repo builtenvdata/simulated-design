@@ -1,29 +1,122 @@
 """
-Frame geometry generator for moment-resisting-frame structures.
+Frame geometry base module for RC moment-resisting frame structures.
 
-Notes
------
-Whatever you do add the lines and points for stairs upon
-finalising the base geometry.
-May add new futures to shapes. e.g., divide option for Line class.
-May add new futures to the FrameBase class, e.g., remove_line remove_point.
+Provides the abstract base class :class:`GeometryBase`, concrete shape
+classes :class:`Line` and :class:`Rectangle`, and grid-data helpers
 """
-
 # Imports from installed packages
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import pyvista as pv
-from pyvista.plotting.plotter import Plotter
 from typing import Union, Optional, Literal, Tuple, List, Dict
 import warnings
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from mpl_toolkits.mplot3d import Axes3D
+
 # Imports from utils library
 from ...utils.misc import PRECISION, round_list
-from ...utils.mesh import Point, Line, Rectangle
+from ...utils.mesh import Point, Line as BasicLine, Rectangle as BasicRectangle
+
+
+class Line(BasicLine):
+    """Line element with RC-frame-specific attributes.
+
+    Extends :class:`~simdesign.utils.mesh.Line` with a section rotation angle,
+    a structural component label, and a staircase membership flag.
+
+    Attributes
+    ----------
+    rot_angle : float
+        Rotation angle of the element section in degrees, measured
+        counterclockwise from the positive x-axis. Defaults to 0.0.
+        Convention: right (X+) = 0°, up (Y+) = 90°,
+        left (X-) = ±180°, down (Y-) = -90°.
+    component : {'Beam', 'Column'} or None
+        Structural component type the line represents.
+    stairs : bool
+        ``True`` if the line is part of the staircase system.
+    """
+    rot_angle: float = 0.0
+    component: Optional[Literal['Beam', 'Column']] = None
+    stairs: bool = False
+
+    def __init__(
+        self,
+        points: List[Point],
+        tag: Optional[int] = None,
+        rot_angle: float = 0.0,
+        component: Optional[Literal["Beam", "Column"]] = None
+    ) -> None:
+        """Initialize the Line object.
+
+        Parameters
+        ----------
+        points : List[Point]
+            List of points defining the line.
+        tag : int, optional
+            Unique identifier for the line, by default None.
+        rot_angle : float, optional
+            The rotation angle of the element section in degrees, measured
+            counterclockwise from the positive x-axis, by default 0.0.
+        component : Literal["Beam", "Column"], optional
+            Type of component the line represents, by default None.
+        """
+        super().__init__(points, tag)
+        self.rot_angle = rot_angle
+        self.component = component
+
+
+class Rectangle(BasicRectangle):
+    """Rectangle element with RC-frame-specific attributes.
+
+    Extends :class:`~simdesign.utils.mesh.Rectangle` with a structural
+    component label, infill typology, associated lines, and a staircase flag.
+
+    Attributes
+    ----------
+    component : {'Slab', 'Stairs', 'Infill'} or None
+        Structural component type the rectangle represents.
+    typology : {'Weak', 'Medium', 'Strong'} or None
+        Infill strength typology.
+    lines : list or None
+        Lines composing the rectangle boundary.
+    stairs : bool
+        ``True`` if the rectangle is part of the staircase system.
+    """
+    component: Optional[Literal['Slab', 'Stairs', 'Infill']] = None
+    typology: Optional[Literal['Weak', 'Medium', 'Strong']] = None
+    lines: Optional[List[Line | List[Line] | None]] = None
+    stairs: bool = False
+
+    def __init__(
+        self,
+        points: List[Point],
+        lines: Optional[List[Line | List[Line] | None]] = None,
+        tag: Optional[int] = None,
+        component: Optional[Literal["Slab", "Stairs", "Infill"]] = None,
+        typology: Optional[Literal['Weak', 'Medium', 'Strong']] = None
+    ) -> None:
+        """Initialize the Rectangle object.
+
+        Parameters
+        ----------
+        points : List[Point]
+            List of points defining the rectangle.
+        lines : List[Line  |  List[Line]  |  None], optional
+            List of lines composing the rectangle, by default None
+        tag : Optional[int], optional
+            Unique identifier for the rectangle, by default None.
+        component : Literal['Slab', 'Stairs', 'Infill'], optional
+            Type of component the rectangle represents., by default None
+        typology : Literal['Weak', 'Medium', 'Strong'], optional
+            Infill typology in terms of strength, by default None
+        """
+        super().__init__(points, lines, tag)
+        self.component = component
+        self.typology = typology
 
 
 class GridData:
@@ -35,20 +128,9 @@ class GridData:
         Grid identifiers.
     ordinates : List[float]
         Grid ordinates.
-
-    Methods
-    -------
-    __init__
-        Initialize GridData.
-    ord_by_id
-        Get the ordinate corresponding to the given grid ID.
-    id_by_ord
-        Get the grid ID corresponding to the given ordinate.
     """
     ids: List[Union[int, float]]
-    """Grid identifiers."""
     ordinates: List[float]
-    """Grid ordinates."""
 
     def __init__(self, ids: List[Union[int, float]],
                  ordinates: List[Union[float]]) -> None:
@@ -110,25 +192,10 @@ class SystemGridData:
         Grid data along -y axis.
     z : GridData
         Grid data along -z axis.
-
-    Methods
-    -------
-    __init__
-        Initialize the SystemGridData instance based on the provided list of
-        points.
-    update_data
-        Update grid data based on the provided list of points.
-    update_points_grid_ids
-        Update the grid IDs of points based on the current grid data.
-    update_points_coordinates
-        Update the coordinates of points based on the current grid data.
     """
     x: GridData
-    "Grid data along -x axis."
     y: GridData
-    "Grid data along -y axis."
     z: GridData
-    "Grid data along -z axis."
 
     def __init__(self, points: List[Point]) -> None:
         """Initialize the SystemGridData instance based on the provided
@@ -190,8 +257,8 @@ class SystemGridData:
             point.coordinates[2] = self.z.ord_by_id(z)
 
 
-class FrameBase(ABC):
-    """Base class for representing a frame structure.
+class GeometryBase(ABC):
+    """Abstract base class for representing a frame structure geometry.
 
     Attributes
     ----------
@@ -201,8 +268,6 @@ class FrameBase(ABC):
         List of lines in the frame.
     rectangles : List[Rectangle]
         List of rectangles in the frame.
-    stairs_rectangles : List[Rectangle]
-        List of rectangles representing stairs in the frame.
     stairs_lines : List[List[Line]]
         List of lines representing stairs in the frame.
     system_grid_data : SystemGridData
@@ -229,159 +294,118 @@ class FrameBase(ABC):
     ALLOWED_LINE_UNIT_VECTORS : Tuple[list]
         Tuple of allowed unit vectors for lines.
         Default is ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]).
-    ALLOWED_RECTANGLE_UNIT_NORMAL_VECTOR : list
-        Allowed unit normal vector for rectangles.
-        Default is [0.0, 0.0, -1.0].
+    ALLOWED_RECTANGLE_UNIT_NORMAL_VECTORS : list
+        Allowed unit normal vectors for rectangles.
+        Default is ([0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0])
 
-    Methods
-    -------
-    __init__
-        Initialize the FrameBase instance.
-    find_point_by_grid_ids
-        Find a point in the frame by its grid IDs.
-    find_point_by_tag
-        Find a point in the frame by its tag.
-    find_point_by_coordinates
-        Find a point in the frame by its coordinates.
-    find_line_by_points
-        Find a line in the frame by its defining points.
-    find_line_by_tag
-        Find a line in the frame by its tag.
-    find_lines_by_point
-        Find all lines passing through a given point.
-    find_rectangle_by_points
-        Find a rectangle in the frame by its defining points.
-    find_rectangle_by_tag
-        Find a rectangle in the frame by its tag.
-    find_rectangles_by_line
-        Find all rectangles sharing a given line.
-    find_rectangles_by_point
-        Find all rectangles containing a given point.
-    find_rectangles_by_left_lower_point
-        Find all rectangles having a given left-lower point.
-    find_rectangles_by_line_and_point
-        Find all rectangles sharing a given line and containing a given point.
-    find_rectangles_by_line_and_tag
-        Find all rectangles sharing a given line and having a given tag.
-    find_lines_by_rectangle
-        Find all lines defining a given rectangle.
-    find_lines_by_tag
-        Find all lines in the frame with a given tag.
-    find_rectangles_by_tag
-        Find all rectangles in the frame with a given tag.
-    find_lines_by_point_and_tag
-        Find all lines passing through a given point and having a given tag.
-    find_points_by_level
-        Find all points on a specific level.
-    find_lines_by_level
-        Find all lines on a specific level.
-    find_rectangles_by_level
-        Find all rectangles on a specific level.
-    find_rectangles_by_line_and_point_and_tag
-        Find all rectangles sharing a given line, containing a given point,
-        and having a given tag.
-    write_mesh_to_xlsx
-        Write the frame mesh to an Excel file.
-    export_mesh_to_html
-        Export the frame mesh to an HTML file.
-    show_mesh
-        Display the frame mesh.
-    modify_floor_height
-        Modify the height of a floor in the frame.
-    modify_bay_width
-        Modify the width of a bay in the frame.
-    remove_rectangle
-        Remove a rectangle from the frame.
-    add_new_point
-        Add a new point to the frame.
-    add_new_line
-        Add a new line to the frame.
-    add_new_rectangle
-        Add a new rectangle to the frame.
-    add_new_lines_and_points_for_stairs
-        Add new lines and points for stairs in the frame.
-    get_points
-        Get all points in the frame.
-    get_lines
-        Get all lines in the frame.
-    get_slabs_rectangles
-        Get all rectangles representing slabs in the frame.
-    get_stairs_rectangles
-        Get all rectangles representing stairs in the frame.
+    Notes
+    -----
+    Always add staircase lines and points after finalising the base geometry.
 
-    Stairs lines
-    ------------
-    yz-view: x=i
-    z12|__x1__|z22
-    z12|      |z21
-    yz-view: x=i+1
-         __x2__
-        |      |
-        |      |
-        z3     z4
+    Staircase line layout (per staircase bay):
+
+    .. code-block:: text
+
+        yz-view: x=i          yz-view: x=i+1
+        z12|__x1__|z22              __x2__
+        z12|      |z21             |      |
+                                   z3     z4
     """
     points: List[Point]
-    """List of points in the frame."""
     lines: List[Line]
-    """List of lines in the frame."""
     rectangles: List[Rectangle]
-    """List of rectangles in the frame."""
-    stairs_rectangles: List[Rectangle]
-    """List of rectangles representing stairs in the frame."""
     stairs_lines: List[List[Line]]
-    """List of lines representing stairs in the frame."""
     system_grid_data: SystemGridData
-    """Grid data for the entire frame."""
     stairs_width_x = float
-    """Width of stairs along the x-axis."""
     stairs_width_y = float
-    """Width of stairs along the y-axis."""
     stairs_location = List[int]
-    """Location of stairs defined by grid ids in x and y for lower left
-    corner point."""
     POINTS_SHEET: str = "Points"
-    """Sheet name for points data in Excel.
-    Default is "Points"."""
     LINES_SHEET: str = "Lines"
-    """Sheet name for lines data in Excel.
-    Default is "Lines"."""
     RECTANGLES_SHEET: str = "Rectangles"
-    """Sheet name for rectangles data in Excel.
-    Default is "Rectangles"."""
-    STAIRS_SHEET: str = "Stairs Locations"
-    """Sheet name for stairs data in Excel.
-    Default is "Stairs Locations"."""
     ALLOWED_LINE_UNIT_VECTORS: Tuple[List[float]] = (
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-        [0.0, 0.0, 1.0])
-    """Tuple of allowed unit vectors for lines.
-    Default is ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0])."""
-    ALLOWED_RECTANGLE_UNIT_NORMAL_VECTOR: List[float] = (
-        [0.0, 0.0, -1.0])
-    """Allowed unit normal vector for rectangles.
-    Default is [0.0, 0.0, -1.0]."""
+        [1.0, 0.0, 0.0],  # X
+        [0.0, 1.0, 0.0],  # Y
+        [0.0, 0.0, 1.0]   # Z
+    )
+    ALLOWED_RECTANGLE_UNIT_NORMAL_VECTORS: List[float] = (
+        [0.0, 0.0, -1.0],  # XY (ccw)
+        [0.0, 1.0, 0.0],   # XZ (ccw)
+        [-1.0, 0.0, 0.0],  # YZ (ccw)
+    )
 
     @property
-    def slabs_rectangles(self) -> List[Rectangle]:
-        """
+    def slab_rectangles(self) -> List[Rectangle]:
+        """Rectangles whose component is ``'Slab'``.
+
         Returns
         -------
         List[Rectangle]
             The list of rectangles representing the slabs in the frame.
         """
-
-        rectangles = [rect for rect in self.rectangles
-                      if rect not in self.stairs_rectangles]
-        return rectangles
+        return [rect
+                for rect in self.rectangles
+                if rect.component == 'Slab']
 
     @property
-    def lines_x(self) -> List[Line]:
+    def stairs_rectangles(self) -> List[Rectangle]:
+        """Rectangles whose component is ``'Stairs'``.
+
+        Returns
+        -------
+        List[Rectangle]
+            The list of rectangles representing the stairs in the frame.
         """
+        return [rect
+                for rect in self.rectangles
+                if rect.component == 'Stairs']
+
+    @property
+    def infill_rectangles(self) -> List[Rectangle]:
+        """Rectangles whose component is ``'Infill'``.
+
+        Returns
+        -------
+        List[Rectangle]
+            The list of rectangles representing the Infills in the frame.
+        """
+        return [rect
+                for rect in self.rectangles
+                if rect.component == 'Infill']
+
+    @property
+    def beam_lines(self) -> List[Line]:
+        """Lines whose component is ``'Beam'``.
+
         Returns
         -------
         List[Line]
-            Lines along x-axis.
+            The list of lines representing the beams in the frame.
+        """
+        return [line
+                for line in self.lines
+                if line.component == 'Beam']
+
+    @property
+    def column_lines(self) -> List[Line]:
+        """Lines whose component is ``'Column'``.
+
+        Returns
+        -------
+        List[Line]
+            The list of lines representing the columns in the frame.
+        """
+        return [line
+                for line in self.lines
+                if line.component == 'Column']
+
+    @property
+    def lines_x(self) -> List[Line]:
+        """Lines whose unit vector is aligned with the X-axis.
+
+        Returns
+        -------
+        List[Line]
+            Lines along X-axis.
         """
         return [line
                 for line in self.lines
@@ -389,11 +413,12 @@ class FrameBase(ABC):
 
     @property
     def lines_y(self) -> List[Line]:
-        """
+        """Lines whose unit vector is aligned with the Y-axis.
+
         Returns
         -------
         List[Line]
-            Lines along y-axis.
+            Lines along Y-axis.
         """
         return [line
                 for line in self.lines
@@ -401,11 +426,12 @@ class FrameBase(ABC):
 
     @property
     def lines_z(self) -> List[Line]:
-        """
+        """Lines whose unit vector is aligned with the Z-axis.
+
         Returns
         -------
         List[Line]
-            Lines along z-axis.
+            Lines along Z-axis.
         """
         return [line
                 for line in self.lines
@@ -413,11 +439,12 @@ class FrameBase(ABC):
 
     @property
     def lines_z_facades(self) -> List[Literal[0, 1, 2, 3, 4]]:
-        """
+        """Facade location IDs of lines along the Z-axis.
+
         Returns
         -------
         List[Literal[0, 1, 2, 3, 4]]
-            Facade IDs of lines along z-axis.
+            Facade IDs of lines along Z-axis.
 
         Notes
         -----
@@ -460,18 +487,18 @@ class FrameBase(ABC):
     @property
     def continuous_lines_along_x(self) -> Dict[Tuple[Union[float, int]],
                                                List[Line]]:
-        """
+        """Lines grouped into continuous runs along the X-direction.
+
         Returns
         -------
         Dict[Tuple[Union[float, int]], List[Line]]
-            Continuous lines along the x-direction.
+            Continuous lines along the X-direction.
 
         Notes
         -----
         In case there are None's in the lists, it means that there is
         a discontinuity at `None`.
         """
-
         cont_lines_in_x = {}
         for j in self.system_grid_data.y.ids:
             for k in self.system_grid_data.z.ids:
@@ -496,11 +523,12 @@ class FrameBase(ABC):
     @property
     def continuous_lines_along_y(self) -> Dict[Tuple[Union[float, int]],
                                                List[Line]]:
-        """
+        """Lines grouped into continuous runs along the Y-direction.
+
         Returns
         -------
         Dict[Tuple[Union[float, int]], List[Line]]
-            Continuous lines along the y-direction.
+            Continuous lines along the Y-direction.
 
         Notes
         -----
@@ -531,11 +559,12 @@ class FrameBase(ABC):
     def continuous_lines_along_z(
         self
     ) -> Dict[Tuple[Union[float, int]], List[Line]]:
-        """
+        """Lines grouped into continuous runs along the Z-direction.
+
         Returns
         -------
         Dict[Tuple[Union[float, int]], List[Line]]
-            Continuous lines along the z-direction.
+            Continuous lines along the Z-direction.
 
         Notes
         -----
@@ -564,7 +593,8 @@ class FrameBase(ABC):
 
     @property
     def ground_level_points(self) -> List[Point]:
-        """
+        """First (lowest) point of each continuous vertical line group.
+
         Returns
         -------
         List[Point]
@@ -580,7 +610,8 @@ class FrameBase(ABC):
 
     @property
     def points_at_mid_floor_levels(self) -> List[Point]:
-        """
+        """End-points of all mid-storey staircase beams (``stairs_lines_x1``).
+
         Returns
         -------
         List[Point]
@@ -593,7 +624,9 @@ class FrameBase(ABC):
 
     @property
     def floor_level_points(self) -> List[List[Point]]:
-        """
+        """Points grouped by floor level, excluding ground and mid-storey
+        nodes.
+
         Returns
         -------
         List[List[Point]]
@@ -613,7 +646,8 @@ class FrameBase(ABC):
 
     @property
     def point_tags(self) -> List[int]:
-        """
+        """Integer tags of all points in the frame.
+
         Returns
         -------
         List[int]
@@ -623,18 +657,19 @@ class FrameBase(ABC):
 
     @property
     def line_tags(self) -> List[int]:
-        """
+        """Integer tags of all lines in the frame.
+
         Returns
         -------
         List[int]
             Tags of defined lines.
         """
-
         return [line.tag for line in self.lines]
 
     @property
     def rectangle_tags(self) -> List[int]:
-        """
+        """Integer tags of all rectangles in the frame.
+
         Returns
         -------
         List[int]
@@ -644,13 +679,13 @@ class FrameBase(ABC):
 
     @property
     def roof_rectangles(self) -> List[Rectangle]:
-        """
+        """Rectangles at the topmost occupied floor level.
+
         Returns
         -------
         List[Rectangle]
             Rectangles at the roof level.
         """
-
         rectangles = []
         for rect in self.rectangles:
             point = rect.points[0]
@@ -673,7 +708,8 @@ class FrameBase(ABC):
 
     @property
     def exterior_horizontal_lines(self) -> List[Line]:
-        """
+        """Horizontal lines on the exterior perimeter of the frame.
+
         Returns
         -------
         List[Line]
@@ -761,7 +797,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z11(self) -> List[Line]:
-        """
+        """Lower halves of the z1 vertical lines on the first staircase side.
+
         Returns
         -------
         List[Line]
@@ -779,7 +816,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z12(self) -> List[Line]:
-        """
+        """Upper halves of the z1 vertical lines on the first staircase side.
+
         Returns
         -------
         List[Line]
@@ -797,7 +835,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z21(self) -> List[Line]:
-        """
+        """Lower halves of the z2 vertical lines on the second staircase side.
+
         Returns
         -------
         List[Line]
@@ -815,7 +854,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z22(self) -> List[Line]:
-        """
+        """Upper halves of the z2 vertical lines on the second staircase side.
+
         Returns
         -------
         List[Line]
@@ -833,7 +873,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z3(self) -> List[Line]:
-        """
+        """Vertical lines connected to the start of the floor-level beam (x2).
+
         Returns
         -------
         List[Line]
@@ -849,7 +890,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_z4(self) -> List[Line]:
-        """
+        """Vertical lines connected to the end of the floor-level beam (x2).
+
         Returns
         -------
         List[Line]
@@ -865,7 +907,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_x1(self) -> List[Line]:
-        """
+        """Mid-storey staircase supporting beams (x1).
+
         Returns
         -------
         List[Line]
@@ -879,7 +922,8 @@ class FrameBase(ABC):
 
     @property
     def stairs_lines_x2(self) -> List[Line]:
-        """
+        """Floor-level staircase supporting beams (x2).
+
         Returns
         -------
         List[Line]
@@ -919,7 +963,6 @@ class FrameBase(ABC):
         self.lines = []
         self.rectangles = []
         self.stairs_lines = []
-        self.stairs_rectangles = []
 
         self._initialise_points()
         self._initialise_lines()
@@ -931,7 +974,7 @@ class FrameBase(ABC):
         Raises
         ------
         ValueError
-            If any line in the frame is not parallel to the xy, xz, or yz
+            If any line in the frame is not parallel to the XY, XZ, or YZ
             planes.
         """
         for line in self.lines:
@@ -939,28 +982,33 @@ class FrameBase(ABC):
             if vector not in self.ALLOWED_LINE_UNIT_VECTORS:
                 raise ValueError(
                     "You have an invalid line. The lines should be in parallel"
-                    " with either of xy, xz or yz planes")
+                    " with either of XY, XZ or YZ planes")
 
     def _check_for_any_not_allowed_rectangles(self) -> None:
-        """Check if any rectangles in the frame are not parallel to the xy
-        plane.
+        """Check if any rectangles in the frame are not parallel to the XY,
+        XZ, or YZ planes.
 
         Raises
         ------
         ValueError
-            If any rectangle in the frame is not parallel to the xy plane.
+            If any rectangle in the frame is not parallel to the XY, XZ, or YZ
+            planes.
         """
-        all_rectangles = self.rectangles + self.stairs_rectangles
-        for rectangle in all_rectangles:
+        for rectangle in self.rectangles:
             vector = rectangle.unit_normal_vector.tolist()
-            if vector != self.ALLOWED_RECTANGLE_UNIT_NORMAL_VECTOR:
+            if vector not in self.ALLOWED_RECTANGLE_UNIT_NORMAL_VECTORS:
                 raise ValueError(
                     "You have an invalid rectangle. The rectangles should be "
-                    "in parallel with xy plane.")
+                    "in parallel with XY, XZ or YZ planes.")
 
-    def _plot_mesh(self) -> Plotter:
+    def _plot_mesh(self, off_screen: bool = True) -> pv.Plotter:
         """Plot the mesh representation of the frame structure using
         pyvista.
+
+        Parameters
+        ----------
+        off_screen : bool, optional
+            Renders off screen when ``True``.
 
         Returns
         -------
@@ -979,9 +1027,21 @@ class FrameBase(ABC):
             indices.insert(0, len(indices))
             lines.append(indices)
         lines = np.vstack(lines)
+        # Lines (infills)
+        infill_lines = []
+        if any(self.infill_rectangles):
+            for rectangle in self.infill_rectangles:
+                idx = [self.points.index(p) for p in rectangle.points]
+                if len(idx) >= 4:
+                    # 1st ↔ 3rd
+                    infill_lines.append([2, idx[0], idx[2]])
+                    # 2nd ↔ 4th
+                    infill_lines.append([2, idx[1], idx[3]])
+            if infill_lines:
+                infill_lines = np.asarray(infill_lines, dtype=int).ravel()
         # Faces (slabs)
         faces_gray = []
-        for rectangle in self.slabs_rectangles:
+        for rectangle in self.slab_rectangles:
             indices = []
             for point in rectangle.points:
                 indices.append(self.points.index(point))
@@ -998,8 +1058,19 @@ class FrameBase(ABC):
                 indices.insert(0, len(indices))
                 faces_blue.append(indices)
             faces_blue = np.vstack(faces_blue)
+        # # Faces (infills)
+        # faces_green = []
+        # if any(self.infill_rectangles):
+        #     for rectangle in self.infill_rectangles:
+        #         indices = []
+        #         for point in rectangle.points:
+        #             indices.append(self.points.index(point))
+        #         indices.insert(0, len(indices))
+        #         faces_green.append(indices)
+        #     faces_green = np.vstack(faces_green)
+
         # Create a PyVista plotter
-        plotter = Plotter()
+        plotter = pv.Plotter(off_screen=off_screen)
         # Add points, lines, and faces to the plotter with different colors
         mesh_faces = pv.PolyData(points, faces=faces_gray)
         mesh_lines = pv.PolyData(points, lines=lines)
@@ -1018,6 +1089,16 @@ class FrameBase(ABC):
             mesh_faces_stairs = pv.PolyData(points, faces=faces_blue)
             plotter.add_mesh(mesh_faces_stairs, color='blue',
                              show_edges=False, opacity=0.5)
+        # Add infills as faces
+        # if np.any(faces_green):
+        #     mesh_faces_infills = pv.PolyData(points, faces=faces_green)
+        #     plotter.add_mesh(mesh_faces_infills, color='green',
+        #                      show_edges=False, opacity=0.5)
+        # Add infills as diagonal lines
+        if isinstance(infill_lines, np.ndarray) and infill_lines.size > 0:
+            mesh_infill_diags = pv.PolyData(points, lines=infill_lines)
+            plotter.add_mesh(mesh_infill_diags, color='green',
+                             line_width=2, style='wireframe')
         # Show the axes orientation widget in all subplots
         plotter.add_axes_at_origin(labels_off=True, line_width=3)
 
@@ -1048,7 +1129,7 @@ class FrameBase(ABC):
 
         # Faces (slabs)
         faces_gray = []
-        for rectangle in self.slabs_rectangles:
+        for rectangle in self.slab_rectangles:
             face = []
             for point in rectangle.points:
                 face.append(self.points.index(point))
@@ -1377,20 +1458,29 @@ class FrameBase(ABC):
         tags = [line.tag for line in self.lines]
         point1s = [line.points[0].tag for line in self.lines]
         point2s = [line.points[1].tag for line in self.lines]
+        components = [line.component for line in self.lines]
+        angles = [line.rot_angle for line in self.lines]
+
         lines_df = pd.DataFrame({'tag': tags,
                                  'point-1': point1s,
-                                 'point-2': point2s})
+                                 'point-2': point2s,
+                                 'component': components,
+                                 'sec-rotation': angles})
         # Rectangles (Slabs)
         tags = [rect.tag for rect in self.rectangles]
         point1s = [rect.points[0].tag for rect in self.rectangles]
         point2s = [rect.points[1].tag for rect in self.rectangles]
         point3s = [rect.points[2].tag for rect in self.rectangles]
         point4s = [rect.points[3].tag for rect in self.rectangles]
+        components = [rect.component for rect in self.rectangles]
+        strength = [rect.typology for rect in self.rectangles]
         rectangles_df = pd.DataFrame({'tag': tags,
                                       'point-1': point1s,
                                       'point-2': point2s,
                                       'point-3': point3s,
-                                      'point-4': point4s})
+                                      'point-4': point4s,
+                                      'component': components,
+                                      'infill-type': strength})
 
         # Save each DataFrame to a separate sheet
         with pd.ExcelWriter(path, engine='openpyxl', mode='w') as writer:
@@ -1401,18 +1491,11 @@ class FrameBase(ABC):
             rectangles_df.to_excel(writer, sheet_name=self.RECTANGLES_SHEET,
                                    index=False)
 
-        if any(self.stairs_rectangles):
-            tags = [rect.tag for rect in self.stairs_rectangles]
-            stairs_df = pd.DataFrame({'rectangle-tag': tags})
-            with pd.ExcelWriter(path, engine='openpyxl', mode='a') as writer:
-                stairs_df.to_excel(writer, sheet_name=self.STAIRS_SHEET,
-                                   index=False)
-
     def set_continuous_stairs_rectangles(
         self, location: List[int], width_x: Optional[float] = None,
         width_y: Optional[float] = None
     ) -> None:
-        """Sets the rectangles which are located along the staircase (-Z).
+        """Set the rectangles which are located along the staircase (-Z).
 
         The rectangle location is set based on the grid ids of the left
         corner point. The rectangle dimensions along the staircase case are
@@ -1501,13 +1584,11 @@ class FrameBase(ABC):
                             if rectangle is None:
                                 rectangle = self.add_new_rectangle(points)
                                 self.rectangles.append(rectangle)
-
-                            if rectangle not in self.stairs_rectangles:
-                                self.stairs_rectangles.append(rectangle)
+                            rectangle.component = 'Stairs'
         # Set the system grid data using the new point coordinates
         self.system_grid_data.update_data(self.points)
 
-    def add_new_lines_and_points_for_stairs(self) -> None:
+    def add_new_elements_for_stairs(self) -> None:
         """Add new lines (beams) and connecting points for supporting stairs.
 
         This method adds new lines and points to represent stairs in the frame.
@@ -1520,23 +1601,28 @@ class FrameBase(ABC):
         Notes
         -----
         - Ensure to add the lines and points for stairs after finalizing the
-        base geometry.
+          base geometry.
         - The grid IDs at the stair line levels should always end with
-        '.5'. For example, for stairs between floor one and two the grid id
-        will be 1.5.
+          '.5'. For example, for stairs between floor one and two the grid id
+          will be 1.5.
         - Do not update the grid system after using this method.
 
         TODO
         ----
         - Improve the the behaviour grid id restrictions of stairs.
+        - Add option for defining the supporting beam location
         """
         for rectangle in self.stairs_rectangles:
 
-            stairs_mid_points = []
-            stairs_lines = []
+            stairs_mid_points: List[Point] = []
+            stairs_lines: List[Line] = []
+            infill_points: List[Point] = []
+            bot_infill_points: List[Point] = []
+            top_infill_points: List[Point] = []
 
             # Create new nodes at mid storey height for each staircase
-            for top_point in rectangle.points[::3]:  # NOTE: assumed beam loc
+            # NOTE: assumed beam loc
+            for top_point in rectangle.points[::3]:
                 # Getting mid point coordinates and grids
                 i, j, k = top_point.grid_ids
                 bot_point = self.find_point_by_grid_ids([i, j, k - 1])
@@ -1546,7 +1632,7 @@ class FrameBase(ABC):
                 coords_mid = round_list(coords_mid.tolist())
                 # create the mid Point
                 grid = [i, j, k - 0.5]
-                tag = max(self.point_tags) + 1
+                tag = top_point.tag + 1000
                 mid_point = Point(grid, coords_mid, tag)
                 self.points.append(mid_point)
                 stairs_mid_points.append(mid_point)
@@ -1557,9 +1643,25 @@ class FrameBase(ABC):
                 # Create lower and upper vertical Lines (column)
                 lower_line_points = [bot_point, mid_point]
                 upper_line_points = [mid_point, top_point]
-                lower_line = self.add_new_line(lower_line_points)
-                upper_line = self.add_new_line(upper_line_points)
+                lower_line_tag = old_line.tag + 1000
+                upper_line_tag = old_line.tag + 2000
+                lower_line = self.add_new_line(
+                    lower_line_points, lower_line_tag, component='Column')
+                upper_line = self.add_new_line(
+                    upper_line_points, upper_line_tag, component='Column')
+                lower_line.stairs = True
+                upper_line.stairs = True
                 stairs_lines.extend([lower_line, upper_line])
+                # Add the points defining infills
+                infill_points.extend([bot_point, top_point])
+                bot_infill_points.extend(lower_line_points)
+                top_infill_points.extend(upper_line_points)
+
+                # Modify associated lines for infills rectangles
+                for rect in self.infill_rectangles:
+                    if old_line in rect.lines:
+                        idx = rect.lines.index(old_line)
+                        rect.lines[idx] = [lower_line, upper_line]
 
             # Add supporting vertical lines which are not divided
             for top_point in rectangle.points[1:3]:
@@ -1570,7 +1672,9 @@ class FrameBase(ABC):
                 stairs_lines.append(vert_line)
 
             # Adding horizontal staircase line along -x at the mid storey
-            mid_hor_line = self.add_new_line(stairs_mid_points)
+            tag = upper_line_tag + 1000
+            mid_hor_line = self.add_new_line(stairs_mid_points, tag, 'Beam')
+            mid_hor_line.stairs = True
             stairs_lines.append(mid_hor_line)
 
             # Adding horizontal staircase line along -x at the storey level
@@ -1579,9 +1683,24 @@ class FrameBase(ABC):
             # Append to the self
             self.stairs_lines.append(stairs_lines)
 
+            # Remove the old infill rectangle
+            rect = self.find_rectangle_by_points(infill_points)
+            if rect:
+                # Get the default infill type/strength
+                inf_str = rect.typology
+                # Remove the old infill rectangle
+                self.rectangles.remove(rect)
+                # Add new infills
+                bot_rect = self.add_new_rectangle(
+                    bot_infill_points, rectangle.tag + 1000, 'Infill', inf_str)
+                bot_rect.stairs = True
+                top_rect = self.add_new_rectangle(
+                    top_infill_points, rectangle.tag + 2000, 'Infill', inf_str)
+                top_rect.stairs = True
             # update grid system data
-            self.system_grid_data.z.ids.append(k - 0.5)
-            self.system_grid_data.z.ordinates.append(coords_mid[-1])
+            if k - 0.5 not in self.system_grid_data.z.ids:  # if num stairs > 1
+                self.system_grid_data.z.ids.append(k - 0.5)
+                self.system_grid_data.z.ordinates.append(coords_mid[-1])
 
         # Sort 'ID' list and get the permutation indices
         sorted_indices = sorted(
@@ -1624,7 +1743,7 @@ class FrameBase(ABC):
         List[Rectangle]
             A list containing all slab rectangles in the frame.
         """
-        return self.slabs_rectangles
+        return self.slab_rectangles
 
     def get_stairs_rectangles(self) -> List[Rectangle]:
         """
@@ -1646,8 +1765,8 @@ class FrameBase(ABC):
 
         Parameters
         ----------
-        filename : str
-            The name of the HTML file to export the mesh data to.
+        path : str
+            The file path of the HTML file to export the mesh data to.
 
         Notes
         -----
@@ -1669,7 +1788,7 @@ class FrameBase(ABC):
         -----
         - The method opens a window or interface to visualize the mesh data.
         """
-        plotter = self._plot_mesh()
+        plotter = self._plot_mesh(off_screen=False)
         points = np.array([point.coordinates for point in self.points])
         # Stuff to show grids later
         x_ticks = np.unique(points[:, 0])
@@ -1786,12 +1905,12 @@ class FrameBase(ABC):
         Notes
         -----
         - This method first identifies the rectangle based on the grid IDs of
-        its left-lower point. It then removes associated lines and points
-        based on the specified parameters.
+          its left-lower point. It then removes associated lines and points
+          based on the specified parameters.
         - If remove_lines is True, lines that are only associated with the
-        removed rectangle are removed
+          removed rectangle are removed.
         - Similarly, if remove_points is True, points that are only
-        associated with the removed rectangle are removed.
+          associated with the removed rectangle are removed.
         """
         # Identify the rectangle
         left_lower_point = self.find_point_by_grid_ids(
@@ -1859,11 +1978,11 @@ class FrameBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame, the
-        method automatically assigns a new tag by incrementing the maximum tag
-        value found in the frame.
+        - If the provided tag is None or if it already exists in the frame,
+          the method automatically assigns a new tag by incrementing the
+          maximum tag value found in the frame.
         - The method also updates the system grid data based on the newly
-        added point and updates the grid IDs of existing points accordingly.
+          added point and updates the grid IDs of existing points accordingly.
         """
         point = self.find_point_by_coordinates(coordinates)
         if point:
@@ -1899,8 +2018,11 @@ class FrameBase(ABC):
         # Return the added or found point
         return point
 
-    def add_new_line(self, points: List[Point], tag: Optional[int] = None
-                     ) -> Line:
+    def add_new_line(
+        self, points: List[Point], tag: Optional[int] = None,
+        component: Optional[Literal['Beam', 'Column']] = None,
+        orientation: float = 0.0
+    ) -> Line:
         """Add a new line to the frame.
 
         This method adds a new line to the frame with the specified points
@@ -1915,6 +2037,12 @@ class FrameBase(ABC):
             The tag to assign to the new line. If None or if the provided tag
             already exists, a new tag is automatically assigned,
             by default None.
+        component : Optional[Literal['Beam', 'Column']]
+            Type of component whose axis is represented by the line geometry;
+            'Beam' or 'Column'. By default None
+        orientation : float
+            The rotation angle of the element section in degrees, measured
+            counterclockwise from the positive x-axis. By default 0.0.
 
         Returns
         -------
@@ -1923,11 +2051,11 @@ class FrameBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame, the
-        method automatically assigns a new tag by incrementing the maximum tag
-        value found in the frame.
+        - If the provided tag is None or if it already exists in the frame,
+          the method automatically assigns a new tag by incrementing the
+          maximum tag value found in the frame.
         - The method also ensures that the points defining the line are sorted
-        in ascending order of their x and y coordinates for consistency.
+          in ascending order of their x and y coordinates for consistency.
         """
         # Set the tag
         if tag is None or self.find_line_by_tag(tag):
@@ -1937,14 +2065,17 @@ class FrameBase(ABC):
         if line:  # Already exist
             warnings.warn("The line already exits", UserWarning)
         else:  # Create the new line
-            line = Line(points, tag)
-            line.sort_by_xy()
+            line = Line(points, tag, orientation, component)
             self.lines.append(line)
         # Return the new line or the found one
         return line
 
-    def add_new_rectangle(self, points: List[Point], tag: Optional[int] = None
-                          ) -> Rectangle:
+    def add_new_rectangle(
+        self, points: List[Point], tag: Optional[int] = None,
+        component: Optional[Literal['Slab', 'Stairs', 'Infill']] = None,
+        strength: Optional[Literal['Weak', 'Medium', 'Strong']] = None,
+        create_lines: bool = False
+    ) -> Rectangle:
         """Add a new rectangle to the frame.
 
         This method adds a new rectangle to the frame with the specified
@@ -1959,6 +2090,11 @@ class FrameBase(ABC):
             The tag to assign to the new rectangle. If None or if the provided
             tag already exists, a new tag is automatically assigned,
             by default None.
+        component : Optional[Literal['Slab', 'Stairs', 'Infill']]
+            The type of structural component which is represented by the
+            rectangle. By default None.
+        strength : Optional[Literal['Weak', 'Medium', 'Strong']]
+            The category of infill strength. By default None.
 
         Returns
         -------
@@ -1967,12 +2103,12 @@ class FrameBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame, the
-        method automatically assigns a new tag by incrementing the maximum tag
-        value found in the frame.
+        - If the provided tag is None or if it already exists in the frame,
+          the method automatically assigns a new tag by incrementing the
+          maximum tag value found in the frame.
         - The method also ensures that the lines defining the rectangle are
-        created if they do not exist, and the rectangle points are sorted in
-        ascending order of their x and y coordinates to maintain consistency.
+          created if they do not exist, and the rectangle points are sorted to
+          maintain consistency.
         """
         # Set the tag
         if tag is None or self.find_rectangle_by_tag(tag):
@@ -1982,17 +2118,23 @@ class FrameBase(ABC):
         if rectangle:  # Already exists in the frame
             warnings.warn("The rectangle already exits", UserWarning)
         else:  # Create the new one
-            line1_points = [points[0], points[1]]
-            line2_points = [points[1], points[2]]
-            line3_points = [points[3], points[2]]
-            line4_points = [points[0], points[3]]
-            line1 = self.add_new_line(line1_points)
-            line2 = self.add_new_line(line2_points)
-            line3 = self.add_new_line(line3_points)
-            line4 = self.add_new_line(line4_points)
-            lines = [line1, line2, line3, line4]
-            rectangle = Rectangle(points, lines, tag)
-            rectangle.sort_by_xy
+            rectangle = Rectangle(points, None, tag, component, strength)
+            line1_points = [rectangle.points[0], rectangle.points[1]]
+            line2_points = [rectangle.points[1], rectangle.points[2]]
+            line3_points = [rectangle.points[3], rectangle.points[2]]
+            line4_points = [rectangle.points[0], rectangle.points[3]]
+            if create_lines:
+                line1 = self.add_new_line(line1_points)
+                line2 = self.add_new_line(line2_points)
+                line3 = self.add_new_line(line3_points)
+                line4 = self.add_new_line(line4_points)
+            else:
+                line1 = self.find_line_by_points(line1_points)
+                line2 = self.find_line_by_points(line2_points)
+                line3 = self.find_line_by_points(line3_points)
+                line4 = self.find_line_by_points(line4_points)
+            rectangle.lines = [line1, line2, line3, line4]
+            rectangle.sort_lines()
             self.rectangles.append(rectangle)
         # Return the new rectangle or the found one
         return rectangle

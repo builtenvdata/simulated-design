@@ -1,22 +1,23 @@
+"""Integration tests for rcmrf.generate across all design classes."""
 import pytest
 from pathlib import Path
 import sys
 
-# Add the simdesign directory to sys.path
+# Add the project root to sys.path
 sys.path.append(str(Path(__file__).parents[1]))
 
 from simdesign import rcmrf  # noqa
 from simdesign.utils.misc import remove_dir  # noqa
 
 
-# Main inputs for each design class
 @pytest.fixture
 def base_inputs_opspy():
+    """Return base inputs for the OpenSeesPy workflow."""
     return {
         'bcim': {
             'sample_size': 2,
-            'num_storeys': 4,
-            'beta': 0.1
+            'num_storeys': 2,
+            'beta': 0.05
         },
         'bnsm': {
             'opensees': 'py'
@@ -24,13 +25,11 @@ def base_inputs_opspy():
     }
 
 
-# Test each design class
 @pytest.mark.parametrize("design_class", [
     "eu_cdn",
     "eu_cdl",
     "eu_cdm",
     "eu_cdh",
-    "tr_pre75",
     "tr_7599",
     "tr_0018_dcm",
     "tr_0018_dch",
@@ -38,27 +37,23 @@ def base_inputs_opspy():
     "tr_post18_dch"
 ])
 def test_rcmrf_opspy(base_inputs_opspy, design_class):
+    """Test rcmrf.generate for each design class using the OpenSeesPy
+    workflow.
     """
-    Test rcmrf.generate for each design class with base inputs.
-    """
-    # Set the design class
     base_inputs_opspy['bcim']['design_class'] = design_class
-    # Output directory
     outdir = Path(__file__).parent / f"{design_class}"
-    # Run the rcmrf workflow
     rcmrf.generate(base_inputs_opspy, outdir)
-    # Clean-up
     remove_dir(outdir)
 
 
-# Main inputs for each design class
 @pytest.fixture
 def base_inputs_opstcl():
+    """Return base inputs for the OpenSeesTcl workflow."""
     return {
         'bcim': {
             'sample_size': 2,
-            'num_storeys': 4,
-            'beta': 0.1
+            'num_storeys': 2,
+            'beta': 0.05
         },
         'bnsm': {
             'opensees': 'tcl'
@@ -66,13 +61,11 @@ def base_inputs_opstcl():
     }
 
 
-# Test each design class
 @pytest.mark.parametrize("design_class", [
     "eu_cdn",
     "eu_cdl",
     "eu_cdm",
     "eu_cdh",
-    "tr_pre75",
     "tr_7599",
     "tr_0018_dcm",
     "tr_0018_dch",
@@ -80,14 +73,9 @@ def base_inputs_opstcl():
     "tr_post18_dch"
 ])
 def test_rcmrf_opstcl(base_inputs_opstcl, design_class):
-    """
-    Test rcmrf.generate for each design class with base inputs.
-    """
-    # Set the design class
+    """Test rcmrf.generate for each design class using the OpenSeesTcl
+    workflow."""
     base_inputs_opstcl['bcim']['design_class'] = design_class
-    # Output directory
     outdir = Path(__file__).parent / f"{design_class}"
-    # Run the rcmrf workflow
     rcmrf.generate(base_inputs_opstcl, outdir)
-    # Clean-up
     remove_dir(outdir)

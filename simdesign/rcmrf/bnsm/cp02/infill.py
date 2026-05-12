@@ -1,0 +1,17 @@
+"""This module provides the infill class implementation for the ``CP02`` model
+in the BNSM layer.
+"""
+# Imports from bnsm base library
+from ..cp01.infill import Infill as InfillCP01
+
+
+class Infill(InfillCP01):
+    """Masonry infill wall implementation for the ``CP02`` model.
+
+    This class directly uses the behaviour defined in ``InfillCP01``.
+
+    See Also
+    --------
+    :class:`~InfillCP01`
+        CP01 Infill model definition used by this class.
+    """

@@ -1,5 +1,5 @@
-"""
-Pydantic models for defining loads in eu_cdl buildings.
+"""This module provides the class implementations representing loads for the
+``eu_cdl`` design class in the BDIM layer.
 """
 # Imports from installed packages
 import numpy as np
@@ -12,68 +12,45 @@ from ..baselib.loads import CombinationBase, LoadsDataBase, LoadsBase
 
 
 class Variable(VariableBase):
-    """
-    Model representing live loads (Q) for design class eu_cdl.
+    """Variable load (Q) model implementation for the ``eu_cdl`` design class.
 
-    Attributes
-    ----------
-    floor : float
-        Live load on the floor.
-    roof : float
-        Live load on the roof.
-    staircase : float
-        Live load on the staircase.
+    This class directly uses the behaviour defined in ``VariableBase``.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.VariableBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class Permanent(PermanentBase):
-    """
-    Model representing superimposed dead loads (G) for design class eu_cdl.
+    """Permanent load (G) model implementation for the ``eu_cdl`` design class.
 
-    Attributes
-    ----------
-    floor : float
-        Superimposed dead load on the floor.
-    roof : float
-        Superimposed dead load on the roof.
-    staircase : float
-        Superimposed dead load on the staircase.
-    infill : float
-        Superimposed dead load due to infill walls.
-    gamma_rc : float
-        Unit weight of reinforced concrete.
+    This class directly uses the behaviour defined in ``PermanentBase``.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.PermanentBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class Combination(CombinationBase):
-    """
-    Model representing a load combination for design class eu_cdl.
+    """Load combination model implementation for the ``eu_cdl`` design class.
 
-    This combination includes:
-    - Dead loads (G)
-    - Live loads (Q)
-    - Seismic loads (E+X, E-X, E+Y, E-Y)
+    This class directly uses the behaviour defined in ``CombinationBase``.
 
-    Attributes
-    ----------
-    tag : str
-        Tag identifying the load combination.
-    loads : Dict[Literal["G", "Q", "E+X", "E-X", "E+Y", "E-Y"], float]
-        Dictionary containing load tags and factors corresponding to
-        each load type in the load combination.
-    masses : Dict[Literal["G", "Q"], float]
-        Dictionary containing mass sources and factors used to compute
-        seismic loads considered in the load combination.
-        Default is None.
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.CombinationBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass
 
 
 class LoadsData(LoadsDataBase):
-    """
-    Model representing the format of loads data for design class eu_cdl.
+    """Loads data model implementation for the ``eu_cdl`` design class.
+
+    This class extends ``LoadsDataBase`` by narrowing the attribute types.
 
     Attributes
     ----------
@@ -83,77 +60,77 @@ class LoadsData(LoadsDataBase):
         Object representing permanent (dead) loads.
     combinations : List[Combination]
         List of load combination objects.
-    eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction, by default 0.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.LoadsDataBase`
+        Base class defining the core behaviour and configuration.
     """
     variable: Variable
-    """Object representing variable (live) loads."""
     permanent: Permanent
-    """Object representing permanent (dead) loads."""
     combinations: List[Combination]
-    """List of load combination objects."""
 
 
 class Loads(LoadsBase):
-    """Class for retrieving loads data from a json file
-    for design class eu_cdl.
+    """Loads implementation for the ``eu_cdl`` design class.
+
+    This class extends ``LoadsBase`` by narrowing the attribute types and
+    overriding :meth:`get_seismic_loads` to use uniform weight distribution.
 
     Attributes
     ----------
-    variable : VariableBase
+    variable : Variable
         Object representing variable (live) loads.
-    permanent : PermanentBase
+    permanent : Permanent
         Object representing permanent (dead) loads.
-    combinations : List[CombinationBase]
+    combinations : List[Combination]
         List of load combinations.
-    eccentricity : float
-        Accidental eccentricity [in %] needs to be considered in the
-        earthquake loading direction.
     _data_path : Path
         Path to the file containing loads data.
-    _data_model : LoadsData
-        Pydantic model used for loading data format.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.loads.LoadsBase`
+        Base class defining the core behaviour and configuration.
     """
     variable: Variable
-    """Object representing variable (live) loads."""
     permanent: Permanent
-    """Object representing permanent (dead) loads."""
     combinations: List[Combination]
-    """List of load combinations."""
     _data_path = Path(__file__).parent / 'data' / 'loads.json'
-    """Path to the file containing loads data."""
-    _data_model: Type[LoadsData]
-
-    def __init__(self) -> None:
-        """Initializes Loads object.
-        """
-        self._data_model = LoadsData
-        super().__init__()
+    _data_model: Type[LoadsData] = LoadsData
 
     def get_seismic_loads(self, **kwargs: float | np.ndarray
                           ) -> Tuple[np.float64, np.ndarray]:
-        """Calculate and return seismic loads (E).
+        """Calculate and return seismic loads.
+
+        Unlike :meth:`~bdim.baselib.loads.LoadsBase.get_seismic_loads`,
+        this implementation distributes forces proportionally to storey
+        weight alone, without height weighting. The ``heights`` parameter
+        is therefore not required and should not be passed.
 
         Parameters
         ----------
         **kwargs : dict[float | np.ndarray]
-            Additional keywoard arguments.
+            Keyword arguments consumed by this method:
+
             beta : float
-                Design lateral load factor (in g).
+                Design lateral load factor expressed as a fraction of
+                building weight.
             weights : np.ndarray
-                Array of weights.
+                Array of storey weights in kN.
 
         Returns
         -------
         Tuple[np.float64, np.ndarray]
-            Base shear and seismic forces acting at each mass.
+            Total base shear force (kN) and seismic forces acting at
+            each storey (kN), distributed proportionally to storey
+            weight. The forces array has the same shape as ``weights``.
 
-        Note
-        ----
-        **kwargs are used instead of keyword arguments, in order
-        to avoid overriting analysis.ElasticModel.run_seismic_load_cases
-        method.
+        Notes
+        -----
+        ``**kwargs`` are used instead of explicit keyword arguments in
+        order to satisfy the interface expected by
+        :meth:`~analysis.ElasticModel.run_seismic_load_cases`.
         """
         beta = kwargs['beta']
         weights = kwargs['weights']

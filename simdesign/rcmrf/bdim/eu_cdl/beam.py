@@ -1,19 +1,6 @@
+"""This module provides the beam class implementation for the ``eu_cdl``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdl beams.
-
-Notes
------
-Methodology follows the case of DCL1 (REBAP-83) beam design.
-Design based on working stress method.
-Material qualities are higher compared CDN.
-
-References
-----------
-RSCCS (1958) Regulamento de Segurança das Construções contra os Sismos.
-Decreto-Lei N.° 41658, Lisbon, Portugal.
-REBA (1967) Regulamento de Estruturas de Betão Armado. Lisbon, Portugal.
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -45,12 +32,30 @@ MODULAR_RATIO = 15
 
 
 class Beam(BeamBase):
-    """Beam object for design class: eu_cdl.
+    """Beam implementation for design class ``eu_cdl``.
+
+    This class extends ``BeamBase`` by narrowing the attribute types
+    and overriding design methods per REBA (1967).
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdl.materials.Steel
+        Steel material assigned to the beam.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdl.materials.Concrete
+        Concrete material assigned to the beam.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.beam.BeamBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    REBA (1967). Regulamento de Estruturas de Betão Armado.
+    Decreto N.° 47:723, Lisbon, Portugal.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     @property
     def fcd_eq(self) -> float:
@@ -73,9 +78,7 @@ class Beam(BeamBase):
         return self.steel.fsyd_eq * MPa
 
     def predesign_section_dimensions(self, slab_h: float) -> None:
-        """Does preliminary design of beam.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for beam section dimensions.
 
         Parameters
         ----------
@@ -84,11 +87,12 @@ class Beam(BeamBase):
 
         Notes
         -----
-        It is overwritten for eu_cdl design class with following changes:
-        - Allows different constants.
-        - It retrieves design concrete strength from concrete attributes.
-        - It uses a single expression for computing height to control emergent
-        beam deformations `def_h` under gravity loads.
+        This method overrides ``BeamBase.predesign_section_dimensions``
+        with the following changes:
+
+        - Uses a single expression for computing the height to control
+          emergent beam deformations under gravity loads, assuming
+          ``d' = 0.1h`` for the cover depth.
         """
         # Unit conversions
         Md = self.pre_Md * kN * m
@@ -139,7 +143,7 @@ class Beam(BeamBase):
         self.b = ceil(20 * self.b) / 20
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the beam section dimensions for design forces.
+        """Verify the beam section dimensions for design forces.
         """
         # Design strength mapper
         fcd_map = {'gravity': self.fcd,
@@ -177,20 +181,23 @@ class Beam(BeamBase):
             self.ok = False  # Not ok
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
         Notes
         -----
-        1. Top reinforcement is calculated as the maximum of required
-        reinforcement in tension for maximum of negative bending moments
-        and required reinforcement in compression for maximum of positive
-        bending moments.
-        2. Bottom reinforcement is calculated as the maximum of required
-        reinforcement in compression for maximum of negative bending moments
-        and required reinforcement in tension for maximum of positive
-        bending moments.
-        3. Required reinforcement is computed at different sections:
-        start, mid, end.
+        - Top reinforcement is calculated as the maximum of required
+          reinforcement in tension for maximum of negative bending moments
+          and required reinforcement in compression for maximum of positive
+          bending moments.
+
+        - Bottom reinforcement is calculated as the maximum of required
+          reinforcement in compression for maximum of negative bending moments
+          and required reinforcement in tension for maximum of positive
+          bending moments.
+
+        - Required reinforcement is computed at three different sections:
+          start, middle, end.rcement is computed at different sections:
+          start, mid, end.
 
         References
         ----------
@@ -280,19 +287,17 @@ class Beam(BeamBase):
             self.Asl_bot_req = np.maximum(self.Asl_bot_req, Asl_bot)
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
 
         Notes
         -----
-        1. Required reinforcement is computed at different sections:
-        start, mid, end.
+        Reinforcement is computed at three sections: start, mid, and end.
         """
         # Design strength mappers
         fsyd_map = {'gravity': self.fsyd,
                     'seismic': self.fsyd_eq}
         # Allowable shear stress that can be carried by the beam
-        tau_c = np.interp(self.concrete.fck_cube,
-                          FCK_CUBE_VECT, TAU_C_VECT)
+        tau_c = np.interp(self.concrete.fck_cube, FCK_CUBE_VECT, TAU_C_VECT)
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h

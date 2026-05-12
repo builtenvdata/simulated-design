@@ -1,9 +1,6 @@
+"""This module provides the Building Design Information Model (BDIM)
+implementation for the ``eu_cdl`` design class.
 """
-Specific routines for defining and designing eu_cdl buildings.
-
-Basic units are kN, m, sec
-"""
-
 # Imports from installed packages
 from typing import List, Type
 
@@ -18,6 +15,7 @@ from .quality import Quality
 from .rebars import Rebars
 from .slab import Slab
 from .stairs import Stairs
+from .infill import Infill
 
 # Imports from bdim base library
 from ..baselib.building import BuildingBase, TaxonomyData
@@ -27,48 +25,87 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: eu_cdl.
+    """BDIM implementation for design class ``eu_cdl``.
+
+    This class extends ``BuildingBase`` by narrowing the attribute types
+    to the ``eu_cdl`` implementations and overriding design class-specific
+    methods.
+
+    Attributes
+    ----------
+    beams : List[~simdesign.rcmrf.bdim.eu_cdl.beam.Beam]
+        List of beam instances.
+    columns : List[~simdesign.rcmrf.bdim.eu_cdl.column.Column]
+        List of column instances.
+    joints : List[~simdesign.rcmrf.bdim.eu_cdl.joint.Joint]
+        List of joint instances.
+    slabs : List[~simdesign.rcmrf.bdim.eu_cdl.slab.Slab]
+        List of slab instances.
+    stairs : List[~simdesign.rcmrf.bdim.eu_cdl.stairs.Stairs]
+        List of stairs instances.
+    infills : List[~simdesign.rcmrf.bdim.eu_cdl.infill.Infill]
+        List of infill wall instances.
+    steel : ~simdesign.rcmrf.bdim.eu_cdl.materials.Steel
+        Steel material instance used in the design of beams and columns.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdl.materials.Concrete
+        Concrete material instance used in the design of beams and columns.
+    loads : ~simdesign.rcmrf.bdim.eu_cdl.loads.Loads
+        Loads instance used to apply building loads.
+    materials : ~simdesign.rcmrf.bdim.eu_cdl.materials.Materials
+        Materials instance used to set building materials.
+    rebars : ~simdesign.rcmrf.bdim.eu_cdl.rebars.Rebars
+        Rebars instance used to determine reinforcement arrangement.
+    quality : ~simdesign.rcmrf.bdim.eu_cdl.quality.Quality
+        Quality instance used to adjust properties of structural elements.
+    COLUMN_UNIFORMIZATION_STEP : int
+        Step size for column section uniformisation across storeys. For
+        example, a value of 2 allows the section to vary every two storeys
+        from bottom to top.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.building.BuildingBase`
+        Base class defining the core behaviour and configuration.
+
+    Notes
+    -----
+    - Design follows allowable stress design and the stress-block method.
+    - Main reference building code is REBA-1967.
+    - Material strengths are higher compared to 'eu_cdn'.
+    - Basic units are kN, m, sec.
+    - Overrides :meth:`_set_maximum_column_dimensions` method to set
+      design-class specific maximum column dimensions.
+    - Overrides :meth:`_change_materials` method to use design-class
+      specific material change order.
+
+    References
+    ----------
+    REBA (1967). Regulamento de Estruturas de Betão Armado.
+    Decreto N.° 47:723, Lisbon, Portugal.
     """
     beams: List[Beam]
-    """List of beam instances."""
     columns: List[Column]
-    """List of column instances."""
     joints: List[Joint]
-    """List of joint instances."""
     slabs: List[Slab]
-    """List of slab instances."""
     stairs: List[Stairs]
-    """List of stairs instances."""
+    infills: List[Infill]
     steel: Steel
-    """Steel material instance considered in design of beams and columns."""
     concrete: Concrete
-    """Concrete material instance considered in design of beams and columns."""
     loads: Loads
-    """Loads instance used to apply building loads."""
     materials: Materials
-    """Materials instance used to set building materials."""
     rebars: Rebars
-    """Rebars instance used to determine reinforcement arrangement."""
     quality: Quality
-    """Quality instance used to adjust properties of structural elements."""
     ColumnClass: Type[Column]
     BeamClass: Type[Beam]
     JointClass: Type[Joint]
     SlabClass: Type[Slab]
     StairsClass: Type[Stairs]
+    InfillClass: Type[Infill]
     ElasticModelClass: Type[ElasticModel]
     COLUMN_UNIFORMIZATION_STEP = 2
-    """Step size considered for section uniformization in column. For
-    example, if equals to 2, the same column section might be varied at
-    every two storeys from bottom to top. If None, a constant section is
-    used at all storeys.
-
-    If step size is only 1 storey lower than total number of stories in the
-    building a constant section is used for column along the building.
-    """
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
-        """Initializes building object.
+        """Initialize the Building object.
 
         Parameters
         ----------
@@ -81,6 +118,7 @@ class Building(BuildingBase):
         self.JointClass = Joint
         self.SlabClass = Slab
         self.StairsClass = Stairs
+        self.InfillClass = Infill
         self.ElasticModelClass = ElasticModel
         # Set the available materials
         self.materials = Materials()
@@ -96,7 +134,7 @@ class Building(BuildingBase):
         self._set_maximum_column_dimensions()
 
     def _set_maximum_column_dimensions(self) -> None:
-        """Sets the maximum column dimensions based on number of storeys
+        """Set the maximum column dimensions based on number of storeys
         and seismic input.
 
         Notes
@@ -140,11 +178,13 @@ class Building(BuildingBase):
         they were updated following a specific order based on the current
         concrete or steel material.
         """
-        if self.steel.grade == 'S240':
+        if self.steel.grade == 'A24':
             self.steel = self.next_steel
-        elif self.concrete.grade == 'C14':
+        elif self.concrete.grade in ['B180', 'B225']:
             self.concrete = self.next_concrete
-        elif self.concrete.grade == 'C19':
+        elif self.steel.grade == 'A40':
+            self.steel = self.next_steel
+        elif self.next_concrete:
             self.concrete = self.next_concrete
-        elif self.steel.grade == 'S400':
+        elif self.next_steel:
             self.steel = self.next_steel

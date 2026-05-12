@@ -56,9 +56,9 @@ regular_frame.add_new_line([point1, point2])
 regular_frame.set_continuous_stairs_rectangles(
     stairs_bay_loc, stairs_width_x, stairs_width_y)
 # Add the new lines and points for stairs
-regular_frame.add_new_lines_and_points_for_stairs()
+regular_frame.add_new_elements_for_stairs(infills=False)
 # Modifying a floor height (ground floors are usually modified)
 regular_frame.modify_floor_height(floor_id, h_floor)
 regular_frame.show_mesh()
-path = Path(__file__).parents[1] / 'tmp/complex-geometry.html'
+path = Path(__file__).parents[1] / "tmp/complex-geometry.html"
 regular_frame.export_mesh_to_html(path=str(path))

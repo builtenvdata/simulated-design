@@ -1,3 +1,4 @@
+"""Tests for BCIM parametrization data files (JSON and CSV formats)."""
 import json
 from pathlib import Path
 from pydantic import ValidationError
@@ -5,7 +6,7 @@ import pytest
 import pandas as pd
 import sys
 
-# Add the src directory to sys.path
+# Add the project root to sys.path
 sys.path.append(str(Path(__file__).parents[1]))
 
 from simdesign.rcmrf.bcim.parametrization import InputData  # noqa
@@ -14,7 +15,7 @@ from simdesign.rcmrf.bcim.parametrization import ArchetypeData  # noqa
 
 @pytest.fixture
 def all_json_data() -> dict:
-    """Loads JSON data from the all parameters files and returns it."""
+    """Load JSON data from all parameter files and return it as a dict."""
     data_path = Path(__file__).parents[1]
     data_path = data_path / 'simdesign' / 'rcmrf' / 'bcim' / 'data'
     json_files = list(data_path.glob('*.json'))
@@ -26,8 +27,7 @@ def all_json_data() -> dict:
 
 
 def test_json_format(all_json_data: dict) -> None:
-    """Checks if JSON files conform to the expected format defined by the
-    `DesignClassParameters` model."""
+    """Check that all JSON parameter files conform to the InputData schema."""
     for filename, json_data in all_json_data.items():
         try:
             InputData(**json_data)
@@ -37,7 +37,7 @@ def test_json_format(all_json_data: dict) -> None:
 
 @pytest.fixture
 def all_csv_data() -> pd.DataFrame:
-    """Loads csv data from layouts.csv file and returns it."""
+    """Load CSV data from layouts.csv and return it as a DataFrame."""
     data_path = Path(__file__).parents[1]
     data_path = data_path / 'simdesign' / 'rcmrf' / 'bcim' / 'data'
     file_path = data_path / 'layouts.csv'
@@ -46,8 +46,8 @@ def all_csv_data() -> pd.DataFrame:
 
 
 def test_csv_format(all_csv_data: pd.DataFrame) -> None:
-    """Checks if each row in layouts.csv conform to the expected format
-    defined by the `ArchetypeData` model."""
+    """Check that each row in layouts.csv conforms to the ArchetypeData schema.
+    """
     for _, row in all_csv_data.iterrows():
         try:
             ArchetypeData(**row.to_dict())

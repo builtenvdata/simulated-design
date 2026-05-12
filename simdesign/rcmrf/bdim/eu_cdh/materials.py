@@ -1,10 +1,9 @@
+"""This module provides the class implementations representing materials for
+the ``eu_cdh`` design class in the BDIM layer.
 """
-Pydantic models for defining materials in eu_cdh buildings.
-"""
-
 # Imports from installed packages
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Type
 
 # Imports from bdim base library
 from ..baselib.materials import (ConcreteBase, SteelBase,
@@ -12,123 +11,103 @@ from ..baselib.materials import (ConcreteBase, SteelBase,
 
 
 class Steel(SteelBase):
-    """Pydantic model representing steel materials for design class eu_cdh.
+    """Steel model implementation for design class ``eu_cdh``.
+
+    This class extends ``SteelBase`` by overriding partial factor attribute.
 
     Attributes
     ----------
-    grade : str
-        Grade of the steel material.
-    fsyk : float
-        Characteristic value of steel yield strength (in MPa).
-    fsyd: float
-        Design value of steel yield strength (in MPa).
-    fsym : float
-        Mean value of steel yield strength (in MPa).
-    E : float
-        Steel elastic youngs' modulus (in base units, kPa),
-        by default 200 * GPa.
     PARTIAL_FACTOR : float
         Partial factor for steel, by default 1.15.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.materials.SteelBase`
+        Base class defining the core behaviour and configuration.
     """
     PARTIAL_FACTOR: float = 1.15
-    """Partial factor for steel, 1.15."""
 
 
 class Concrete(ConcreteBase):
-    """Pydantic model representing concrete materials for design class eu_cdh.
+    """Concrete model implementation for design class ``eu_cdh``.
+
+    This class extends ``ConcreteBase`` by adding the cubic specimen
+    compressive strength attribute and overriding partial factor attribute.
 
     Attributes
     ----------
-    grade : str
-        Grade of the concrete material.
-    fck : float
-        Characteristic value of the compressive strength of concrete
-        cylinders (in MPa).
     fck_cube : float
         Characteristic value of the compressive strength of concrete cubes
-        (in MPa).
-    fcd : float
-        Design value of concrete compressive strength (in MPa).
-    fcm : float
-        Mean value of the compressive strength of concrete cylinders (in MPa).
-    E : float
-        Concrete elastic youngs' modulus (in base units, kPa).
-    G : float
-        Concrete elastic shear modulus (in base units, kPa).
+        (MPa).
     PARTIAL_FACTOR : float
         Partial factor for concrete, by default 1.5.
-    POISSONS_RATIO : float
-        Poisson's ratio for concrete, by default 0.2.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.materials.ConcreteBase`
+        Base class defining the core behaviour and configuration.
     """
     fck_cube: float
-    """Characteristic value of the compressive strength of concrete
-    cylinders (in MPa)."""
     PARTIAL_FACTOR: float = 1.5
-    """Partial factor for concrete, 1.5."""
 
 
 class MaterialData(MaterialDataBase):
-    """Pydantic model representing materials data.
+    """Materials data model implementation for design class ``eu_cdh``.
+
+    This class extends ``MaterialDataBase`` by narrowing the attribute types.
 
     Attributes
     ----------
-    concrete : List[ConcreteBase]
+    concrete : List[Concrete]
         List of concrete materials.
-    steel : steel: List[SteelBase]
+    steel : List[Steel]
         List of steel materials.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.materials.MaterialDataBase`
+        Base class defining the core behaviour and configuration.
     """
     concrete: List[Concrete]
-    """List of concrete materials."""
     steel: List[Steel]
-    """List of steel materials."""
 
 
 class Materials(MaterialsBase):
-    """Collection of steel and concrete materials defined for
-    design class eu_cdh.
+    """Materials implementation for design class ``eu_cdh``.
+
+    This class extends ``MaterialsBase`` by narrowing the attribute types and
+    exposing public accessors for retrieving concrete and steel material
+    instances by grade.
 
     Attributes
     ----------
-    _data_blueprint = MaterialData
-        Subclass representing the blueprint for materials data.
-    _data_path: Path
-        Path to the json file containing material data.
     concrete : List[Concrete]
         List of concrete material instances.
     steel : List[Steel]
         List of steel material instances.
+    _data_path : Path
+        Path to the JSON file containing material data.
 
-    Methods
-    ----------
-    __init__()
-        Initialize a new instance of Materials.
-    get_steel(grade: str) -> Optional[Steel]
-        Find and return the steel material instance with the specified grade.
-    get_concrete(grade: str) -> Optional[Concrete]
-        Find and return the concrete material instance with the specified
-        grade.
-    get_next_concrete(concrete: Concrete) -> Concrete
-        Returns the concrete material coming after the given.
-    get_next_steel(steel: Steel) -> Steel
-        Returns the concrete material coming after the given.
+    See Also
+    --------
+    :class:`~bdim.baselib.materials.MaterialsBase`
+        Base class defining the core behaviour and configuration.
     """
-    _data_blueprint: MaterialData = MaterialData
-    """Subclass representing the blueprint for materials data."""
-    _data_path = Path(__file__).parent / 'data' / 'materials.json'
-    """Path to the json file containing material data."""
     concrete: List[Concrete]
-    """List of concrete material instances."""
     steel: List[Steel]
-    """List of steel material instances."""
+    _data_path = Path(__file__).parent / 'data' / 'materials.json'
+    _data_blueprint: Type[MaterialData] = MaterialData
 
     def get_steel(self, grade: str) -> Optional[Steel]:
-        """
-        Find and return the steel material instance with the specified grade.
+        """Find and return the steel material instance with the specified
+        grade.
+
+        Delegates to :meth:`~bdim.baselib.materials.MaterialsBase._get_steel`.
 
         Parameters
         ----------
         grade : str
-            grade or identifier of the steel material to find.
+            Grade or identifier of the steel material to find.
 
         Returns
         -------
@@ -139,14 +118,16 @@ class Materials(MaterialsBase):
         return super()._get_steel(grade)
 
     def get_concrete(self, grade: str) -> Optional[Concrete]:
-        """
-        Find and return the concrete material instance with the specified
+        """Find and return the concrete material instance with the specified
         grade.
+
+        Delegates to
+        :meth:`~bdim.baselib.materials.MaterialsBase._get_concrete`.
 
         Parameters
         ----------
         grade : str
-            grade or identifier of the concrete material to find.
+            Grade or identifier of the concrete material to find.
 
         Returns
         -------
@@ -157,12 +138,14 @@ class Materials(MaterialsBase):
         return super()._get_concrete(grade)
 
     def get_next_concrete(self, concrete: Concrete) -> Concrete:
-        """
-        Returns the concrete material coming after the given.
+        """Return the concrete material coming after the given instance.
+
+        Delegates to
+        :meth:`~bdim.baselib.materials.MaterialsBase._get_next_concrete`.
 
         Parameters
         ----------
-        concrete : Concrete
+        concrete : ~simdesign.rcmrf.bdim.eu_cdh.materials.Concrete
             Current concrete material.
 
         Returns
@@ -174,12 +157,14 @@ class Materials(MaterialsBase):
         return super()._get_next_concrete(concrete)
 
     def get_next_steel(self, steel: Steel) -> Steel:
-        """
-        Returns the concrete material coming after the given.
+        """Return the steel material coming after the given instance.
+
+        Delegates to
+        :meth:`~bdim.baselib.materials.MaterialsBase._get_next_steel`.
 
         Parameters
         ----------
-        steel : Steel
+        steel : ~simdesign.rcmrf.bdim.eu_cdh.materials.Steel
             Current steel material.
 
         Returns

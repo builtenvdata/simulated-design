@@ -1,12 +1,17 @@
+"""This module provides the slab class implementation for the ``eu_cdl``
+design class in the BDIM layer.
 """
-Specific routines for defining eu_cdl slabs.
-"""
-
 # Imports from bdim base library
 from ..baselib.slab import SlabBase
 
 
 class Slab(SlabBase):
-    """Slab object for design class: eu_cdl.
+    """Slab implementation for the ``eu_cdl`` design class.
+
+    This class directly uses the behaviour defined in ``SlabBase``.
+
+    See Also
+    --------
+    :class:`~SlabBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass

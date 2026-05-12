@@ -1,21 +1,6 @@
+"""This module provides the column class implementation for the ``eu_cdh``
+design class in the BDIM layer.
 """
-Specific routines for defining and designing eu_cdh columns.
-
-Notes
------
-Design based on limit state design.
-Material qualities are higher compared CDM.
-
-References
-----------
-CEN (2004) Eurocode 2: Design of concrete structures - Part 1-1:
-General rules and rules for buildings. Brussels, Belgium
-CEN (2004) Eurocode 8: Design of structures for earthquake resistance - Part 1:
-General rules, seismic actions and rules for buildings. Brussels, Belgium
-d'Arga e Lima, J., Monteiro V, Mun M (2005) Betão armado: esforços normais e
-de flexão: REBAP-83. Laboratório Nacional de Engenharia Civil, Lisboa.
-"""
-
 # Imports from installed packages
 from math import ceil
 import numpy as np
@@ -32,10 +17,10 @@ from ....utils.units import MPa, m
 # Constants
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
-MAX_NIU = 0.55
+MAX_NIU = 0.65
 """Maximum allowed value of axial load ratio.
-0.65 according to Eurocode 8 - Part 1: 5.4.3.2.1(3)P
-0.55 according to Eurocode 8 - Part 1: 5.5.3.2.1(3)P
+For DCM columns, 0.65 according to Eurocode 8 - Part 1: 5.4.3.2.1(3)P
+For DCH columns, 0.55 according to Eurocode 8 - Part 1: 5.5.3.2.1(3)P
 """
 BETA_FC_VECTOR = [1.00, 0.93, 0.88, 0.88, 0.93]
 """Stress block coefficients for different axial load ratio (in REBAP 1983)."""
@@ -44,12 +29,40 @@ NIU_VECTOR = [0.40, 0.50, 0.60, 0.70, 0.85]
 
 
 class Column(ColumnBase):
-    """Column object for design class: eu_cdh.
+    """Column implementation for design class ``eu_cdh``.
+
+    This class extends ``ColumnBase`` by narrowing the attribute types
+    and overriding design methods per Eurocodes 2 and 8.
+
+    Attributes
+    ----------
+    steel : ~simdesign.rcmrf.bdim.eu_cdh.materials.Steel
+        Steel material assigned to the column.
+    concrete : ~simdesign.rcmrf.bdim.eu_cdh.materials.Concrete
+        Concrete material assigned to the column.
+
+    See Also
+    --------
+    :class:`~bdim.baselib.column.ColumnBase`
+        Base class defining the core behaviour and configuration.
+
+    References
+    ----------
+    Comité Européen de Normalisation, CEN (2004). Eurocode 2: Design of
+    Concrete Structures — Part 1-1: General Rules and Rules for Buildings.
+    European Committee for Standardization, Brussels, Belgium.
+
+    Comité Européen de Normalisation, CEN (2004). Eurocode 8: Design of
+    Structures for Earthquake Resistance — Part 1: General Rules,
+    Seismic Actions and Rules for Buildings.
+    European Committee for Standardization, Brussels, Belgium.
+
+    d'Arga e Lima, J., Monteiro, V., Mun, M. (2005).
+    Betão armado: esforços normais e de flexão: REBAP-83.
+    Laboratório Nacional de Engenharia Civil, Lisboa.
     """
     steel: Steel
-    """Steel material."""
     concrete: Concrete
-    """Concrete material."""
 
     @property
     def Ix_eff(self) -> float:
@@ -59,7 +72,7 @@ class Column(ColumnBase):
         float
             Effective column moment of inertia around x-axis.
         """
-        return 0.5 * self.Ix
+        return 0.5 * self.Ix  # EN 1998-1:2004 4.3.1(7)
 
     @property
     def Iy_eff(self) -> float:
@@ -69,7 +82,7 @@ class Column(ColumnBase):
         float
             Effective column moment of inertia around y-axis.
         """
-        return 0.5 * self.Iy
+        return 0.5 * self.Iy  # EN 1998-1:2004 4.3.1(7)
 
     @property
     def rhol_max(self) -> float:
@@ -78,12 +91,8 @@ class Column(ColumnBase):
         -------
         float
             Maximum longitudinal reinforcement ratio.
-
-        References
-        ----------
-        EN 1992-1-1:2004 9.5.2(3)
         """
-        return 0.04
+        return 0.04  # EN 1992-1-1:2004 9.5.2(3)
 
     @property
     def rhol_min(self) -> float:
@@ -127,16 +136,15 @@ class Column(ColumnBase):
         return 0.08 * ((self.fck / MPa) ** 0.5) / (self.fsyk / MPa)
 
     def predesign_section_dimensions(self) -> None:
-        """Does preliminary design of column.
-
-        This method makes initial guess for section dimensions.
+        """Make an initial guess for column section dimensions.
 
         Notes
         -----
-        It is overwritten for eu_cdh design class with following changes:
-        - It retrieves design concrete strength from concrete attributes.
-        - Eurocode enforces checks for axial load ratio which was missing in
-        the original code. This, is now added.
+        This method overrides ``ColumnBase.predesign_section_dimensions``
+        with the following changes:
+
+        - Minimum cross section area is calculated based on axial load ratio
+          limit from EC8.
         """
         # Initial guess for column concrete area
         min_area = self.pre_Nd / (self.fcd * MAX_NIU)
@@ -156,15 +164,13 @@ class Column(ColumnBase):
         self.by = max(ceil(20 * self.by) / 20, self.min_b)
 
     def verify_section_adequacy(self) -> None:
-        """Verifies the adequacy of section dimensions for design forces.
+        """Verify the adequacy of section dimensions for design forces.
 
         Notes
         -----
-        - Eurocode enforces checks for axial load ratio which was missing in
-        the original code. This is now added.
         - In accordance with EN 1992-1-1:2004 5.4.3.2.1(2) biaxial bending
-        is taken into account by decreasing the uniaxial moment of resistance
-        or increasing the demand by 30%.
+          is taken into account by decreasing the uniaxial moment of resistance
+          by 30%.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
@@ -245,13 +251,13 @@ class Column(ColumnBase):
             self.ok_y = False
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required longitudinal reinforcement for design forces.
+        """Compute the required longitudinal reinforcement for design forces.
 
         Notes
         -----
         - In accordance with EN 1992-1-1:2004 5.4.3.2.1(2) biaxial bending
-        is taken into account by decreasing the uniaxial moment of resistance
-        or increasing the demand by 30%.
+          is taken into account by decreasing the uniaxial moment of resistance
+          by 30%.
         """
         # Initial longitudinal reinforcement area
         Aslx_req = 2 * np.pi * 0.25 * ((0.012 * m)**2)  # Minimum reinforcement
@@ -307,7 +313,7 @@ class Column(ColumnBase):
         self.Asly_req = Asly_req
 
     def compute_required_transverse_reinforcement(self) -> None:
-        """Computes the required transverse reinforcement for design forces.
+        """Compute the required transverse reinforcement for design forces.
         """
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
         dx = 0.9 * self.bx
@@ -334,7 +340,7 @@ class Column(ColumnBase):
         self.Ashy_sbh_req = max(Ashy_sh_min, Ashy_sh)
 
     def check_local_ductility_requirement(self) -> None:
-        """Checks local ductility requirement for column.
+        """Check local ductility requirement for column.
 
         TODO
         ----

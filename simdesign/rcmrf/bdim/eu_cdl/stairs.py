@@ -1,12 +1,17 @@
+"""This module provides the stairs class implementation for the ``eu_cdl``
+design class in the BDIM layer.
 """
-Specific routines for defining eu_cdl stairs.
-"""
-
 # Imports from bdim base library
 from ..baselib.stairs import StairsBase
 
 
 class Stairs(StairsBase):
-    """Stairs object for design class: eu_cdl.
+    """Stairs implementation for the ``eu_cdl`` design class.
+
+    This class directly uses the behaviour defined in ``StairsBase``.
+
+    See Also
+    --------
+    :class:`~StairsBase`
+        Base class defining the core behaviour and configuration.
     """
-    pass

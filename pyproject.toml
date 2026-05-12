@@ -9,7 +9,7 @@ authors = [
 readme = "docs/README.md"
 license = "AGPL-3.0-or-later"
 classifiers = [
-     "Development Status :: 4 - Beta",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
     "Programming Language :: Python :: 3",

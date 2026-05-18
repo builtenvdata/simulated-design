@@ -613,13 +613,15 @@ class BuildingBase(ABC):
         ok : int
             Final analysis return code.
         """
-        # Check if capacity design is followed for shear
-        if self.design.OVERSTRENGTH_FACTOR_COLUMN_SHEAR:
-            capacity_design = True
-        else:
-            capacity_design = False
-        # Check if the fiber sections are being used or not
-        fiber_sections = 'dp03' in self.__module__ or 'dp04' in self.__module__
+        # # Check if capacity design is followed for shear
+        # if self.design.OVERSTRENGTH_FACTOR_COLUMN_SHEAR:
+        #     capacity_design = True
+        # else:
+        #     capacity_design = False
+        # # Check if the fiber sections are being used or not
+        # fiber_sections = (
+        #     'dp03' in self.__module__ or 'dp04' in self.__module__
+        # )
 
         # Analysis direction
         direction = 'x' if ctrl_dof == 1 else 'y'
@@ -682,6 +684,7 @@ class BuildingBase(ABC):
         ops.system('UmfPack')
         ops.numberer('RCM')
         ops.constraints('Transformation')
+        # ops.constraints('Penalty', 1e12, 1e12)
         ops.test('EnergyIncr', tol_init, iter_init)
         ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
         ops.algorithm('Newton', '-initialThenCurrent')
@@ -728,15 +731,11 @@ class BuildingBase(ABC):
             # If still failing, relax tolerance
             if ok != 0:  # Increase tolerance by factor of 10
                 ok = self._set_nspa_algorithm(
-                    10 * tol_init, ctrl_node, ctrl_dof, dincr, iter=200,
+                    10 * tol_init, ctrl_node, ctrl_dof, dincr, iter=100,
                 )
             if ok != 0:  # increase tolerance by factor of 100
                 ok = self._set_nspa_algorithm(
                     100 * tol_init, ctrl_node, ctrl_dof, dincr, iter=200
-                )
-            if ok != 0:  # increase tolerance by factor of 100
-                ok = self._set_nspa_algorithm(
-                    1000 * tol_init, ctrl_node, ctrl_dof, dincr, iter=200
                 )
             # Get the base shear force
             ops.reactions()
@@ -751,23 +750,23 @@ class BuildingBase(ABC):
                     current_base_shear < shear_lim and
                     current_base_shear >= 0.6 * max(base_shear))
 
-            # Update the flag based on slope
-            if (
-                len(base_shear) > 1
-                and ok == 0
-                and not capacity_design  # This issue will not occur
-                and not fiber_sections  # This issue will not occur
-            ):
-                dV_cur = current_base_shear - base_shear[-1]
-                dU_cur = current_ctrl_disp - ctrl_disp[-1]
-                dV_prev = base_shear[-1] - base_shear[-2]
-                dU_prev = ctrl_disp[-1] - ctrl_disp[-2]
+            # # Update the flag based on slope
+            # if (
+            #     len(base_shear) > 1
+            #     and ok == 0
+            #     and not capacity_design  # This issue will not occur
+            #     and not fiber_sections  # This issue will not occur
+            # ):
+            #     dV_cur = current_base_shear - base_shear[-1]
+            #     dU_cur = current_ctrl_disp - ctrl_disp[-1]
+            #     dV_prev = base_shear[-1] - base_shear[-2]
+            #     dU_prev = ctrl_disp[-1] - ctrl_disp[-2]
 
-                if dV_cur > 0:
-                    slope_cur = abs(dV_cur / dU_cur)
-                    slope_prev = abs(dV_prev / dU_prev)
-                    # Slope should generally decrease for increasing shear
-                    cont = (slope_cur < 2 * slope_prev) and cont
+            #     if dV_cur > 0:
+            #         slope_cur = abs(dV_cur / dU_cur)
+            #         slope_prev = abs(dV_prev / dU_prev)
+            #         # Slope should generally decrease for increasing shear
+            #         cont = (slope_cur < 2 * slope_prev) and cont
 
             # Append the results
             if ok == 0 and cont:
@@ -801,7 +800,7 @@ class BuildingBase(ABC):
 
     def _set_nspa_algorithm(
         self, tol: float, ctrl_node: int, ctrl_dof: int, dincr: float,
-        iter: int = 100
+        iter: int = None
     ) -> None:
         """Sets the solution algorithm for NSPA in ops domain.
 
@@ -824,24 +823,29 @@ class BuildingBase(ABC):
         int
             Result of the new analysis step in OpenSees.
         """
-        # Set testing and control procedures
-        ops.test('NormDispIncr', tol, iter)
+        # Per-algorithm iteration budgets
+        iter_krylov = iter if iter else 50
+        iter_ls = iter if iter else 50
+        iter_bfgs = iter if iter else 100
+
+        # 1. KrylovNewton
+        ops.test('NormDispIncr', tol, iter_krylov)
         ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
-        # Try KrylovNewton
         ops.algorithm('KrylovNewton')
         ok = ops.analyze(1)
-        # Try NewtonLineSearch algorithm
-        if ok != 0:
+
+        # 2. NewtonLineSearch
+        if ok != 0 and iter_ls >= 50:
+            ops.test('NormDispIncr', tol, iter_ls)
             ops.algorithm('NewtonLineSearch', '-InitialInterpolated', 0.8)
             ok = ops.analyze(1)
-        # Try Broyden algorithm
-        if ok != 0:
-            ops.algorithm('Broyden', 50)
-            ok = ops.analyze(1)
-        # Try Broyden–Fletcher–Goldfarb–Shanno (BFGS) algorithm
-        if ok != 0:
+
+        # 3. BFGS
+        if ok != 0 and iter_bfgs >= 100:
+            ops.test('NormDispIncr', tol, iter_bfgs)
             ops.algorithm('BFGS')
             ok = ops.analyze(1)
+
         # Return the analysis result
         return ok
 
@@ -1681,10 +1685,6 @@ class BuildingBase(ABC):
         content.append("    ops.algorithm('NewtonLineSearch', "
                        "'-InitialInterpolated', 0.8)")
         content.append("    ok = ops.analyze(1)")
-        content.append("# Try Broyden algorithm")
-        content.append("if ok != 0:")
-        content.append("    ops.algorithm('Broyden', 50)")
-        content.append("    ok = ops.analyze(1)")
         content.append(
             "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm"
         )
@@ -2197,7 +2197,7 @@ class BuildingBase(ABC):
         content.append("wipeAnalysis")
         content.append("system UmfPack")
         content.append("numberer RCM")
-        content.append("constraints Penalty 1.0e12 1.0e12")
+        content.append("constraints Transformation")
         content.append("test EnergyIncr $tol_init $iter_init")
         content.append("integrator DisplacementControl $ctrl_node $ctrl_dof "
                        "$dincr")
@@ -2334,11 +2334,6 @@ class BuildingBase(ABC):
             "# Try NewtonLineSearch algorithm",
             "if { $ok != 0 } {",
             "    algorithm NewtonLineSearch -InitialInterpolated 0.8",
-            "    set ok [analyze 1]",
-            "}",
-            "# Try Broyden algorithm",
-            "if { $ok != 0 } {",
-            "    algorithm Broyden 50",
             "    set ok [analyze 1]",
             "}",
             "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm",

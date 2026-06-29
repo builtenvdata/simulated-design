@@ -641,6 +641,7 @@ def _match_short_to_long_by_sampling(
     The longer list is considered the "reference" and is not changed. The
     returned list has the same length as `short_list`, but its values are
     adjusted so that:
+
     - the first and last values match the first/last of `long_list`
     - interior values are sampled from the interior of `long_list`, with
       indices spread evenly in index-space

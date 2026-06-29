@@ -1655,8 +1655,8 @@ class BuildingBase(ABC):
 
         1. Perform section adequacy checks (e.g., max. normalized moment).
         2. If the section is adequate for given design forces,
-        compute required longitudinal reinforcement area. Then,
-        find the rebar solution to meet detailing requirements and validate.
+           compute required longitudinal reinforcement area. Then,
+           find the rebar solution to meet detailing requirements and validate.
         """
         # STAGE 1: Section adequacy check for design forces.
         self._validate_beam_section_dimensions()
@@ -1987,10 +1987,10 @@ class BuildingBase(ABC):
 
         1. Check if beam and column flexure designs are ok, if ok continue.
         2. Add capacity design shear forces to the design forces list. Then,
-        perform section adequacy checks (e.g., checks shear stress).
-        If beam sections are ok, continue.
+           perform section adequacy checks (e.g., checks shear stress).
+           If beam sections are ok, continue.
         3. Compute required shear reinforcement (area / spacing). Then,
-        find the rebar solution to meet detailing requirements and validate.
+           find the rebar solution to meet detailing requirements and validate.
         """
         # STAGE 1: Check beam and column flexure designs.
         if self.beams_fail or self.columns_fail:
@@ -2049,10 +2049,10 @@ class BuildingBase(ABC):
 
         1. Check if beam flexure designs are ok. If beams are ok, continue.
         2. Add capacity design moments to the design forces list. Then,
-        perform section adequacy checks (e.g., checks shear stress).
-        If column sections are ok, continue.
+           perform section adequacy checks (e.g., checks shear stress).
+           If column sections are ok, continue.
         3. Compute required longitudinal reinforcement area. Then,
-        find the rebar solution to meet detailing requirements and validate.
+           find the rebar solution to meet detailing requirements and validate.
         """
         # STAGE 1: Check beam flexure designs
         if self.beams_fail:  # Beam sections are not verified.
@@ -2317,10 +2317,10 @@ class BuildingBase(ABC):
 
         1. Check if beam and column flexure designs are ok, if ok continue.
         2. Add capacity design shear forces to the design forces list. Then,
-        perform section adequacy checks (e.g., checks shear stress).
-        If column sections are ok, continue.
+           perform section adequacy checks (e.g., checks shear stress).
+           If column sections are ok, continue.
         3. Compute required shear reinforcement (area / spacing). Then,
-        find the rebar solution to meet detailing requirements and validate.
+           find the rebar solution to meet detailing requirements and validate.
         """
 
         # STAGE 1: Check beam designs and column flexure designs

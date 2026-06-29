@@ -32,12 +32,8 @@ Model Selection
 
 The model identifier selects one of several pre-calibrated nonlinear modelling
 strategies, all of which build on a shared base library (``bnsm.baselib``)
-that provides the common element-level formulation described below.
-
-Common foundation (``bnsm.baselib``)
-""""""""""""""""""""""""""""""""""""
-
-Every model inherits the same default treatment for the following components:
+that provides the common element-level formulation. In particular, every model
+inherits the same default treatment for the following components:
 
 - **Beams** are modelled with force-based beam-column elements
   (``forceBeamColumn``) using a ``HingeRadau`` plastic-hinge integration scheme.
@@ -196,8 +192,8 @@ Pushover Analysis Parameters
    First displacement increment applied at the control node during pushover
    analysis (in metres).
 
-Modelling Options
-^^^^^^^^^^^^^^^^^
+Modelling Settings
+^^^^^^^^^^^^^^^^^^
 
 .. note::
 

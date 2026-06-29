@@ -610,12 +610,13 @@ class GeometryBase(ABC):
 
     @property
     def points_at_mid_floor_levels(self) -> List[Point]:
-        """End-points of all mid-storey staircase beams (``stairs_lines_x1``).
+        """End-points of all mid-storey staircase lines
+        (:attr:`stairs_lines_x1`).
 
         Returns
         -------
         List[Point]
-           Points at mid floor levels (points of stairs_lines_x1).
+           Points at mid floor levels.
         """
         mid_floor_points = []
         for line in self.stairs_lines_x1:

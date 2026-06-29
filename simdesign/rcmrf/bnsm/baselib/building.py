@@ -2452,6 +2452,7 @@ class BuildingBase(ABC):
     def plot_mode_shape(
         self, mode_number: int = 1, scale: float = 100, line_width: float = 3,
         contour: Optional[Literal['x', 'y', 'z']] = None,
+        set_view: Literal['xy', 'yz', 'xz', '3D'] = '3D',
         directory: Optional[str | Path] = None, show: bool = True
     ) -> None:
         """
@@ -2472,6 +2473,8 @@ class BuildingBase(ABC):
         contour : Literal['x', 'y', 'z'] | None, optional
             Contours of displacement in x, y, or z.
             By default None.
+        set_view : Literal['xy', 'yz', 'xz', '3D'], optional
+            Camera view plane. By default '3D' (isometric).
         directory : str | Path | None, optional
             Directory to save an image of the model. If None, the image will
             not be saved. By default None.
@@ -2491,5 +2494,5 @@ class BuildingBase(ABC):
         # Plot the mode shape
         pl.plot_mode_shape(
             mode_number=mode_number, scale=scale, line_width=line_width,
-            contour=contour, filename=filename, show=show
+            contour=contour, set_view=set_view, filename=filename, show=show
         )

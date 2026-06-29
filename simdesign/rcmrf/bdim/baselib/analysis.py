@@ -184,7 +184,9 @@ class ElasticModelBase(ABC):
         lowercase (x, y, z) denotes local principal axes.
 
         Section view of beams along X direction:
+
         .. code-block:: text
+
             Z (3)
             |__Y (2)
                 --------------    ----
@@ -206,7 +208,9 @@ class ElasticModelBase(ABC):
                 np.allclose(vz, np.cross(vx,vy))
 
         Section view of beams along Y direction:
+
         .. code-block:: text
+
             Z (3)
             |__X (1)
                 --------------    ----
@@ -228,7 +232,9 @@ class ElasticModelBase(ABC):
                 np.allclose(vz, np.cross(vx,vy))
 
         Section view of columns:
+
         .. code-block:: text
+
             Y (2)
             |__X (1)
                 --------------    ----

@@ -1109,7 +1109,7 @@ class BeamBase(ABC):
         Notes
         -----
         - Reinforcement layers are created from the top and bottom bar groups
-        (t2, t1, b1, b2) and sorted by depth from the top fiber.
+          (t2, t1, b1, b2) and sorted by depth from the top fiber.
         - This implementation currently uses only the i-end section
         - Axial load is neglected in the moment-curvature calculation.
 

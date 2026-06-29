@@ -553,7 +553,7 @@ class Beam(BeamBase):
         -----
         - Concrete confinement parameters are computed using the Mander model.
         - For Concrete01, residual (crushing) stress is taken as
-        ``fpcu = 0.2 * fpc``.
+          ``fpcu = 0.2 * fpc``.
         """
         # Index for the specified end section
         if section == 'i':
@@ -637,7 +637,7 @@ class Beam(BeamBase):
         - Peak strain is taken as ``epsc0 = -0.002``.
         - Crushing strain is taken as ``epsU = -0.006``.
         - For Concrete01, residual (crushing) stress is taken as
-        ``fpcu = 0.2 * fpc``.
+          ``fpcu = 0.2 * fpc``.
         """
         # Set concrete01 material parameters
         if self.concrete_material == 'Concrete01':

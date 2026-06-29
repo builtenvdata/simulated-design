@@ -26,7 +26,7 @@ These outputs ultimately support the development of probabilistic seismic demand
 models, fragility functions, and vulnerability models for large-scale seismic risk
 assessment studies, such as the `European Seismic Risk Model (ESRM20) <https://eu-risk.eucentre.it/esrm20/>`_.
 
-.. figure:: _static/images/Workflow.svg
+.. figure:: _static/general/Workflow.svg
    :width: 600px
    :align: center
 
@@ -83,6 +83,7 @@ please follow the steps below:
    user/installation
    user/quickstart
    user/inputs
+   user/examples/index
 
 .. toctree::
    :maxdepth: 2

@@ -7,7 +7,7 @@
 [![DOI](https://img.shields.io/badge/DOI-10.1002%2Feqe.4378-blue)](https://doi.org/10.1002/eqe.4378)
 
 A Python package for the modeling the seismic vulnerability of buildings using the simulated design. Currently, it focuses on Reinforced Concrete (RC) Moment Resisting Frames (MRFs), but the workflow is adaptable to other structural systems. To ensure modularity and scalability for future extensions, the **rcmrf** framework is integrated within the broader **simdesign** library. The framework can accommodate the design of buildings using both historical and modern seismic design procedures and regulations, while capturing building-to-building variability. It generates Building Class Information Models (BCIM), Building Design Information Models (BDIM), and Building Nonlinear Structural Models (BNSM) that are analyzable in OpenSees.
-![Service](https://raw.githubusercontent.com/builtenvdata/simulated-design/refs/heads/main/docs/source/_static/images/Workflow.svg)
+![Service](https://raw.githubusercontent.com/builtenvdata/simulated-design/refs/heads/main/docs/source/_static/general/Workflow.svg)
 
 ## Installation
 

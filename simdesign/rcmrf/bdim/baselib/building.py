@@ -420,7 +420,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], \
+        Dict[Tuple[float | int], \
             List[List[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]]]
             Lists of continuous columns at each grid on XY-plane.
 
@@ -469,7 +469,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], \
+        Dict[Tuple[float | int], \
             List[List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]]]
             Lists of continuous beams at each grid on YZ-plane.
 
@@ -505,7 +505,7 @@ class BuildingBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], \
+        Dict[Tuple[float | int], \
             List[List[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]]]
             Lists of continuous beams at each grid on XZ-plane.
 

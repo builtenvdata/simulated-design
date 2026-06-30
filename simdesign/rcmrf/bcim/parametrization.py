@@ -1,7 +1,7 @@
 """This module provides pydantic models used for parametrizing BCIM inputs.
 """
 from pydantic import BaseModel, Field
-from typing import List, Union, Literal, Optional
+from typing import List, Literal, Optional
 
 
 class InfillType(BaseModel):
@@ -229,7 +229,7 @@ class InputData(BaseModel):
         Probability of having wide beams (WB) given the slab type is HS.
     square_column_prob : float
         Probability of having square columns.
-    layout : Union[Literal["all"], List[str]]
+    layout : Literal["all"] | List[str]
         Layout IDs considered for the building generation process.
         Can be "all" to include all layouts or a list of specific layouts.
     beta : float
@@ -259,7 +259,7 @@ class InputData(BaseModel):
     slab_typology: SlabTypology
     wb_prob_given_hs: float
     square_column_prob: float
-    layout: Union[Literal["all"], List[str]]
+    layout: Literal["all"] | List[str]
     beta: float
     beta_v: Optional[float] = None
     num_storeys: int

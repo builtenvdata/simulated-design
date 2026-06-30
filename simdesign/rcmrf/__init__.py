@@ -3,7 +3,7 @@ modelling of reinforced concrete (RC) moment-resisting frames (MRFs).
 It orchestrates the BCIM → BDIM → BNSM pipeline, generating portfolio-level
 building class and design information data (exported CSV files), alongside
 OpenSees-compatible nonlinear numerical models (in Python or Tcl).
-:meth:`~simdesign.rcmrf.generate` serves as the entry point for running the
+:meth:`simdesign.rcmrf.generate` serves as the entry point for running the
 pipeline.
 
 Pipeline::

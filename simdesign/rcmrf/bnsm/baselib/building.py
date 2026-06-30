@@ -107,13 +107,13 @@ class BuildingBase(ABC):
     beams: List[BeamBase]
     columns: List[ColumnBase]
     infills: List[InfillBase]
-    FoundationClass: Type[FoundationBase] = FoundationBase
-    FloorClass: Type[FloorDiaphragmBase] = FloorDiaphragmBase
-    FloorJointClass: Type[FloorJointBase] = FloorJointBase
-    StairsJointClass: Type[StairsJointBase] = StairsJointBase
-    BeamClass: Type[BeamBase] = BeamBase
-    ColumnClass: Type[ColumnBase] = ColumnBase
-    InfillClass: Type[InfillBase] = InfillBase
+    FoundationClass: Type[FoundationBase]
+    FloorClass: Type[FloorDiaphragmBase]
+    FloorJointClass: Type[FloorJointBase]
+    StairsJointClass: Type[StairsJointBase]
+    BeamClass: Type[BeamBase]
+    ColumnClass: Type[ColumnBase]
+    InfillClass: Type[InfillBase]
     load_factors: Dict[Literal['G', 'Q'], float]
     mass_sources: Dict[Literal['G', 'Q'], float]
     basic_masses: np.ndarray

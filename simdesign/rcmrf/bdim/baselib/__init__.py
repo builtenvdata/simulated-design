@@ -1,6 +1,6 @@
 """
-BDIM Base Library
------------------
+**BDIM Base Library**
+
 This package provides the abstract design interfaces of the Building Design
 Information Model (BDIM). It defines the abstract base class implementations
 that must be inherited by design class-specific implementations

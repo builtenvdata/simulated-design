@@ -47,19 +47,19 @@ class BNSM:
 
     See Also
     --------
-    :class:`CP01`
+    :class:`CP01 <simdesign.rcmrf.bnsm.cp01.building.Building>`
         Concentrated plasticity model variant 01.
-    :class:`CP02`
+    :class:`CP02 <simdesign.rcmrf.bnsm.cp02.building.Building>`
         Concentrated plasticity model variant 02.
-    :class:`CP03`
+    :class:`CP03 <simdesign.rcmrf.bnsm.cp03.building.Building>`
         Concentrated plasticity model variant 03.
-    :class:`DP01`
+    :class:`DP01 <simdesign.rcmrf.bnsm.dp01.building.Building>`
         Distributed plasticity model variant 01.
-    :class:`DP02`
+    :class:`DP02 <simdesign.rcmrf.bnsm.dp02.building.Building>`
         Distributed plasticity model variant 02.
-    :class:`DP03`
+    :class:`DP03 <simdesign.rcmrf.bnsm.dp03.building.Building>`
         Distributed plasticity model variant 03.
-    :class:`DP04`
+    :class:`DP04 <simdesign.rcmrf.bnsm.dp02.building.Building>`
         Distributed plasticity model variant 04.
     """
 

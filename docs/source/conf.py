@@ -1,7 +1,10 @@
 # Configuration file for the Sphinx documentation builder.
 
+import inspect
 import os
 import sys
+
+from sphinx.ext.autodoc import INSTANCEATTR, SLOTSATTR
 
 # Add project root to PYTHONPATH so `import simdesign` works
 sys.path.insert(0, os.path.abspath("../.."))
@@ -28,7 +31,7 @@ todo_include_todos = False
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_param = True
-napoleon_use_ivar = True
+napoleon_use_ivar = False
 napoleon_custom_sections = [
     ("Abbreviations for rebars", "notes_style"),
     ("Assumptions", "notes_style"),
@@ -72,7 +75,27 @@ _PYDANTIC_SKIP = {
 }
 
 
+def _is_data_attribute(obj):
+    """True if ``obj`` is a data/class attribute rather than a routine,
+    class, or property.
+
+    Note: in ``autodoc-skip-member`` the ``what`` argument is the *parent's*
+    type (e.g. ``"class"``), not the member's type, so it cannot be used to
+    detect attributes. We inspect the member object instead.
+    """
+    if obj is INSTANCEATTR or obj is SLOTSATTR:
+        # Annotation-only attribute (e.g. ``rot_angle: float``) with no value.
+        return True
+    if inspect.isroutine(obj) or inspect.isclass(obj) or isinstance(obj, property):
+        return False
+    return True
+
+
 def _skip_pydantic_members(app, what, name, obj, skip, options):
+    # Skip declared/data attributes; they're already documented in the
+    # class docstring's "Attributes" section (rendered by Napoleon).
+    if not name.startswith("__") and _is_data_attribute(obj):
+        return True
     if name in _PYDANTIC_SKIP:
         return True
     if name.startswith("__pydantic_") or name.startswith("_pydantic_"):

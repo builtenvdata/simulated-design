@@ -43,14 +43,11 @@ class Archetypes:
 
     Attributes
     ----------
-    available_tags : List[str]
-        List of available archetype tags.
     file_path : Path
         Path to the CSV file containing archetype data.
     all_data : List[ArchetypeData]
         List containing all archetype data loaded from the CSV file.
     """
-    available_tags: List[str]
     file_path: Path = Path(__file__).parent / 'data' / 'layouts.csv'
     all_data: List[ArchetypeData]
 
@@ -203,14 +200,11 @@ class DefaultInputs:
 
     Attributes
     ----------
-    available_classes : List[str]
-        List of available design classes.
     defaults : Dict[str, InputData]
         Data from all JSON files.
     data_path : Path
         Path to the folder containing JSON files of the parameters.
     """
-    available_classes: List[str]
     defaults: Dict[str, InputData]
     data_path: Path = Path(__file__).parent / 'data'
 
@@ -330,12 +324,6 @@ class BCIM:
         Exterior infill typology IDs.
     int_infill : List[int]
         Interior infill typology IDs.
-    available_design_classes : List[str]
-        Available design classes to use.
-    available_archetypes : List[str]
-        Available building archetypes (layouts) to use.
-    taxonomy : List[TaxonomyData]
-        Taxonomy information required for simulated design.
     """
     inputs: InputData
     __defaults: DefaultInputs
@@ -367,9 +355,6 @@ class BCIM:
     infill_conf: List[int]
     ext_infill: List[int]
     int_infill: List[int]
-    available_design_classes: List[str]
-    available_archetypes: List[str]
-    taxonomy: List[TaxonomyData]
 
     def __init__(self) -> None:
         """Initialize BCIM object.

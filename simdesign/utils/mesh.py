@@ -44,7 +44,7 @@ class Point(Shape):
 
     Attributes
     ----------
-    grid_ids : List[Union[int, float]]
+    grid_ids : List[int | float]
         Point grid identifiers (x, y, z).
     coordinates : List[float]
         Point coordinates (x, y, z).
@@ -58,7 +58,7 @@ class Point(Shape):
 
         Parameters
         ----------
-        grid : List[Union[int, float]]
+        grid : List[int | float]
             Grid IDs in x, y, z.
         coordinates : List[float]
             Coordinates in x, y, z.

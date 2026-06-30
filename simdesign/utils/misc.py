@@ -99,7 +99,7 @@ def remove_dir(dir_path: Union[str, Path]) -> None:
 
     Parameters
     ----------
-    dir_path : Union[str, Path]
+    dir_path : str | Path
         Name of directory to remove.
     """
     if os.path.exists(dir_path):
@@ -114,7 +114,7 @@ def make_dir(dir_path: Union[str, Path]) -> None:
 
     Parameters
     ----------
-    dir_path : Union[str, Path]
+    dir_path : str | Path
         Name of directory to make.
     """
     if isinstance(dir_path, Path):

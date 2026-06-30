@@ -5,6 +5,7 @@ simdesign.rcmrf
    :no-members:
 
 .. autofunction:: simdesign.rcmrf.generate
+   :no-index:
 
 .. toctree::
    :maxdepth: 2

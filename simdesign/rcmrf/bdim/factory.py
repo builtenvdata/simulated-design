@@ -42,64 +42,64 @@ class BDIM:
     """BDIM factory to generate design-class-specific BDIM instances.
 
     This class selects the appropriate
-    :class:`~bdim.baselib.building.BuildingBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.building.BuildingBase`
     subclass from the module-level :data:`DCC` registry based on the
     ``design_class`` field of the input
-    :class:`~bdim.baselib.building.TaxonomyData`, and returns an initialized
-    instance of that subclass directly.
+    :class:`~simdesign.rcmrf.bdim.baselib.building.TaxonomyData`,
+    and returns an initialized instance of that subclass directly.
 
     See Also
     --------
-    :class:`~bdim.eu_cdn.EuCDN`
+    :class:`EuCDN <simdesign.rcmrf.bdim.eu_cdn.building.Building>`
         Buildings designed without explicit seismic provisions. These typically
         represent structures constructed before the 1960s and designed only for
         gravity loads using allowable stress methods.
 
-    :class:`~bdim.eu_cdl.EuCDL`
+    :class:`EuCDL <simdesign.rcmrf.bdim.eu_cdl.building.Building>`
         Buildings designed with early seismic provisions (approximately
         1960s-1970s). Lateral loads are considered, but design is based on
         allowable stress methods and simplified seismic force distributions.
 
-    :class:`~bdim.eu_cdm.EuCDM`
+    :class:`EuCDM <simdesign.rcmrf.bdim.eu_cdm.building.Building>`
         Buildings designed according to more modern seismic design codes
         (approximately 1970s-2000s) using limit-state design concepts and
         improved detailing rules to enhance structural ductility.
 
-    :class:`~bdim.eu_cdh.EuCDH`
+    :class:`EuCDH <simdesign.rcmrf.bdim.eu_cdh.building.Building>`
         Buildings designed according to contemporary seismic design standards
         (early 2000s-present), implementing capacity design principles and
         reinforcement detailing rules aimed at achieving target ductility
         levels (e.g., Eurocode 8-based design for *moderate ductility
         level, DCM*).
 
-    :class:`~bdim.tr_7599.Tr7599`
+    :class:`Tr7599 <simdesign.rcmrf.bdim.tr_7599.building.Building>`
         Buildings constructed between *1975 and 1999*, designed according to
         *TBEC-1975* and reinforced concrete design provisions in *TS500-1984*.
         This class represents early seismic design practices in Türkiye, often
         associated with relatively low ductility capacity and variable
         construction quality.
 
-    :class:`~bdim.tr_0018_dcm.Tr0018DCM`
+    :class:`Tr0018DCM <simdesign.rcmrf.bdim.tr_0018_dcm.building.Building>`
         Buildings constructed between *2000 and 2018* with *moderate
         ductility level (DCM)*. Designs follow provisions from *TBEC-1998*
         (largely retained in TBEC-2007) together with *TS500-2000* reinforced
         concrete design rules. Capacity design principles are generally not
         enforced.
 
-    :class:`~bdim.tr_0018_dch.Tr0018DCH`
+    :class:`Tr0018DCH <simdesign.rcmrf.bdim.tr_0018_dch.building.Building>`
         Buildings constructed between *2000 and 2018* with *high ductility
         level (DCH)*. Designs follow *TBEC-1998 / TBEC-2007* seismic
         provisions and *TS500-2000*, including capacity design principles such
         as the strong-column-weak-beam concept.
 
-    :class:`~bdim.tr_post18_dcm.TrPost18DCM`
+    :class:`TrPost18DCM <simdesign.rcmrf.bdim.tr_post18_dcm.building.Building>`
         Buildings constructed *after 2018* with *moderate ductility level
         (DCM)*, designed according to the *TBEC-2018* seismic code and
         *TS500-2000*. These buildings incorporate updated seismic hazard
         definitions and improved detailing rules introduced in the modern code
         framework.
 
-    :class:`~bdim.tr_post18_dch.TrPost18DCH`
+    :class:`TrPost18DCh <simdesign.rcmrf.bdim.tr_post18_dch.building.Building>`
         Buildings constructed *after 2018* with *high ductility level (DCH)*,
         designed according to *TBEC-2018* with full implementation of modern
         capacity design principles and stricter detailing requirements to

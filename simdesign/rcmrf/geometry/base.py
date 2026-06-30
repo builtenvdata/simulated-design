@@ -124,7 +124,7 @@ class GridData:
 
     Attributes
     ----------
-    ids : List[Union[int, float]]
+    ids : List[int | float]
         Grid identifiers.
     ordinates : List[float]
         Grid ordinates.
@@ -151,7 +151,7 @@ class GridData:
 
         Parameters
         ----------
-        grid_id : Union[int, float]
+        grid_id : int | float
             The grid ID.
 
         Returns
@@ -173,7 +173,7 @@ class GridData:
 
         Returns
         -------
-        Union[int, float]
+        int | float
             The corresponding grid ID.
         """
         idx = self.ordinates.index(ordinate)
@@ -316,9 +316,9 @@ class GeometryBase(ABC):
     rectangles: List[Rectangle]
     stairs_lines: List[List[Line]]
     system_grid_data: SystemGridData
-    stairs_width_x = float
-    stairs_width_y = float
-    stairs_location = List[int]
+    stairs_width_x: float
+    stairs_width_y: float
+    stairs_location: List[int]
     POINTS_SHEET: str = "Points"
     LINES_SHEET: str = "Lines"
     RECTANGLES_SHEET: str = "Rectangles"
@@ -491,7 +491,7 @@ class GeometryBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[Line]]
+        Dict[Tuple[float | int], List[Line]]
             Continuous lines along the X-direction.
 
         Notes
@@ -527,7 +527,7 @@ class GeometryBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[Line]]
+        Dict[Tuple[float | int], List[Line]]
             Continuous lines along the Y-direction.
 
         Notes
@@ -563,7 +563,7 @@ class GeometryBase(ABC):
 
         Returns
         -------
-        Dict[Tuple[Union[float, int]], List[Line]]
+        Dict[Tuple[float | int], List[Line]]
             Continuous lines along the Z-direction.
 
         Notes
@@ -1208,7 +1208,7 @@ class GeometryBase(ABC):
 
         Parameters
         ----------
-        grid_ids : List[Union[int, float]]
+        grid_ids : List[int | float]
             The grid ids of the point to find.
 
         Returns
@@ -1226,7 +1226,7 @@ class GeometryBase(ABC):
 
         Parameters
         ----------
-        z_grid_id : Union[int, float]
+        z_grid_id : int | float
             The grid id representing the level along the z-axis.
 
         Returns
@@ -1441,7 +1441,7 @@ class GeometryBase(ABC):
 
         Parameters
         ----------
-        path : Union[str, Path]
+        path : str | Path
             The file path where the Excel file will be saved.
 
         Notes
@@ -1816,7 +1816,7 @@ class GeometryBase(ABC):
 
         Parameters
         ----------
-        floor_id : Union[int, float]
+        floor_id : int | float
             The identifier of the floor level to be modified. It corresponds
             to the associated grid id of the floor in -z direction.
         new_height : float

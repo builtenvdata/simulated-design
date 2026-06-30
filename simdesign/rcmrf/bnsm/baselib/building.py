@@ -108,7 +108,7 @@ class BuildingBase(ABC):
     columns: List[ColumnBase]
     infills: List[InfillBase]
     FoundationClass: Type[FoundationBase]
-    FloorClass: Type[FloorDiaphragmBase]
+    FloorDiaphragmClass: Type[FloorDiaphragmBase]
     FloorJointClass: Type[FloorJointBase]
     StairsJointClass: Type[StairsJointBase]
     BeamClass: Type[BeamBase]
@@ -327,7 +327,7 @@ class BuildingBase(ABC):
                 joint_masses.append(mass)
                 self.floor_joints.append(joint)
             # Initiate floor class and append to floors list
-            self.floors.append(self.FloorClass(
+            self.floors.append(self.FloorDiaphragmClass(
                 cnodes, floor_i, joint_masses))
 
     def _initialize_stairs_joints(self) -> None:

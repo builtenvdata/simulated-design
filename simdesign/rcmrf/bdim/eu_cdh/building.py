@@ -76,7 +76,7 @@ class Building(BuildingBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.building.BuildingBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.building.BuildingBase`
         Base class defining the core behaviour and configuration.
 
     Notes
@@ -131,7 +131,7 @@ class Building(BuildingBase):
 
         See Also
         --------
-        :class:`~bdim.baselib.building.TaxonomyData`
+        :class:`~simdesign.rcmrf.bdim.baselib.building.TaxonomyData`
         """
         # Set classes used define building components.
         self.ColumnClass = Column

@@ -67,7 +67,7 @@ class Building(BuildingBase):
 
     See Also
     --------
-    :class:`~BuildingBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.building.BuildingBase`
         Base class defining the core behaviour and configuration.
     """
     foundations: List[Foundation]

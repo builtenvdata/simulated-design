@@ -15,7 +15,7 @@ class StairsJoint(StairsJointBase):
 
     See Also
     --------
-    :class:`~StairsJointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.StairsJointBase`
         Base class defining the core behaviour and configuration.
     """
 
@@ -29,6 +29,6 @@ class FloorJoint(FloorJointBase):
 
     See Also
     --------
-    :class:`~FloorJointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.FloorJointBase`
         Base class defining the core behaviour and configuration.
     """

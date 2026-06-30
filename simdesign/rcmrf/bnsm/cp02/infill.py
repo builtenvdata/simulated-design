@@ -12,6 +12,6 @@ class Infill(InfillCP01):
 
     See Also
     --------
-    :class:`~InfillCP01`
+    :class:`~simdesign.rcmrf.bnsm.cp01.infill.Infill`
         CP01 Infill model definition used by this class.
     """

@@ -12,6 +12,6 @@ class Stairs(StairsBase):
 
     See Also
     --------
-    :class:`~StairsBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.stairs.StairsBase`
         Base class defining the core behaviour and configuration.
     """

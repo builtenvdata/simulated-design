@@ -73,7 +73,7 @@ class Building(BuildingBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.building.BuildingBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.building.BuildingBase`
         Base class defining the core behaviour and configuration.
 
     References

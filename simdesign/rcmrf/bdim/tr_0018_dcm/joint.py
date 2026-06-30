@@ -39,7 +39,7 @@ class Joint(JointBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.joint.JointBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.joint.JointBase`
         Base class defining the core behaviour and configuration.
     """
     left_beam: Optional[Beam]

@@ -22,7 +22,7 @@ class Beam(BeamCP01):
 
     See Also
     --------
-    :class:`~BeamCP01`
+    :class:`~simdesign.rcmrf.bnsm.cp01.beam.Beam`
         CP01 beam model definition extended by this class.
     """
 

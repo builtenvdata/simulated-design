@@ -18,7 +18,7 @@ class Variable(VariableBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.loads.VariableBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.loads.VariableBase`
         Base class defining the core behaviour and configuration.
     """
 
@@ -31,7 +31,7 @@ class Permanent(PermanentBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.loads.PermanentBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.loads.PermanentBase`
         Base class defining the core behaviour and configuration.
     """
 
@@ -44,7 +44,7 @@ class Combination(CombinationBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.loads.CombinationBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.loads.CombinationBase`
         Base class defining the core behaviour and configuration.
     """
 
@@ -65,7 +65,7 @@ class LoadsData(LoadsDataBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.loads.LoadsDataBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.loads.LoadsDataBase`
         Base class defining the core behaviour and configuration.
     """
     variable: Variable
@@ -92,7 +92,7 @@ class Loads(LoadsBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.loads.LoadsBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.loads.LoadsBase`
         Base class defining the core behaviour and configuration.
 
     Notes

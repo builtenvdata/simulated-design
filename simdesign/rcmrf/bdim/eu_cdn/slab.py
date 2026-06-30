@@ -12,6 +12,6 @@ class Slab(SlabBase):
 
     See Also
     --------
-    :class:`~SlabBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.slab.SlabBase`
         Base class defining the core behaviour and configuration.
     """

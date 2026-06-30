@@ -27,7 +27,7 @@ class Rebars(RebarsBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.rebars.RebarsBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.rebars.RebarsBase`
         Base class defining the core behaviour and configuration.
 
     References

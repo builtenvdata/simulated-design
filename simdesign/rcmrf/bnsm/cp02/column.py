@@ -22,7 +22,7 @@ class Column(ColumnCP01):
 
     See Also
     --------
-    :class:`~ColumnCP01`
+    :class:`~simdesign.rcmrf.bnsm.cp01.column.Column`
         CP01 column model definition extended by this class.
     """
 

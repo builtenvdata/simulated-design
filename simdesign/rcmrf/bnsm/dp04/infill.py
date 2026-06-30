@@ -12,6 +12,6 @@ class Infill(InfillBase):
 
     See Also
     --------
-    :class:`~InfillBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.infill.InfillBase`
         Base class defining the core behaviour and configuration.
     """

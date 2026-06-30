@@ -28,7 +28,7 @@ class Infill(InfillBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.infill.InfillBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.infill.InfillBase`
         Base class defining the core behaviour and configuration.
     """
     beams: List[Optional[Beam]]

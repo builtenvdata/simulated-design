@@ -46,7 +46,7 @@ class StairsJoint(StairsJointBase):
 
     See Also
     --------
-    :class:`~StairsJointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.StairsJointBase`
         Base stairs joint definition extended by this class.
     """
     left_node: Node | None
@@ -266,9 +266,9 @@ class FloorJoint(FloorJointBase, StairsJoint):
 
     See Also
     --------
-    :class:`~FloorJointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.FloorJointBase`
         Base floor joint class from which beam-column joint model is inherited.
-    :class:`~StairsJoint`
+    :class:`~simdesign.rcmrf.bnsm.cp03.joint.StairsJoint`
         Stairs joint class extended by this class to define rigid offsets.
     """
     rear_node: Node | None

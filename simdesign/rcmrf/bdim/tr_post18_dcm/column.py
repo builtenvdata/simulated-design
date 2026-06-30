@@ -47,7 +47,7 @@ class Column(ColumnBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.column.ColumnBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.column.ColumnBase`
         Base class defining the core behaviour and configuration.
 
     References

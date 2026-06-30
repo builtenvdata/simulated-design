@@ -12,6 +12,6 @@ class Beam(BeamBase):
 
     See Also
     --------
-    :class:`~BeamBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.beam.BeamBase`
         Base class defining the core behaviour and configuration.
     """

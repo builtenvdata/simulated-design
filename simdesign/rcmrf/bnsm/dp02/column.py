@@ -24,7 +24,7 @@ class Column(ColumnBase):
 
     See Also
     --------
-    :class:`~ColumnBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.column.ColumnBase`
         Column definition extended by this class.
     """
 

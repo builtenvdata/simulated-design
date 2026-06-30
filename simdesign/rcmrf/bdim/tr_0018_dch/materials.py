@@ -22,7 +22,7 @@ class Steel(SteelBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.SteelBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.SteelBase`
         Base class defining the core behaviour and configuration.
     """
     PARTIAL_FACTOR: float = 1.15
@@ -41,7 +41,7 @@ class Concrete(ConcreteBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.ConcreteBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.ConcreteBase`
         Base class defining the core behaviour and configuration.
     """
     PARTIAL_FACTOR: float = 1.5
@@ -61,7 +61,7 @@ class MaterialData(MaterialDataBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.MaterialDataBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.MaterialDataBase`
         Base class defining the core behaviour and configuration.
     """
     concrete: List[Concrete]
@@ -86,7 +86,7 @@ class Materials(MaterialsBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.MaterialsBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase`
         Base class defining the core behaviour and configuration.
     """
     concrete: List[Concrete]

@@ -19,7 +19,7 @@ class Infill(InfillBase):
 
     See Also
     --------
-    :class:`~InfillBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.infill.InfillBase`
         Infill class definition extended by this class.
     """
 

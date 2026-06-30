@@ -162,7 +162,7 @@ class StairsJointBase(JointBase):
 
     See Also
     --------
-    :class:`~JointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.JointBase`
         Base class joint definition extended by this class.
     """
     center_node: Node
@@ -244,7 +244,7 @@ class FloorJointBase(StairsJointBase):
 
     See Also
     --------
-    :class:`~StairsJointBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.joint.StairsJointBase`
         Mid-storey (stairs) joint definition that this class extends.
     """
     floor_node: Node

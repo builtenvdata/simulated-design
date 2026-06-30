@@ -12,6 +12,6 @@ class Foundation(FoundationBase):
 
     See Also
     --------
-    :class:`~FoundationBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.foundation.FoundationBase`
         Base class defining the core behaviour and configuration.
     """

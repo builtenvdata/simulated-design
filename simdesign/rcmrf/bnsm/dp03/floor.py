@@ -12,6 +12,6 @@ class FloorDiaphragm(FloorDiaphragmBase):
 
     See Also
     --------
-    :class:`~FloorDiaphragmBase.`
+    :class:`~simdesign.rcmrf.bnsm.baselib.floor.FloorDiaphragmBase.`
         Base class defining the core behaviour and configuration.
     """

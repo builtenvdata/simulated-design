@@ -21,7 +21,7 @@ class Quality(QualityBase):
 
     See Also
     --------
-    :class:`~QualityBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.quality.QualityBase`
         Base class defining the core behaviour and configuration.
     """
     data_path = Path(__file__).parent / 'data' / 'quality.json'

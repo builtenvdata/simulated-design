@@ -4,7 +4,8 @@ This module provides a factory interface for creating Building Nonlinear
 Structural Model (BNSM) instances corresponding to predefined modelling
 configurations.
 
-The :class:`~BNSM` class dynamically maps a string-based model identifier
+The :class:`~simdesign.rcmrf.bnsm.factory.BNSM`
+class dynamically maps a string-based model identifier
 (e.g., "CP01", "DP03") to its corresponding implementation class and
 returns an initialized instance.
 
@@ -43,7 +44,8 @@ class BNSM:
 
     The model type is selected using the ``model`` keyword argument
     (e.g., ``model="CP03"``). The returned object is an instance of the
-    corresponding implementation class inheriting from :class:`BuildingBase`.
+    corresponding implementation class inheriting from
+    :class:`~simdesign.rcmrf.bnsm.baselib.building.BuildingBase`.
 
     See Also
     --------
@@ -91,8 +93,13 @@ class BNSM:
 
         See Also
         --------
-        :class:`~CP01`, :class:`~CP02`, :class:`~CP03`,
-        :class:`~DP01`, :class:`~DP02`, :class:`~DP03`, :class:`~DP04`
+        :class:`~simdesign.rcmrf.bnsm.cp01.CP01`,
+        :class:`~simdesign.rcmrf.bnsm.cp02.CP02`,
+        :class:`~simdesign.rcmrf.bnsm.cp03.CP03`,
+        :class:`~simdesign.rcmrf.bnsm.dp01.DP01`,
+        :class:`~simdesign.rcmrf.bnsm.dp02.DP02`,
+        :class:`~simdesign.rcmrf.bnsm.dp03.DP03`,
+        :class:`~simdesign.rcmrf.bnsm.dp04.DP04`
 
             BNSM implementations whose constructor parameters define the
             accepted ``**kwargs`` for the corresponding ``model`` value.

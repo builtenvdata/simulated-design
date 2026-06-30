@@ -99,7 +99,7 @@ class BDIM:
         definitions and improved detailing rules introduced in the modern code
         framework.
 
-    :class:`TrPost18DCh <simdesign.rcmrf.bdim.tr_post18_dch.building.Building>`
+    :class:`TrPost18DCH <simdesign.rcmrf.bdim.tr_post18_dch.building.Building>`
         Buildings constructed *after 2018* with *high ductility level (DCH)*,
         designed according to *TBEC-2018* with full implementation of modern
         capacity design principles and stricter detailing requirements to

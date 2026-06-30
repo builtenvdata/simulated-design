@@ -24,7 +24,7 @@ class Beam(BeamBase):
 
     See Also
     --------
-    :class:`~BeamBase`
+    :class:`~simdesign.rcmrf.bnsm.baselib.beam.BeamBase`
         Base beam definition extended by this class.
     """
 

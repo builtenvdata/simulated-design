@@ -26,7 +26,7 @@ class ElasticModel(ElasticModelBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.analysis.ElasticModelBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.analysis.ElasticModelBase`
         Base class defining the core behaviour and configuration.
     """
     beams: List[Beam]

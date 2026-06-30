@@ -224,6 +224,37 @@ describing the geometric characteristics of the buildings.
    - ``factor`` (list[float]): factors applied to typical storey heights
    - ``probability`` (list[float]): probabilities of the factors (the sum should be equal to 1.0)
 
+**infill_configuration (dict)**  
+   Parameters for sampling masonry infill configuration IDs.
+
+   - ``configuration`` (list[int], default: ``[1, 2]``)
+
+    Masonry infill wall configuration IDs:
+
+     - 1: Exterior only, Regular over the height, XX + YY
+     - 2: Exterior only, Pilotis, XX + YY
+     - 3: Exterior only, Pilotis, XX
+     - 4: Exterior only, Pilotis, YY
+     - 5: Exterior + Interior, Regular over the height, XX + YY
+     - 6: Exterior + Interior, Pilotis, XX + YY
+     - 7: Exterior + Interior, Pilotis, XX
+     - 8: Exterior + Interior, Pilotis, YY
+     - 9: Interior only, Regular over the height, XX + YY
+     - 10: Interior only, Pilotis, XX + YY
+     - 11: Interior only, Pilotis, XX
+     - 12: Interior only, Pilotis, YY
+
+   - ``probability`` (list[float], default: ``[0.7, 0.3]``)
+
+     Probability associated with each configuration ID.
+     The sum should be equal to 1.0.
+
+   *Notes:*
+
+   - Infills around the stairs are included regardless of the configuration.
+   - Gravity loads associated with masonry infills are derived directly
+     from the selected infill configuration.
+
 **layout** (``"all"`` or list[str])  
    Layout IDs considered for building generation.
 
@@ -317,37 +348,6 @@ describing initial conceptual design choices for the buildings.
 
 **interior_infill_type (dict)**  
    Same structure as ``exterior_infill_type``, applied to interior infills.
-
-**infill_configuration (dict)**  
-   Parameters for sampling masonry infill configuration IDs.
-
-   - ``configuration`` (list[int], default: ``[1, 2]``)
-
-    Masonry infill wall configuration IDs:
-
-     - 1: Exterior only, Regular over the height, XX + YY
-     - 2: Exterior only, Pilotis, XX + YY
-     - 3: Exterior only, Pilotis, XX
-     - 4: Exterior only, Pilotis, YY
-     - 5: Exterior + Interior, Regular over the height, XX + YY
-     - 6: Exterior + Interior, Pilotis, XX + YY
-     - 7: Exterior + Interior, Pilotis, XX
-     - 8: Exterior + Interior, Pilotis, YY
-     - 9: Interior only, Regular over the height, XX + YY
-     - 10: Interior only, Pilotis, XX + YY
-     - 11: Interior only, Pilotis, XX
-     - 12: Interior only, Pilotis, YY
-
-   - ``probability`` (list[float], default: ``[0.7, 0.3]``)
-
-     Probability associated with each configuration ID.
-     The sum should be equal to 1.0.
-
-   *Notes:*
-
-   - Infills around the stairs are included regardless of the configuration.
-   - Gravity loads associated with masonry infills are derived directly
-     from the selected infill configuration.
 
 **concrete (dict)** / **steel (dict)**
    Material grade sampling distributions.

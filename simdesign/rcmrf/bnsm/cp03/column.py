@@ -55,7 +55,7 @@ class Column(ColumnCP01):
 
     See Also
     --------
-    :class:`~ColumnCP01`
+    :class:`~simdesign.rcmrf.bnsm.cp01.column.Column`
         Base column definition extended by this class.
     """
     hinge_node_i: Node

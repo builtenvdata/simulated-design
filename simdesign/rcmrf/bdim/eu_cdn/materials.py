@@ -17,7 +17,7 @@ class Steel(SteelBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.SteelBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.SteelBase`
         Base class defining the core behaviour and configuration.
     """
 
@@ -36,7 +36,7 @@ class Concrete(ConcreteBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.ConcreteBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.ConcreteBase`
         Base class defining the core behaviour and configuration.
     """
     fck_cube: float
@@ -56,7 +56,7 @@ class MaterialData(MaterialDataBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.MaterialDataBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.MaterialDataBase`
         Base class defining the core behaviour and configuration.
     """
     concrete: List[Concrete]
@@ -81,7 +81,7 @@ class Materials(MaterialsBase):
 
     See Also
     --------
-    :class:`~bdim.baselib.materials.MaterialsBase`
+    :class:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase`
         Base class defining the core behaviour and configuration.
     """
     concrete: List[Concrete]
@@ -93,7 +93,8 @@ class Materials(MaterialsBase):
         """Find and return the steel material instance with the specified
         grade.
 
-        Delegates to :meth:`~bdim.baselib.materials.MaterialsBase._get_steel`.
+        Delegates to
+        :meth:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase._get_steel`.
 
         Parameters
         ----------
@@ -113,7 +114,7 @@ class Materials(MaterialsBase):
         grade.
 
         Delegates to
-        :meth:`~bdim.baselib.materials.MaterialsBase._get_concrete`.
+        :meth:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase._get_concrete`.
 
         Parameters
         ----------
@@ -132,7 +133,7 @@ class Materials(MaterialsBase):
         """Return the concrete material coming after the given instance.
 
         Delegates to
-        :meth:`~bdim.baselib.materials.MaterialsBase._get_next_concrete`.
+        :meth:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase._get_next_concrete`.
 
         Parameters
         ----------
@@ -151,7 +152,7 @@ class Materials(MaterialsBase):
         """Return the steel material coming after the given instance.
 
         Delegates to
-        :meth:`~bdim.baselib.materials.MaterialsBase._get_next_steel`.
+        :meth:`~simdesign.rcmrf.bdim.baselib.materials.MaterialsBase._get_next_steel`.
 
         Parameters
         ----------

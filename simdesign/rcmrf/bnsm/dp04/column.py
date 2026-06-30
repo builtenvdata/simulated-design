@@ -23,7 +23,7 @@ class Column(ColumnDP03):
 
     See Also
     --------
-    :class:`~ColumnDP03`
+    :class:`~simdesign.rcmrf.bnsm.dp03.column.Column`
         DP03 column model definition extended by this class
     """
     interior_section: Literal['Elastic', 'Inelastic'] = 'Elastic'

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simdesign"
-version = "1.0.0"
+version = "1.0.1"
 description = "The built environment data (BED) framework for enhancing seismic vulnerability modeling through simulated design."
 authors = [
     "Volkan Ozsarac <volkan.ozsarac@iusspavia.it>",

@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 project = "SimDesign"
 author = "Volkan Ozsarac"
 copyright = "2026, Volkan Ozsarac"
-release = "1.0.0-beta"
+release = "1.0.1"
 
 # -- General configuration ---------------------------------------------------
 

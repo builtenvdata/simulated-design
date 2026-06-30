@@ -17,6 +17,7 @@ on:
 jobs:
   test-py312-win:
     name: Test on Python 3.12 for Windows
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
     runs-on: windows-latest
     steps:
       - name: Checkout repo (main)
@@ -46,6 +47,7 @@ jobs:
 
   test-py312-linux:
     name: Test on Python 3.12 for Ubuntu
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo (main)
@@ -75,6 +77,7 @@ jobs:
 
   test-py312-mac:
     name: Test on Python 3.12 for MacOS
+    if: ${{ !contains(github.event.head_commit.message, '[skip tests]') }}
     runs-on: macos-latest
     steps:
       - name: Checkout repo (main)

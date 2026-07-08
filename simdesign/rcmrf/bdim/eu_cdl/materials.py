@@ -41,7 +41,7 @@ class Concrete(ConcreteBase):
     ----------
     fck_cube : float
         Characteristic value of the compressive strength of concrete cubes
-        (MPa).
+        (kg/cm2).
     fcd_eq : float
         Design value of the concrete compressive strength considered for
         seismic design (MPa).

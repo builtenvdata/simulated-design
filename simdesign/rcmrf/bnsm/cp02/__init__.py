@@ -29,7 +29,7 @@ providing instantiable component implementations.
 
 - Infill:
   Equivalent diagonal strut macro-model for masonry infills
-  (Identical to CP01).
+  (Identical to the base implementation).
 
 - Floor Diaphragm:
   Rigid diaphragm modelling via retained node constraints

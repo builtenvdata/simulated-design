@@ -25,6 +25,7 @@ from .constants import RIGID_MAT
 
 # Imports from utils library
 from ....utils.misc import PRECISION, round_list
+from ....utils.units import MPa
 
 
 class JointBase(ABC):
@@ -640,7 +641,7 @@ class FloorJointBase(StairsJointBase):
             # Shear strength coefficients for each LS: cracking, peak, ultimate
             kappa = 2 * [0.132, 0.132, 0.053]
             # Principle tensile stress values Equation 2.34 (O'Reilly, 2016)
-            pt = np.array(kappa) * (self.fcm**0.5)
+            pt = np.array(kappa) * ((self.fcm / MPa) ** 0.5) * MPa
             # Stress values for material, comes from the model on GitHub.
             mj = (
                 2 * (pt * bj * hc) * jd
@@ -663,7 +664,7 @@ class FloorJointBase(StairsJointBase):
             # Shear strength coefficients for each LS: cracking, peak, ultimate
             kappa = 2 * [0.132, 0.132, 0.053]
             # Principle tensile stress values Equation 2.34 (O'Reilly, 2016)
-            pt = np.array(kappa) * (self.fcm**0.5)
+            pt = np.array(kappa) * ((self.fcm / MPa) ** 0.5) * MPa
             # Stress values for material, Equation 2.33 (O'Reilly, 2016)
             mj = (
                 (pt * bj * hc)
@@ -688,7 +689,7 @@ class FloorJointBase(StairsJointBase):
             # Shear strength coefficients for each LS: cracking, peak, ultimate
             kappa = 2 * [0.29, 0.42, 0.42]
             # Principle tensile stress values Equation 2.34 (O'Reilly, 2016)
-            pt = np.array(kappa) * (self.fcm**0.5)
+            pt = np.array(kappa) * ((self.fcm / MPa) ** 0.5) * MPa
             # Stress values for material, Equation 2.55 (O'Reilly, 2016)
             mj = (
                 (pt * bj * hc)

@@ -91,3 +91,9 @@ please follow the steps below:
 
    api/rcmrf/index
    api/utils/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Release Notes
+
+   changelog

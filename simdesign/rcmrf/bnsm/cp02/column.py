@@ -128,7 +128,7 @@ class Column(ColumnCP01):
             moment_1 = My
             moment_2 = Mc
             moment_3 = Mu
-            moment_4 = 0.1 * My
+            moment_4 = 0.1 * Mc
             theta_1 = theta_y
             theta_2 = theta_y + theta_cap_pl
             theta_3 = theta_y + theta_cap_pl + theta_pc
@@ -139,7 +139,7 @@ class Column(ColumnCP01):
             moment_1 = My
             moment_2 = 1.1 * Mc
             moment_3 = 1.1 * Mu
-            moment_4 = 0.1 * My
+            moment_4 = 0.1 * Mc
             theta_1 = theta_y
             theta_2 = theta_y + 1.4*theta_cap_pl
             theta_3 = theta_y + 1.4*theta_cap_pl + 2*theta_pc
@@ -148,13 +148,13 @@ class Column(ColumnCP01):
         # Pinching factor for strain (or deformation) during reloading
         pinchx = 1.0
         # Pinching factor for stress (or force) during reloading
-        pinchy = 1.0
+        pinchy = 0.95
         # Damage due to ductility: D1(mu-1)
         damage1 = 0.0
         # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.2
+        damage2 = 0.0
         # Power used to determine the degraded unloading stiffness
-        beta = 0.4
+        beta = 0.5
 
         # Material inputs other than tag and type
         rot_mat_inputs = [

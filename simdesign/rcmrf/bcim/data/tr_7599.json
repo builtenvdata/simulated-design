@@ -50,8 +50,8 @@
     },
   "infill_configuration":
     {
-      "configuration": [5, 6],
-      "probability": [1.0, 0.0]
+      "configuration": [5],
+      "probability": [1.0]
     },
   "exterior_infill_type":
     {

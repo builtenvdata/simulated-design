@@ -907,10 +907,10 @@ class ColumnBase(ABC):
         rhol = self.rhol_q
         # Longitudinal reinforcement area
         Asl = rhol * Ag
-        # Average long. reinf. bar area
+        # Average long. reinf. bar diameter
         nbl_int = 2 * (self.design.nbly_int_q + self.design.nblx_int_q)
         nbl_cor = 4
-        dbl_ave = Asl / (nbl_int + nbl_cor)
+        dbl_ave = np.sqrt(4 * Asl / (nbl_int + nbl_cor) / np.pi)
 
         # Longitudinal reinforcement yield strength
         fsyl = self.design.fsyl_q  # in base units

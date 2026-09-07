@@ -276,7 +276,7 @@ class QualityBase(ABC):
             # Extra design parameters which can be quality adjusted
             col.dbh_q = col.dbh
             col.nbh_x_q = col.nbh_x
-            col.nbh_y_q = col.nbh_x
+            col.nbh_y_q = col.nbh_y
             col.dbl_cor_q = col.dbl_cor
             col.dbl_int_q = col.dbl_int
             col.nblx_int_q = col.nblx_int

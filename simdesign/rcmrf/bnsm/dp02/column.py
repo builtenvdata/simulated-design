@@ -470,8 +470,8 @@ class Column(ColumnBase):
         # gF1, gF2, gF3, gF4, gFLim = 1.0, 0.0, 1.0, 1.0, 0.9  # OpenSees ex.
         # gF1, gF2, gF3, gF4, gFLim = 0.0, 0.4, 0.0, 0.4, 0.9  # ATC62, Spring1
         # Cyclic energy dissipation factor (E_cyclic=gE*E_monotonic)
-        # gE = 10.0  # suitable for low to moderate ductility
-        gE = 0.0  # No degradation
+        gE = 10.0  # suitable for low to moderate ductility
+        # gE = 10.0  # No degradation
         # Damage type
         dmgType = "energy"
 

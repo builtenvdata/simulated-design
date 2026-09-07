@@ -16,8 +16,6 @@ from .infill import Infill
 
 # Imports from bnsm base library
 from ..baselib.building import BuildingBase
-from ..baselib.beam import BeamDesign
-from ..baselib.column import ColumnDesign
 
 # Imports from utils library
 from ....utils.units import MPa
@@ -66,38 +64,6 @@ class Building(BuildingBase):
     BeamClass: Type[Beam] = Beam
     ColumnClass: Type[Column] = Column
     InfillClass: Type[Infill] = Infill
-
-    def _find_beam_by_design(self, design: BeamDesign) -> Optional[Beam]:
-        """Finds the beam model by the given design.
-
-        Parameters
-        ----------
-        design : ~simdesign.rcmrf.bnsm.cp02.beam.BeamDesign
-            Beam design instance used for search.
-
-        Returns
-        -------
-        Beam | None
-            Returns Beam object if design attribute matches with
-            given design, otherwise, returns None.
-        """
-        return super()._find_beam_by_design(design)
-
-    def _find_column_by_design(self, design: ColumnDesign) -> Optional[Column]:
-        """Finds the column model by the given design.
-
-        Parameters
-        ----------
-        design : ~simdesign.rcmrf.bnsm.cp02.column.ColumnDesign
-            Column design instance used for search.
-
-        Returns
-        -------
-        Column | None
-            Returns Column object if design attribute matches with
-            given design, otherwise, returns None.
-        """
-        return super()._find_column_by_design(design)
 
     def export_hinges(self, directory: Optional[str | Path] = None) -> None:
         """Export plastic-hinge capacity data for beams and columns to JSON.

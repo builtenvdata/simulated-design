@@ -416,10 +416,10 @@ class Column(ColumnBase):
             ex = 0.1 * self.bx  # min. eccentr. in the x direct., TS500-1984
             ey = 0.1 * self.by  # min. eccentr. in the y direct., TS500-1984
 
-            Mx1d_ecc = N1d * ex
-            Mx9d_ecc = N9d * ex
-            My1d_ecc = N1d * ey
-            My9d_ecc = N9d * ey
+            Mx1d_ecc = N1d * ey
+            Mx9d_ecc = N9d * ey
+            My1d_ecc = N1d * ex
+            My9d_ecc = N9d * ex
 
             Mx1d = max(abs(force.Mx1), Mx1d_ecc)
             Mx9d = max(abs(force.Mx9), Mx9d_ecc)

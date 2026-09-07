@@ -294,7 +294,6 @@ class BuildingBase(ABC):
                 design = foundation.design.top_column
                 column = self._find_column_by_design(design)
                 if column:
-                    column.jnt_offsets[2] += joint.h / 2
                     column.ele_node_i = foundation.foundation_node
 
     def _initialize_floor_joints(self) -> None:
@@ -684,7 +683,6 @@ class BuildingBase(ABC):
         ops.system('UmfPack')
         ops.numberer('RCM')
         ops.constraints('Transformation')
-        # ops.constraints('Penalty', 1e12, 1e12)
         ops.test('EnergyIncr', tol_init, iter_init)
         ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
         ops.algorithm('Newton', '-initialThenCurrent')
@@ -1609,7 +1607,7 @@ class BuildingBase(ABC):
                        "ctrl_dof) for node in supports]))")
         content.append("    # Set continue flag")
         content.append("    cont = current_disp < max_disp and"
-                       " current_shear >= 0.4*max(base_shear)")
+                       " current_shear >= 0.6 * max(base_shear)")
         content.append("    # Append base shear and control node displacement")
         content.append("    if ok == 0 and cont:")
         content.append("        base_shear.append(current_shear)")
@@ -2190,7 +2188,7 @@ class BuildingBase(ABC):
         content.append("# Set analysis parameters")
         content.append(
             "set max_disp "
-            "[expr {$max_drift * [nodeCoord $ctrl_node 3] - $base_level}]"
+            "[expr {$max_drift * ([nodeCoord $ctrl_node 3] - $base_level)}]"
         )
         content.append("set tol_init 1.0e-6")
         content.append("set iter_init 20")
@@ -2260,7 +2258,7 @@ class BuildingBase(ABC):
         content.append(
             "    "
             "set cont [expr {($current_disp < $max_disp) && "
-            "($current_shear >= 0.4 * $max_base_shear)}]")
+            "($current_shear >= 0.6 * $max_base_shear)}]")
         content.append("    # Append base shear and control node displacement")
         content.append("    if { $ok == 0 && $cont == 1 } {")
         content.append("        lappend base_shear $current_shear")

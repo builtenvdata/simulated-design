@@ -2,16 +2,16 @@
 in the BNSM layer.
 """
 # Imports from bnsm base library
-from ..cp01.infill import Infill as InfillCP01
+from ..baselib.infill import InfillBase
 
 
-class Infill(InfillCP01):
+class Infill(InfillBase):
     """Masonry infill wall implementation for the ``CP02`` model.
 
-    This class directly uses the behaviour defined in ``InfillCP01``.
+    This class directly uses the behaviour defined in ``InfillBase``.
 
     See Also
     --------
-    :class:`~simdesign.rcmrf.bnsm.cp01.infill.Infill`
-        CP01 Infill model definition used by this class.
+    :class:`~simdesign.rcmrf.bnsm.baselib.infill.InfillBase`
+        Infill class definition extended by this class.
     """

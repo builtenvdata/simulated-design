@@ -878,7 +878,7 @@ class BuildingBase(ABC):
                 if i in [1, 3]:  # beams
                     if line:
                         beams.append(self._find_beam_by_line(line))
-                        if beams[-1] in exterior_beam_lines:
+                        if line in exterior_beam_lines:
                             loc = 'exterior'
                     else:
                         beams.append(None)  # Could be None at base level

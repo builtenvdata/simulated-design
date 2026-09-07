@@ -1003,7 +1003,7 @@ class BeamBase(ABC):
         #  Residual strength to capping strength ratio - assumed
         Mr_Mc = 0.1  # 10%
         # Reinforcing bar buckling coefficient, by Dhakal and Maekawa 2002
-        sn = (sbh[0] / dbl_t1) * (fsyl_mpa / 100) ** 0.5
+        sn = (sbh / dbl_t1) * (fsyl_mpa / 100) ** 0.5
         # Shear cracking is expected to precede flexural yield EC8-3 pp 41
         av = 1.0
         z = 0.9 * (0.9 * h)  # lever arm

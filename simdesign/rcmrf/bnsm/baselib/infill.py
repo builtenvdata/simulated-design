@@ -269,14 +269,14 @@ class InfillBase(ABC):
         for beam in self.design.beams:  # Loop through beams
             if beam:
                 hbs.append(beam.h)
-        hb = sum(hbs) / len(hbs)  # Beam height
-        hc = sum(hcs) / len(hcs)  # Column height
+        hb = (sum(hbs) / len(hbs)) / mm  # Beam height (mm)
+        hc = (sum(hcs) / len(hcs)) / mm  # Column height (mm)
         Ic = (sum(Ics) / len(Ics)) / (mm**4)  # Column moment of inertia (mm4)
         Ec = (sum(Ecs) / len(Ecs)) / MPa  # Colum concrete modulus (MPa)
         h = self.design.height / mm  # infill height, between joints (mm)
         L = self.design.length / mm  # infill length, between joints (mm)
-        Lw = h - hc  # clear infill length (mm)
-        hw = L - hb  # clear infill height (mm)
+        Lw = L - hc  # clear infill length (mm)
+        hw = h - hb  # clear infill height (mm)
         theta = np.arctan(hw / Lw)  # inclination of the diagonal strut (rad)
         dw = (Lw**2 + hw**2) ** 0.5  # diagonal length of the infill panel (mm)
         Ewtheta = 1.0 / (  # Equation (3), Hak et al. 2012

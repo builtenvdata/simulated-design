@@ -23,6 +23,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.todo",
+    "myst_parser",
 ]
 
 todo_include_todos = False

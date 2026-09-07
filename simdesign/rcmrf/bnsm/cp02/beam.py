@@ -1,4 +1,4 @@
-"""This module provides the beam class implementation for the ``CP01`` model in
+"""This module provides the beam class implementation for the ``CP02`` model in
 the BNSM layer.
 """
 # Imports from installed packages
@@ -75,8 +75,8 @@ class Beam(BeamCP01):
         Mu_neg = Mu_Mc * Mc_neg
 
         # Zero moment values in positive and negative directions
-        M0_neg = 0.1 * My_neg
-        M0_pos = 0.1 * My_pos
+        M0_pos = 0.1 * Mc_pos
+        M0_neg = 0.1 * Mc_neg
 
         # Yield rotation capacities in positive and negative directions
         EI_ratio = np.clip(0.08 * (1.25 ** (10*niu)) * (1.2 ** rSsD), 0.2, 0.8)
@@ -97,14 +97,12 @@ class Beam(BeamCP01):
         # Post-capping rotation capacity
         theta_pc_pos = 0.01 * (0.07 ** niu) * (1.78 ** (100*rhoh)) * \
             (1.18 ** (0.01*fsyl_mpa))
-        theta_pc_neg = 0.01 * (0.07 ** niu) * (1.78 ** (100*rhoh)) * \
-            (1.18 ** (0.01*fsyl_mpa))
+        theta_pc_neg = theta_pc_pos.copy()
 
         # Post-ultimate rotation capacity
         theta_pu_pos = 0.0023 * (1.96 ** (0.1*fc_mpa)) * (2.74 ** (100*rhoh))
-        theta_pu_neg = 0.0023 * (1.96 ** (0.1*fc_mpa)) * (2.74 ** (100*rhoh))
         theta_pu_pos = np.minimum(theta_pu_pos, 4*theta_pc_pos)
-        theta_pu_neg = np.minimum(theta_pu_neg, 4*theta_pc_neg)
+        theta_pu_neg = theta_pu_pos.copy()
 
         # Rotation values for cyclic loading (HystereticSM material)
         if self.cyclic_model:
@@ -153,13 +151,13 @@ class Beam(BeamCP01):
                 2*theta_pc_neg + 2*theta_pu_neg
 
         # Pinching factor for strain (or deformation) during reloading
-        pinchx = 0.5
+        pinchx = 1.0
         # Pinching factor for stress (or force) during reloading
-        pinchy = 0.5
+        pinchy = 0.95
         # Damage due to ductility: D1(mu-1)
         damage1 = 0.0
         # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.7
+        damage2 = 0.0
         # Power used to determine the degraded unloading stiffness
         beta = 0.2
 

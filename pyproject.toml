@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "simdesign"
-version = "1.0.1"
+version = "1.1.0"
 description = "The built environment data (BED) framework for enhancing seismic vulnerability modeling through simulated design."
 authors = [
     "Volkan Ozsarac <volkan.ozsarac@iusspavia.it>",
@@ -52,6 +52,7 @@ pytest-env = "1.1.4"
 [tool.poetry.group.docs.dependencies]
 sphinx = "^9.1"
 sphinx-rtd-theme = "^3.0"
+myst-parser = ">=4.0"
 
 [tool.coverage.run]
 source = ["simdesign"]

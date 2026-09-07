@@ -344,7 +344,7 @@ class Column(ColumnBase):
         """
         if axis == 'y':
             # theta_y is about local-x (-z in ops)
-            theta_y = self._get_rot_hinge_props('x')[3]
+            theta_y = self._get_rot_hinge_props('x')[4]
             # Section height
             h = self.design.by  # along y
             # Number of horizontal bars (stirrup legs)
@@ -356,7 +356,7 @@ class Column(ColumnBase):
             shear_mat_tag = self.vy_mat_tag
         elif axis == 'x':
             # theta_y is about local-y
-            theta_y = self._get_rot_hinge_props('y')[3]
+            theta_y = self._get_rot_hinge_props('y')[4]
             # Section height
             h = self.design.bx  # along x
             # Number of horizontal bars (stirrup legs)

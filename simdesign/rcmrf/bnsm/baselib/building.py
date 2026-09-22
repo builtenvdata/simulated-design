@@ -1090,22 +1090,19 @@ class BuildingBase(ABC):
             "# Define components of columns",
             "add_columns()",
             "# Define components of infills",
-            "add_infills()",
+            "if infills:",
+            "    add_infills()",
             "# Perform static analysis under gravity loads",
             "do_gravity()",
             ""
         ]
-
-        # Check whether model include infills or not
-        if not self.include_infills:
-            content[-4] = '# ' + content[-4]
 
         # Add white spaces for method content
         content = ['    ' + item if item
                    else item
                    for item in content]
         # Add method definition
-        method = ["def build_model() -> None:"]
+        method = [f"def build_model(infills={self.include_infills}) -> None:"]
         # Add imports
         imports = ["import openseespy.opensees as ops",
                    "",
@@ -1797,6 +1794,11 @@ class BuildingBase(ABC):
         content = [
             '# Adds the numerical model to the OpenSees domain',
             "",
+            "# Use the infills flag set by the caller, if any",
+            "if {![info exists ::infills]} {",
+            f"    set ::infills {self.include_infills}",
+            "}",
+            "",
             "wipe",
             "model BasicBuilder -ndm 3 -ndf 6",
             "",
@@ -1813,14 +1815,13 @@ class BuildingBase(ABC):
             "# Define components of columns",
             "source columns.tcl",
             "# Define components of infills",
-            "source infills.tcl",
+            "if {$::infills} {",
+            "    source infills.tcl",
+            "}",
             "# Perform static analysis under gravity loads",
             "source gravity.tcl",
             ""
         ]
-        # Check whether model include infills or not
-        if not self.include_infills:
-            content[-4] = '# ' + content[-4]
 
         return content
 

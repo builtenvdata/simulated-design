@@ -226,15 +226,17 @@ class Beam(BeamBase):
         # Nodes
         hinge_i_nodes = [self.hinge_node_i.tag, self.ele_node_i.tag]
         hinge_j_nodes = [self.ele_node_j.tag, self.hinge_node_j.tag]
-        # Orientation
+        # Orientation: rotation about local y (dir 5) is positive under
+        # sagging (bottom fibres in tension), consistent with the positive
+        # branch of the hinge material (My_pos)
         if self.design.direction == 'x':
             vecx = [1.0, 0.0, 0.0]
-            vecyp = [0.0, 1.0, 0.0]
-            # cross product is vecz = [0, 0, 1]
+            vecyp = [0.0, -1.0, 0.0]
+            # cross product is vecz = [0, 0, -1]
         elif self.design.direction == 'y':
             vecx = [0.0, 1.0, 0.0]
-            vecyp = [-1.0, 0.0, 0.0]
-            # cross product is vecz = [0, 0, 1]
+            vecyp = [1.0, 0.0, 0.0]
+            # cross product is vecz = [0, 0, -1]
         orientation = [*vecx, *vecyp]
         # Uniaxial Materials
         hinge_i_mats = [RIGID_MAT, RIGID_MAT, RIGID_MAT,

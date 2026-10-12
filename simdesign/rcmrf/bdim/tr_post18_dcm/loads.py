@@ -3,7 +3,7 @@
 """
 # Imports from installed packages
 from pathlib import Path
-from typing import List, Type
+from typing import List, Optional, Type
 
 # Imports from bdim base library
 from ..baselib.loads import VariableBase, PermanentBase
@@ -106,10 +106,18 @@ class Loads(LoadsBase):
     _data_path = Path(__file__).parent / 'data' / 'loads.json'
     _data_model: Type[LoadsData] = LoadsData
 
-    def modify_seismic_load_combos(self, beta_v: float) -> None:
+    def modify_seismic_load_combos(self, beta_v: Optional[float]) -> None:
         """Modify load combinations containing seismic loading for
         vertical load effect.
+
+        Parameters
+        ----------
+        beta_v : float | None
+            Vertical seismic coefficient. If None, it is taken as 0.0, i.e.,
+            the vertical load effect is neglected.
         """
+        if beta_v is None:
+            beta_v = 0.0
         seismic_strs = ["E+X", "E-X", "E+Y", "E-Y"]
         for combo in self.combinations:
             if any(item in seismic_strs for item in combo.loads.keys()):

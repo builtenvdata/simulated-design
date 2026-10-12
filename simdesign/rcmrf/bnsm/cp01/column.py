@@ -495,10 +495,17 @@ class Column(ColumnBase):
         # so that springs in series give the member shear stiffness.
         k_el = n_springs * rc.get_shear_stiffness_leborgne_ghannoum2014(
             self.Gcm_q, Ag, Ln)
-        # Degrading slope of the shear-drift spring backbone, with the core
-        # depth taken as 0.9 h - Shoraka and Elwood (2013) - Eqn. 20
+        # Depth of the column core, measured to the centerline of the
+        # transverse reinforcement (Elwood and Moehle, 2005)
+        dc = h - 2 * (self.design.cover_q + dbh / 2)
+        # Axial load in the degrading slope, clipped to the range of axial
+        # load ratios (0.15 to 0.61) for which the expression was verified
+        P_lims = [0.15 * Ag * self.design.fc_q, 0.61 * Ag * self.design.fc_q]
+        P_deg = float(np.clip(Nu, *P_lims))
+        # Degrading slope of the shear-drift spring backbone - Shoraka and
+        # Elwood (2013) - Eqn. 20
         k_deg = rc.get_shear_degrading_slope_shoraka_elwood2013(
-            Nu, Av, fsyh, 0.9 * h, sbh, Ln)
+            P_deg, Av, fsyh, dc, sbh, Ln)
 
         # Inputs for Three-Point Limit Curve - Elwood and Moehle 2003
         # integer element tag for the associated beam-column element
@@ -520,7 +527,7 @@ class Column(ColumnBase):
         Kdeg = -n_springs * k_deg
         # Floating point value for the residual force capacity of the
         # post-failure backbone
-        Fres = 0.05  # should be a small value - shear failure
+        Fres = 0.1  # should be a small value - shear failure
         # Integer flag for type of deformation defining the abscissa
         # of the limit curve:
         # 1 = maximum beam-column chord rotations

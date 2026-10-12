@@ -814,13 +814,15 @@ class BuildingBase(ABC):
                                   typology=self.slab_type,
                                   thickness=self.slab_thickness)
             slab.roof = rectangle in self.geometry.roof_rectangles
-            slab.set_loads(self.loads.permanent, self.loads.variable)
             self.slabs.append(slab)
         # If slab thickness is not provided, set a global thickness value
         if self.slab_thickness is None:
             self.slab_thickness = max(slab.t for slab in self.slabs)
             for slab in self.slabs:
                 slab.t = self.slab_thickness
+        # Set slab loads once the final thickness is known
+        for slab in self.slabs:
+            slab.set_loads(self.loads.permanent, self.loads.variable)
 
     def _initialize_stairs(self) -> None:
         """Initialize building stairs.
@@ -830,13 +832,15 @@ class BuildingBase(ABC):
                 rectangle=rectangle,
                 thickness=self.staircase_slab_depth)
             slab.roof = rectangle in self.geometry.roof_rectangles
-            slab.set_loads(self.loads.permanent, self.loads.variable)
             self.stairs.append(slab)
         # If staircase slab depth is not provided, set a global depth value
         if self.staircase_slab_depth is None and any(self.stairs):
             self.staircase_slab_depth = max(slab.t for slab in self.stairs)
             for slab in self.stairs:
                 slab.t = self.staircase_slab_depth
+        # Set stairs loads once the final depth is known
+        for slab in self.stairs:
+            slab.set_loads(self.loads.permanent, self.loads.variable)
 
     def _initialize_materials(self) -> None:
         """Initialize building materials.

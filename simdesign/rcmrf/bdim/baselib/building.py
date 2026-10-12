@@ -375,12 +375,15 @@ class BuildingBase(ABC):
         -----
         Used internally by the design algorithm (e.g., `_change_slab_type`).
         If the slabs are already built, a new value rebuilds the slabs and
-        the beam gravity loads (see :meth:`_rebuild_slabs`).
+        the beam gravity loads (see :meth:`_initialize_slabs` and
+        :meth:`_set_beam_gravity_loads`).
         """
         changed = new_type != self.slab_type
         self.taxonomy.slab_type = new_type
         if changed and getattr(self, 'slabs', None):
-            self._rebuild_slabs()
+            self.slabs = []
+            self._initialize_slabs()
+            self._set_beam_gravity_loads()
 
     @property
     def staircase_slab_depth(self) -> float:
@@ -1266,6 +1269,15 @@ class BuildingBase(ABC):
         they do not have influence on the lateral capacity (e.g., drywalls)
         and we can add include their weights as default on the beams.
         """
+        # Reset the loads, so that they can be set again (e.g., after the
+        # slabs are rebuilt)
+        for beam in self.beams:
+            beam.slab_wg = []
+            beam.slab_wq = []
+            beam.slab_alpha = []
+            beam.stairs_wg = 0.0
+            beam.stairs_wq = 0.0
+            beam.infill_wg = 0.0
         # Add loads to floor beams
         for slab in self.slabs:
             beams = [self._find_beam_by_line(line)
@@ -1286,17 +1298,17 @@ class BuildingBase(ABC):
             mid_beam = mid_beams[i]
             rect_beams = [self._find_beam_by_line(line)
                           for line in slab.rectangle.lines]
-            # Set the loads for mid-level beam
-            mid_beam.stairs_wg = slab.beam_influence_areas * \
+            # Add the loads to the mid-level beam
+            mid_beam.stairs_wg += slab.beam_influence_areas * \
                 slab.pg / mid_beam.L
-            mid_beam.stairs_wq = slab.beam_influence_areas * \
+            mid_beam.stairs_wq += slab.beam_influence_areas * \
                 slab.pq / mid_beam.L
 
             for j, beam in enumerate(rect_beams):
                 if j == 1:  # The beam which supports staircase
-                    beam.stairs_wg = slab.beam_influence_areas * \
+                    beam.stairs_wg += slab.beam_influence_areas * \
                         slab.pg / beam.L
-                    beam.stairs_wq = slab.beam_influence_areas * \
+                    beam.stairs_wq += slab.beam_influence_areas * \
                         slab.pq / beam.L
 
         # Add superimposed gravity loads from the infills to the beams
@@ -1588,22 +1600,6 @@ class BuildingBase(ABC):
             self.slab_type = 1
         elif self.slab_type == 3:
             self.slab_type = 2
-
-    def _rebuild_slabs(self) -> None:
-        """Rebuild the slabs and the beam gravity loads, e.g., after a
-        change of the slab type.
-
-        The slab thickness is recomputed for the new slabs, unless it is given
-        in the taxonomy.
-        """
-        self.slabs = []
-        # Remove the loads transferred from the old slabs
-        for beam in self.beams:
-            beam.slab_wg = []
-            beam.slab_wq = []
-            beam.slab_alpha = []
-        self._initialize_slabs()
-        self._set_beam_gravity_loads()
 
     def _change_column_section(self) -> None:
         """The method used for changing column sections.

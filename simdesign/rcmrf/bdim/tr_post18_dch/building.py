@@ -315,10 +315,10 @@ class Building(BuildingBase):
                 col_lcx, col_lcy = get_column_clear_length()
 
                 # The column moment of resistances at both ends
-                mrdx_i = column.get_mrdx(Ned=abs(force.N1))
-                mrdy_i = column.get_mrdy(Ned=abs(force.N1))
-                mrdx_j = column.get_mrdx(Ned=abs(force.N9))
-                mrdy_j = column.get_mrdy(Ned=abs(force.N9))
+                mrdx_i = column.get_mrdx(Ned=force.N1)
+                mrdy_i = column.get_mrdy(Ned=force.N1)
+                mrdx_j = column.get_mrdx(Ned=force.N9)
+                mrdy_j = column.get_mrdy(Ned=force.N9)
 
                 # Column plastic moments for shear capacity forces
                 Mpi_x_pos = gamma_rd * mrdx_i

@@ -20,6 +20,7 @@ The example below illustrates a complete ``bcim`` input dictionary configuration
       "seed": 1993,
 
       "beta": 0.1,
+      "beta_v": null,
       "num_storeys": 5,
       "design_class": "eu_cdh",
 
@@ -80,7 +81,11 @@ The example below illustrates a complete ``bcim`` input dictionary configuration
       },
       "slab_typology": {
         "ss1_prob_given_ss1_or_hs": 0.50,
-        "ss2_prob_given_ss2_or_hs": 0.65
+        "ss2_prob_given_ss2_or_hs": 0.65,
+        "max_ss_short_span": 6.0,
+        "max_ss2_aspect_ratio": 2.0,
+        "staircase_slab_depth": null,
+        "floor_slab_thickness": null
       },
 
       "wb_prob_given_hs": 0.50,
@@ -163,8 +168,10 @@ the primary taxonomy attributes of the building portfolio.
      capacity design principles and stricter detailing requirements to ensure
      enhanced seismic performance.
 
-**beta_v** (float)
-   Design vertical load factor. This is only required ``"tr_post18_dch"`` and ``"tr_post18_dcm"`` design classes.
+**beta_v** (float, optional)
+   Design vertical load factor, used by the ``"tr_post18_dcm"`` and
+   ``"tr_post18_dch"`` design classes only. If not given, 0.0 is used, i.e.,
+   the vertical seismic load effect is neglected.
 
 Sampling Parameters
 ^^^^^^^^^^^^^^^^^^^^
@@ -371,10 +378,10 @@ describing initial conceptual design choices for the buildings.
 
    - ``ss1_prob_given_ss1_or_hs`` (float): probability of having SS1 type slab given that the slab type is either SS1 or HS
    - ``ss2_prob_given_ss2_or_hs`` (float): probability of having SS2 type slab given that the slab type is either SS2 or HS
-   - ``max_ss_short_span`` (float): upper limit for the short span length in solid slabs (SS1, SS2)
-   - ``max_ss2_aspect_ratio`` (float): upper limit for the ratio of maximum to minimum span lengths (aspect ratio) in SS2 slabs
-   - ``staircase_slab_depth`` (float): depth of the staircase slabs, if not provided computed during the design process
-   - ``floor_slab_thickness`` (float): thickness of the floor slabs, if not provided computed the design process
+   - ``max_ss_short_span`` (float, default: ``6.0``): upper limit for the short span length in solid slabs (SS1, SS2)
+   - ``max_ss2_aspect_ratio`` (float, default: ``2.0``): upper limit for the ratio of maximum to minimum span lengths (aspect ratio) in SS2 slabs
+   - ``staircase_slab_depth`` (float, optional): depth of the staircase slabs; if not provided (``null``), computed during the design process
+   - ``floor_slab_thickness`` (float, optional): thickness of the floor slabs; if not provided (``null``), computed during the design process
 
     *Definitions:*
         1. SS2 refers to solid two-way cast-in-situ slabs

@@ -7,11 +7,17 @@ import openseespy.opensees as ops
 from typing import Literal, List, Tuple
 
 # Imports from bnsm base library
-from ..baselib.column import ColumnBase
+from ..baselib.column import ColumnBase, HYSTERETIC_PARAMETERS
 
 # Imports from utils library
-from ....utils.units import MPa, MN
-from ....utils.misc import round_list
+from ....utils import rcsection as rc
+from ....utils.misc import round_list, PRECISION
+from ....utils.tags import sub_tag
+
+STIFF_INTERIOR_FACTOR = 1e3
+"""Factor on the moments of inertia of the elastic interior sections of the
+``CP01`` and ``CP02`` members. The springs then carry the whole flexural
+flexibility of the member, as calibrated."""
 
 
 class Column(ColumnBase):
@@ -25,7 +31,10 @@ class Column(ColumnBase):
 
     End-hinge flexural behaviour about the local z-axis (Mz) is defined using a
     uniaxial ``Hysteretic`` material, expressed in terms of bending moment vs.
-    plastic rotation.
+    chord rotation of the whole member (the yield rotation includes the
+    elastic deformations). The elastic interior is therefore nearly rigid in
+    flexure (``STIFF_INTERIOR_FACTOR``), and the springs carry the whole
+    flexural flexibility.
 
     If there is no capacity design, degrading shear springs are
     defined using the uniaxial ``LimitState`` material coupled with a
@@ -38,6 +47,17 @@ class Column(ColumnBase):
     :class:`~simdesign.rcmrf.bnsm.baselib.column.ColumnBase`
         Base column definition extended by this class.
     """
+
+    @property
+    def p_mat_tag(self) -> int:
+        """Elastic material tag for the axial response (P) of the hinges."""
+        return sub_tag(self.design.line.tag, 98)
+
+    @property
+    def t_mat_tag(self) -> int:
+        """Elastic material tag for the torsional response (T) of the
+        hinges."""
+        return sub_tag(self.design.line.tag, 99)
 
     def add_to_ops(self) -> None:
         """Adds column components to the OpenSees domain
@@ -53,6 +73,8 @@ class Column(ColumnBase):
         # Create the section materials
         ops.uniaxialMaterial(*self._get_rot_hinge_mat_inputs('x'))
         ops.uniaxialMaterial(*self._get_rot_hinge_mat_inputs('y'))
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
             vz_mat, vz_curve = self._get_shear_hinge_mat_inputs('x')
@@ -63,7 +85,7 @@ class Column(ColumnBase):
 
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
-        ops.section(*self._get_inelastic_sec_inputs())
+        ops.section(*self._get_hinge_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -105,6 +127,12 @@ class Column(ColumnBase):
         )
         content.append(f"ops.uniaxialMaterial({mz_mat_inputs})")
         content.append(f"ops.uniaxialMaterial({my_mat_inputs})")
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in mat_inputs
+            )
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
 
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
@@ -138,7 +166,7 @@ class Column(ColumnBase):
         )
         inelastic_sec_inputs = ', '.join(
             repr(item) if isinstance(item, str) else str(item)
-            for item in self._get_inelastic_sec_inputs()
+            for item in self._get_hinge_sec_inputs()
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
@@ -189,6 +217,9 @@ class Column(ColumnBase):
             f"{item}" for item in self._get_rot_hinge_mat_inputs('y'))
         content.append(f"uniaxialMaterial {mz_mat_inputs}")
         content.append(f"uniaxialMaterial {my_mat_inputs}")
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
 
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
@@ -207,7 +238,7 @@ class Column(ColumnBase):
         elastic_sec_inputs = ' '.join(
             f"{item}" for item in self._get_elastic_sec_inputs())
         inelastic_sec_inputs = ' '.join(
-            f"{item}" for item in self._get_inelastic_sec_inputs())
+            f"{item}" for item in self._get_hinge_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
 
@@ -224,6 +255,68 @@ class Column(ColumnBase):
         content.append(f"element {ele_inputs}")
 
         return content
+
+    def _get_hinge_elastic_mat_inputs(
+        self
+    ) -> List[List[str | float | int]]:
+        """Retrieves the elastic material inputs of the hinge sections.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the elastic axial (EA) and torsional (GJ) materials.
+
+        Notes
+        -----
+        ``ConcentratedPlasticity`` gives each hinge section a weight of one
+        length unit and removes the same length from the elastic interior.
+        The hinge sections therefore carry the elastic axial and torsional
+        flexibility of that length. With rigid materials, the axial stiffness
+        becomes EA/(L-2), which is negative for clear lengths below 2 m.
+        """
+        return [
+            round_list(['Elastic', self.p_mat_tag,
+                        self.Ecm_q * self.design.Ag]),
+            round_list(['Elastic', self.t_mat_tag,
+                        self.Gcm_q * self.design.J])
+        ]
+
+    def _get_hinge_sec_inputs(self) -> List[str | int]:
+        """Retrieves inputs for the aggregated hinge section.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for the aggregated hinge section, with elastic
+            axial (P) and torsional (T) materials.
+        """
+        sec_inputs = self._get_inelastic_sec_inputs()
+        sec_inputs[2], sec_inputs[12] = self.p_mat_tag, self.t_mat_tag
+
+        return sec_inputs
+
+    def _get_elastic_sec_inputs(self) -> List[str | float | int]:
+        """Retrieves elastic column section inputs.
+
+        Returns
+        -------
+        List[str | float | int]
+            List of elastic column section inputs.
+
+        Notes
+        -----
+        The moments of inertia are multiplied by ``STIFF_INTERIOR_FACTOR``.
+        The backbone rotations are chord rotations of the whole member, so
+        the springs carry the whole flexural flexibility and the interior is
+        nearly rigid in flexure. ``ConcentratedPlasticity`` removes one length
+        unit of the interior flexibility at each end, which then is
+        negligible.
+        """
+        sec_inputs = super()._get_elastic_sec_inputs()
+        sec_inputs[4] = round(sec_inputs[4] * STIFF_INTERIOR_FACTOR, PRECISION)
+        sec_inputs[5] = round(sec_inputs[5] * STIFF_INTERIOR_FACTOR, PRECISION)
+
+        return sec_inputs
 
     def _get_int_inputs(self) -> List[str | float]:
         """Retrieves column integration inputs.
@@ -268,38 +361,45 @@ class Column(ColumnBase):
 
         # Plastic hinge properties
         (
-            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc,
-            pinchx, pinchy, damage1, damage2, beta
+            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc
          ) = self._get_rot_hinge_props(axis)
+        # The shear distortion term is excluded from the yield rotation when
+        # the shear deformations are modelled explicitly by the shear springs
+        # (see _get_rot_hinge_props)
 
         # Rotation values for monotonic loading
         theta_1 = theta_y
-        theta_2 = theta_y + theta_cap_pl
-        theta_3 = theta_y + theta_cap_pl + theta_pc
+        theta_2 = theta_1 + theta_cap_pl
+        theta_3 = theta_2 + theta_pc
 
-        # Pinching factor for strain (or deformation) during reloading
-        pinchx = 1.0  # no pinching (default)
-        # Pinching factor for stress (or force) during reloading
-        pinchy = 1.0  # no pinching (default)
-        # Damage due to ductility: D1(mu-1)
-        damage1 = 0.0  # no degradation (default)
-        # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.0  # no degradation (default)
-        # Power used to determine the degraded unloading stiffness based on
-        # ductility, mu-beta (optional, default=0.0)
-        beta = 0.0  # elastic unloading (default)
-        # Material inputs other than tag and type
+        # Material inputs
         rot_mat_inputs = [
             'Hysteretic', flex_mat_tag,
             My, theta_1, Mc, theta_2, Mr, theta_3,
             -My, -theta_1, -Mc, -theta_2, -Mr, -theta_3,
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision
         rot_mat_inputs = round_list(rot_mat_inputs)
 
         return rot_mat_inputs
+
+    def _get_yield_rotation(self, axis: Literal['x', 'y']) -> float:
+        """Gets the yield rotation of the flexural plastic hinge.
+
+        Parameters
+        ----------
+        axis : Literal['x', 'y']
+            The local axis considered for the calculations.
+
+        Returns
+        -------
+        float
+            Yield rotation of the flexural hinge around `axis`, used also to
+            define the drift limits of the shear failure curve.
+        """
+        return self._get_rot_hinge_props(axis)[4]
 
     def _get_shear_hinge_mat_inputs(
         self, axis: Literal['x', 'y'],
@@ -344,7 +444,7 @@ class Column(ColumnBase):
         """
         if axis == 'y':
             # theta_y is about local-x (-z in ops)
-            theta_y = self._get_rot_hinge_props('x')[4]
+            theta_y = self._get_yield_rotation('x')
             # Section height
             h = self.design.by  # along y
             # Number of horizontal bars (stirrup legs)
@@ -356,7 +456,7 @@ class Column(ColumnBase):
             shear_mat_tag = self.vy_mat_tag
         elif axis == 'x':
             # theta_y is about local-y
-            theta_y = self._get_rot_hinge_props('y')[4]
+            theta_y = self._get_yield_rotation('y')
             # Section height
             h = self.design.bx  # along x
             # Number of horizontal bars (stirrup legs)
@@ -369,53 +469,43 @@ class Column(ColumnBase):
 
         # Horizontal (stirrup) reinforcement diameter
         dbh = self.design.dbh_q
-        # Concrete compressive strength in MPa
-        fc_mpa = self.design.fc_q / MPa  # convert to MPa
-        # Nominal length of column
-        Ln = self.design.H
+        # Clear length of column, without the rigid joint offsets
+        Ln = self.clear_length
         # Stirrup spacing
         sbh = self.design.sbh_q
         # Shear span, assuming equal to 50% of the free length of the element
         Ls = Ln / 2  # NOTE: Could be varied with intensity of loading, but ok.
-        # Effective depth: dist. between outer comp. fiber and tens. steel
-        d = 0.9 * h
         # Transverse reinforcement yield strength (quality adjusted)
-        fsyh_mpa = self.design.fsyh_q / MPa  # in MPa
         fsyh = self.design.fsyh_q  # in base units
         # Gross corss-section area
         Ag = self.design.Ag
         # Compressive axial load (+) - Positive in compression
         Nu = max(-self.axial_force, 0)
-        # Axial load in Mega Newton (mN) - Positive in compression
-        Nu_MN = Nu / MN  # convert to mN
         # Transverse reinforcement area
         Av = nbh * np.pi * (dbh**2) / 4
-        # Initial shear strength, see ASCE/SEI 41-17 - Equation 10-3si
-        k = 1.0  # Degradation factor (1.0 for initial strength)
-        lambda_ = 1.0  # Assuming normal weight concrete aggregate
-        d = 0.8 * h  # Effective depth, permitted to assume by ASCE
-        alpha = np.interp(sbh / d, [0.75, 1.0], [1.0, 0.0])
-        M_V_rat = Ls  # Largest ratio of moment to shear, assumed
-        M_Vd_rat = min(max(M_V_rat / d, 2), 4)  # Should satify: 2 <= M/Vd <= 4
-        Vn = k * (
-            alpha * (Av * fsyh_mpa * d / sbh)
-            + lambda_
-            * (
-                (fc_mpa**0.5)
-                / (2 * M_Vd_rat)
-                * (1 + (2 * Nu_MN) / ((fc_mpa**0.5) * Ag)) ** 0.5
-            )
-            * (0.8 * Ag)
-        )
-        # Convert from MPa units to based units
-        Vn *= MN
+        # Initial shear strength - ASCE/SEI 41-17 - Equation 10-3, with the
+        # effective depth permitted by ASCE (0.8 h)
+        Vn = rc.get_shear_strength_asce41_17(
+            self.design.fc_q, Ag, 0.8 * h, Av, fsyh, sbh, Ls, Nu)
+        # Number of shear springs in series along the member; the same hinge
+        # section (with the shear springs) is used at both ends
+        n_springs = 2
         # Shear-spring elastic slope - LeBorgne and Ghannoum (2014) - Eqn. 1
-        k_el = (5 / 6) * (self.Gcm_q * Ag / Ln)
-        # Degrading slope of the shear-drift spring backbone
-        # Shoraka and Elwood (2013) - Eqn. 20
-        k_deg = (
-            4.5 * Nu * (((Av * fsyh * 0.9 * h) / (Nu * sbh)) * 4.6 + 1) ** 2
-        ) / Ln
+        # NOTE: The member stiffness is multiplied by the number of springs
+        # so that springs in series give the member shear stiffness.
+        k_el = n_springs * rc.get_shear_stiffness_leborgne_ghannoum2014(
+            self.Gcm_q, Ag, Ln)
+        # Depth of the column core, measured to the centerline of the
+        # transverse reinforcement (Elwood and Moehle, 2005)
+        dc = h - 2 * (self.design.cover_q + dbh / 2)
+        # Axial load in the degrading slope, clipped to the range of axial
+        # load ratios (0.15 to 0.61) for which the expression was verified
+        P_lims = [0.15 * Ag * self.design.fc_q, 0.61 * Ag * self.design.fc_q]
+        P_deg = float(np.clip(Nu, *P_lims))
+        # Degrading slope of the shear-drift spring backbone - Shoraka and
+        # Elwood (2013) - Eqn. 20
+        k_deg = rc.get_shear_degrading_slope_shoraka_elwood2013(
+            P_deg, Av, fsyh, dc, sbh, Ln)
 
         # Inputs for Three-Point Limit Curve - Elwood and Moehle 2003
         # integer element tag for the associated beam-column element
@@ -432,10 +522,14 @@ class Column(ColumnBase):
         x3, y3 = mu_y2 * theta_y, k2 * Vn  # the third point TODO: verify
         # Floating point value for the slope of the third branch in the
         # post-failure backbone, assumed to be negative
+        # NOTE: Each spring takes the member slope (not multiplied by the
+        # number of springs). If both springs soften, the member degrades at
+        # half the slope of Eq. 20, which helps convergence; if one spring
+        # softens alone (localization), at the slope of Eq. 20.
         Kdeg = -k_deg
         # Floating point value for the residual force capacity of the
         # post-failure backbone
-        Fres = 0.05  # should be a small value - shear failure
+        Fres = 0.1 * Vn  # should be a small value - shear failure
         # Integer flag for type of deformation defining the abscissa
         # of the limit curve:
         # 1 = maximum beam-column chord rotations

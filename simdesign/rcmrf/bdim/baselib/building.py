@@ -3,12 +3,14 @@ within the BDIM layer.
 """
 # Imports from installed packages
 from abc import ABC
+from copy import copy
 from dataclasses import dataclass
 from typing import List, Type, Literal, Dict, Tuple, Optional, Union
 import numpy as np
 from math import ceil
 from pathlib import Path
 import pandas as pd
+import warnings
 
 # Imports from bdim base library
 from .analysis import ElasticModelBase
@@ -102,7 +104,8 @@ class BuildingBase(ABC):
     Attributes
     ----------
     taxonomy : TaxonomyData
-        Building taxonomy data.
+        Building taxonomy data. A copy of the given taxonomy, which holds the
+        current design values (e.g., material grades).
     beams : List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
         List of beam instances.
     columns : List[~simdesign.rcmrf.bdim.baselib.column.ColumnBase]
@@ -130,6 +133,12 @@ class BuildingBase(ABC):
     quality : QualityBase
         Quality instance used to adjust properties of structural
         elements.
+    _restore_concrete : ConcreteBase
+        Initial concrete material, restored by the iterative design algorithm
+        when the beam type or column section is changed.
+    _restore_steel : SteelBase
+        Initial steel material, restored by the iterative design algorithm
+        when the beam type or column section is changed.
     ColumnClass : Type[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]
         Column class used to instantiate column objects.
     BeamClass : Type[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]
@@ -184,6 +193,8 @@ class BuildingBase(ABC):
     materials: MaterialsBase
     rebars: RebarsBase
     quality: QualityBase
+    _restore_concrete: ConcreteBase
+    _restore_steel: SteelBase
     ColumnClass: Type[ColumnBase]
     BeamClass: Type[BeamBase]
     JointClass: Type[JointBase]
@@ -317,18 +328,29 @@ class BuildingBase(ABC):
         Returns
         -------
         float | None
-            Slab thickness (depth) considered in the building,
-            if already set in the taxonomy, otherwise, None.
+            Slab thickness (depth) given in the taxonomy, otherwise the
+            building-wide thickness set from the slab estimates (None before
+            the slabs are built).
         """
-        if hasattr(self.taxonomy, 'slab_thickness'):
-            return self.taxonomy.slab_thickness
-        else:
-            return None
+        thickness = getattr(self.taxonomy, 'slab_thickness', None)
+        if thickness is None and getattr(self, 'slabs', None):
+            thickness = self.slabs[0].t
+        return thickness
 
-    @slab_thickness.setter
-    def slab_thickness(self, new_thickness: str) -> None:
-        """Setter for `slab_thickness`."""
-        self.taxonomy.slab_thickness = new_thickness
+    @property
+    def slab_orientation(self) -> Literal[1, 2, 3] | None:
+        """Slab load-transfer (unloading) orientation in the building.
+
+        Returns
+        -------
+        Literal[1, 2, 3] | None
+            Slab unloading orientation, if set in the taxonomy, otherwise None
+            (inferred for each slab from its typology and span ratio).
+            1: Unloading in beams along X direction.
+            2: Unloading in beams along Y direction.
+            3: Unloading in beams along both directions.
+        """
+        return getattr(self.taxonomy, 'slab_orientation', None)
 
     @property
     def slab_type(self) -> Literal[1, 2, 3]:
@@ -347,8 +369,21 @@ class BuildingBase(ABC):
 
     @slab_type.setter
     def slab_type(self, new_type: Literal[1, 2, 3]) -> None:
-        """Setter for `slab_type`."""
+        """Setter for `slab_type`.
+
+        Notes
+        -----
+        Used internally by the design algorithm (e.g., `_change_slab_type`).
+        If the slabs are already built, a new value rebuilds the slabs and
+        the beam gravity loads (see :meth:`_initialize_slabs` and
+        :meth:`_set_beam_gravity_loads`).
+        """
+        changed = new_type != self.slab_type
         self.taxonomy.slab_type = new_type
+        if changed and getattr(self, 'slabs', None):
+            self.slabs = []
+            self._initialize_slabs()
+            self._set_beam_gravity_loads()
 
     @property
     def staircase_slab_depth(self) -> float:
@@ -730,9 +765,11 @@ class BuildingBase(ABC):
         Parameters
         ----------
         taxonomy : TaxonomyData
-            Taxonomy data required for performing simulated-designs.
+            Taxonomy data required for performing simulated-designs. It is
+            copied, so that the design changes (e.g., material grades) do not
+            modify the given object.
         """
-        self.taxonomy = taxonomy
+        self.taxonomy = copy(taxonomy)
         self.beams = []
         self.columns = []
         self.joints = []
@@ -809,18 +846,23 @@ class BuildingBase(ABC):
     def _initialize_slabs(self) -> None:
         """Initialize building slabs.
         """
+        # Slab thickness given in the taxonomy (None if not given)
+        thickness = getattr(self.taxonomy, 'slab_thickness', None)
         for rectangle in self.geometry.slab_rectangles:
             slab = self.SlabClass(rectangle=rectangle,
                                   typology=self.slab_type,
-                                  thickness=self.slab_thickness)
+                                  thickness=thickness,
+                                  orientation=self.slab_orientation)
             slab.roof = rectangle in self.geometry.roof_rectangles
-            slab.set_loads(self.loads.permanent, self.loads.variable)
             self.slabs.append(slab)
         # If slab thickness is not provided, set a global thickness value
-        if self.slab_thickness is None:
-            self.slab_thickness = max(slab.t for slab in self.slabs)
+        if thickness is None:
+            thickness = max(slab.t for slab in self.slabs)
             for slab in self.slabs:
-                slab.t = self.slab_thickness
+                slab.t = thickness
+        # Set slab loads once the final thickness is known
+        for slab in self.slabs:
+            slab.set_loads(self.loads.permanent, self.loads.variable)
 
     def _initialize_stairs(self) -> None:
         """Initialize building stairs.
@@ -830,13 +872,15 @@ class BuildingBase(ABC):
                 rectangle=rectangle,
                 thickness=self.staircase_slab_depth)
             slab.roof = rectangle in self.geometry.roof_rectangles
-            slab.set_loads(self.loads.permanent, self.loads.variable)
             self.stairs.append(slab)
         # If staircase slab depth is not provided, set a global depth value
         if self.staircase_slab_depth is None and any(self.stairs):
             self.staircase_slab_depth = max(slab.t for slab in self.stairs)
             for slab in self.stairs:
                 slab.t = self.staircase_slab_depth
+        # Set stairs loads once the final depth is known
+        for slab in self.stairs:
+            slab.set_loads(self.loads.permanent, self.loads.variable)
 
     def _initialize_materials(self) -> None:
         """Initialize building materials.
@@ -1225,6 +1269,15 @@ class BuildingBase(ABC):
         they do not have influence on the lateral capacity (e.g., drywalls)
         and we can add include their weights as default on the beams.
         """
+        # Reset the loads, so that they can be set again (e.g., after the
+        # slabs are rebuilt)
+        for beam in self.beams:
+            beam.slab_wg = []
+            beam.slab_wq = []
+            beam.slab_alpha = []
+            beam.stairs_wg = 0.0
+            beam.stairs_wq = 0.0
+            beam.infill_wg = 0.0
         # Add loads to floor beams
         for slab in self.slabs:
             beams = [self._find_beam_by_line(line)
@@ -1245,17 +1298,17 @@ class BuildingBase(ABC):
             mid_beam = mid_beams[i]
             rect_beams = [self._find_beam_by_line(line)
                           for line in slab.rectangle.lines]
-            # Set the loads for mid-level beam
-            mid_beam.stairs_wg = slab.beam_influence_areas * \
+            # Add the loads to the mid-level beam
+            mid_beam.stairs_wg += slab.beam_influence_areas * \
                 slab.pg / mid_beam.L
-            mid_beam.stairs_wq = slab.beam_influence_areas * \
+            mid_beam.stairs_wq += slab.beam_influence_areas * \
                 slab.pq / mid_beam.L
 
             for j, beam in enumerate(rect_beams):
                 if j == 1:  # The beam which supports staircase
-                    beam.stairs_wg = slab.beam_influence_areas * \
+                    beam.stairs_wg += slab.beam_influence_areas * \
                         slab.pg / beam.L
-                    beam.stairs_wq = slab.beam_influence_areas * \
+                    beam.stairs_wq += slab.beam_influence_areas * \
                         slab.pq / beam.L
 
         # Add superimposed gravity loads from the infills to the beams
@@ -1576,10 +1629,14 @@ class BuildingBase(ABC):
 
     def _restore_materials(self) -> None:
         """Restore beam and column materials to initial."""
-        self._initialize_materials()
+        self.concrete = self._restore_concrete
+        self.steel = self._restore_steel
+        self._update_element_materials()
 
     def _set_restore_point(self) -> None:
-        """Sets the restore point for beams and columns."""
+        """Sets the restore point for materials, beams and columns."""
+        self._restore_concrete = self.concrete
+        self._restore_steel = self.steel
         for column in self.columns:
             column.set_restore_point()
         for beam in self.beams:
@@ -1956,20 +2013,25 @@ class BuildingBase(ABC):
                 # Sum of the moment of resistances of the joint columns
                 sum_mrdc_i = get_sum_mrdc_at_joint(joint_i)
                 sum_mrdc_j = get_sum_mrdc_at_joint(joint_j)
-                # The beam moment of resistances at both ends
+                # The beam moment of resistances at both ends. The beam is
+                # the right (front) beam at joint i, so its sagging moment
+                # belongs to the negative sum and its hogging moment to the
+                # positive sum of the joint (same sway direction).
                 Mpi_pos = gamma_rd * beam.mrd_pos[0] * min(
-                    1.0, sum_mrdc_i / sum_mrdb_i_pos)
-                Mpi_neg = gamma_rd * beam.mrd_neg[0] * min(
                     1.0, sum_mrdc_i / sum_mrdb_i_neg)
+                Mpi_neg = gamma_rd * beam.mrd_neg[0] * min(
+                    1.0, sum_mrdc_i / sum_mrdb_i_pos)
                 Mpj_pos = gamma_rd * beam.mrd_pos[-1] * min(
                     1.0, sum_mrdc_j / sum_mrdb_j_pos)
                 Mpj_neg = gamma_rd * beam.mrd_neg[-1] * min(
                     1.0, sum_mrdc_j / sum_mrdb_j_neg)
-                # Capacity design shear forces at both ends
-                Ved_i_pos = Vd + (Mpi_pos + Mpj_neg) / beam_lc
-                Ved_i_neg = Vd - (Mpi_neg + Mpj_pos) / beam_lc
-                Ved_j_pos = Vd + (Mpj_pos + Mpi_neg) / beam_lc
-                Ved_j_neg = Vd - (Mpj_neg + Mpi_pos) / beam_lc
+                # Capacity design shear forces at both ends. Hogging at i
+                # with sagging at j adds to the gravity shear at i, sagging
+                # at i with hogging at j adds to the gravity shear at j.
+                Ved_i_pos = Vd + (Mpi_neg + Mpj_pos) / beam_lc
+                Ved_i_neg = Vd - (Mpi_pos + Mpj_neg) / beam_lc
+                Ved_j_pos = Vd + (Mpi_pos + Mpj_neg) / beam_lc
+                Ved_j_neg = Vd - (Mpi_neg + Mpj_pos) / beam_lc
                 # Set the forces and append
                 forces = beam.design_forces[-1] - beam.design_forces[-1]
                 forces.case = 'seismic'
@@ -2295,11 +2357,12 @@ class BuildingBase(ABC):
                     1.0, sum_mrdb_x_pos_j / sum_mrdc_y_j)
                 Mpj_y_neg = gamma_rd * mrdy_j * min(
                     1.0, sum_mrdb_x_neg_j / sum_mrdc_y_j)
-                # Capacity design shear forces at both ends
-                Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
-                Vdx_neg = (Mpi_y_neg + Mpj_y_pos) / col_lcx
-                Vdy_pos = (Mpi_x_pos + Mpj_x_neg) / col_lcy
-                Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
+                # Capacity design shear forces at both ends. The moments at
+                # both column ends are from the same sway direction.
+                Vdx_pos = (Mpi_y_pos + Mpj_y_pos) / col_lcx
+                Vdx_neg = (Mpi_y_neg + Mpj_y_neg) / col_lcx
+                Vdy_pos = (Mpi_x_pos + Mpj_x_pos) / col_lcy
+                Vdy_neg = (Mpi_x_neg + Mpj_x_neg) / col_lcy
                 # Set the forces and append
                 forces.Vx1 = max(Vdx_pos, Vdx_neg)
                 forces.Vx9 = max(Vdx_pos, Vdx_neg)
@@ -2369,9 +2432,22 @@ class BuildingBase(ABC):
                 col.nbh_x = nbh_x[i]
                 col.nbh_y = nbh_y[i]
                 col.validate_transverse_reinforcement()
+        # STAGE 4: Local ductility (confinement) requirements, if any
+        self._check_columns_local_ductility()
         # Check if columns fail stage 2 shear design verification
         if self.columns_fail:
             self.__print_column_failure('stage 2 shear')
+
+    def _check_columns_local_ductility(self) -> None:
+        """Check the local ductility (confinement) requirements of the
+        columns after the transverse reinforcement design.
+
+        The base implementation does nothing. Design classes with such
+        requirements override this method, e.g., to increase the transverse
+        reinforcement of the columns, or to mark the columns as failed
+        (``ok_x``, ``ok_y``) so that their dimensions are increased.
+        """
+        return
 
     def _set_expected_axial_forces_on_column_hinges(self) -> None:
         """Set the expected axial forces on column hinges.
@@ -2449,7 +2525,11 @@ class BuildingBase(ABC):
             # Set average column axial forces to be used in hinge calculations.
             self._set_expected_axial_forces_on_column_hinges()
         else:
-            Warning('No design solution is found.')
+            num_storeys = len(self.geometry.floor_level_points)
+            warnings.warn(
+                f"No design solution is found for the {self.design_class} "
+                f"building (beta={self.beta}, {num_storeys} storeys) after "
+                f"{counter} iterations.", UserWarning)
 
     def to_csv(self, directory: Union[str, Path]) -> None:
         """Save the generated BDIM data into the specified directory.
@@ -2541,7 +2621,7 @@ class BuildingBase(ABC):
                 j_dict['right_beam_y'].append(jnt.front_beam.line.tag)
             else:
                 j_dict['right_beam_y'].append(None)
-            j_dict['fcm [MPa]'].append(joint_model)
+            j_dict['fcm [MPa]'].append(jnt.fcm / MPa)
             j_dict['model_type_q'].append(joint_model)
         # Convert joints dictionary to Pandas DataFrame
         joints = pd.DataFrame(j_dict)

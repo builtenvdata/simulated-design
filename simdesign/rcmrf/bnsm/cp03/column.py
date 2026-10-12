@@ -6,7 +6,8 @@ import openseespy.opensees as ops
 from typing import Literal, List, Tuple
 
 # Imports from bnsm cp01 library
-from ..cp01.column import Column as ColumnCP01
+from ..cp01.column import Column as ColumnCP01, HYSTERETIC_PARAMETERS
+from ..cp01.column import STIFF_INTERIOR_FACTOR
 
 # Imports from bnsm base library
 from ..baselib.node import Node
@@ -14,6 +15,7 @@ from ..baselib.constants import PDELTA_TRANSF_Z
 
 # Imports from utils library
 from ....utils.misc import round_list
+from ....utils.tags import element_end_node_tag
 
 
 class Column(ColumnCP01):
@@ -31,20 +33,10 @@ class Column(ColumnCP01):
     hinge are constrained to behave rigidly using rigid materials, so the
     hinge represents concentrated flexural nonlinearity.
 
-    Since the hinge and elastic column elements act in series, the elastic
-    stiffness of the interior member is modified following the recommendations
-    by Ibarra & Krawinkler (2005) and Zareian & Medina (2010).
-
-    References
-    ---------
-    Ibarra, L. F. and Krawinkler, H. (2005). Global collapse of frame
-    structures under seismic excitations. Technical Report 152,
-    Stanford University.
-
-    Zareian, F. and Medina R. A. (2010). A practical method for proper
-    modeling of structural damping in inelastic plane structural systems.
-    Computers and Structures, 88(1-2), 45-53.
-    https://doi.org/10.1016/j.compstruc.2009.08.001
+    The hinge backbone rotations are chord rotations of the whole member
+    (the yield rotation includes the elastic deformations), so the elastic
+    member is nearly rigid in flexure (``STIFF_INTERIOR_FACTOR``) and the
+    hinges carry the whole flexural flexibility.
 
     Attributes
     ----------
@@ -85,14 +77,14 @@ class Column(ColumnCP01):
         """Initialize and set ele_node_i based on hinge_node_i.
         """
         coords = self.hinge_node_i.coordinates.copy()
-        tag = int(self.hinge_node_i.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_i.tag)
         self.ele_node_i = Node(tag, coords)
 
     def set_ele_node_j(self) -> None:
         """Initialize and set ele_node_j based on hinge_node_j.
         """
         coords = self.hinge_node_j.coordinates.copy()
-        tag = int(self.hinge_node_j.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_j.tag)
         self.ele_node_j = Node(tag, coords)
 
     def add_to_ops(self) -> None:
@@ -306,21 +298,27 @@ class Column(ColumnCP01):
         -------
         List[float]
             List of elastic column element inputs.
+
+        Notes
+        -----
+        The moments of inertia are multiplied by ``STIFF_INTERIOR_FACTOR``,
+        since the hinges carry the whole flexural flexibility.
         """
-        # Ibarra and Krawinkler (2005) - Equation B.3
-        n_factor = 10  # n=10 is used in the reference
-        if self.cracked_section:
-            Iz_mod = self._Ix_eff * (n_factor + 1) / n_factor
-            Iy_mod = self._Iy_eff * (n_factor + 1) / n_factor
+        # Cracked section properties
+        if self.cracked:
+            Iz = self._Ix_eff
+            Iy = self._Iy_eff
         else:
-            Iz_mod = self.design.Ix * (n_factor + 1) / n_factor
-            Iy_mod = self.design.Iy * (n_factor + 1) / n_factor
+            Iz = self.design.Ix
+            Iy = self.design.Iy
+        # Nearly rigid in flexure
+        Iz, Iy = Iz * STIFF_INTERIOR_FACTOR, Iy * STIFF_INTERIOR_FACTOR
         # List of elasticBeamColumn element inputs
         ele_inputs = round_list([
             'elasticBeamColumn', self.design.line.tag,
             self.ele_node_i.tag, self.ele_node_j.tag,
             self.design.Ag, self.Ecm_q, self.Gcm_q,
-            self.design.J, Iy_mod, Iz_mod, PDELTA_TRANSF_Z
+            self.design.J, Iy, Iz, PDELTA_TRANSF_Z
         ])
 
         return ele_inputs
@@ -350,37 +348,22 @@ class Column(ColumnCP01):
             # around local -y axis (corresponds to y in ops)
             flex_mat_tag = self.my_mat_tag
 
-        # Plastic hinge properties
+        # Backbone of the plastic hinges
         (
-            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc,
-            pinchx, pinchy, damage1, damage2, beta
+            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc
          ) = self._get_rot_hinge_props(axis)
 
-        # Elastic stiffness modification factor
-        n_factor = 10  # n=10 is used in Ibarra and Krawinkler (2005)
-
         # Rotation values
-        theta_1 = theta_y / n_factor
-        theta_2 = (theta_y / n_factor) + theta_cap_pl
-        theta_3 = (theta_y / n_factor) + theta_cap_pl + theta_pc
+        theta_1 = theta_y
+        theta_2 = theta_1 + theta_cap_pl
+        theta_3 = theta_2 + theta_pc
 
-        # Pinching factor for strain (or deformation) during reloading
-        pinchx = 1.0  # no pinching (default)
-        # Pinching factor for stress (or force) during reloading
-        pinchy = 1.0  # no pinching (default)
-        # Damage due to ductility: D1(mu-1)
-        damage1 = 0.0  # no degradation (default)
-        # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.0  # no degradation (default)
-        # Power used to determine the degraded unloading stiffness based on
-        # ductility, mu-beta (optional, default=0.0)
-        beta = 0.0  # elastic unloading (default)
-        # Material inputs other than tag and type
+        # Material inputs
         rot_mat_inputs = [
             'Hysteretic', flex_mat_tag,
             My, theta_1, Mc, theta_2, Mr, theta_3,
             -My, -theta_1, -Mc, -theta_2, -Mr, -theta_3,
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision

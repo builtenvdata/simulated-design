@@ -19,6 +19,7 @@ Pipeline::
 
 from typing import Dict, Literal, Tuple, List
 from pathlib import Path
+import warnings
 
 from .bcim import BCIM
 from .bdim import BDIM, TaxonomyData
@@ -45,10 +46,15 @@ def generate(
     inputs : Dict[Literal['bcim', 'bnsm'], Dict]
         Contains input parameters required for data generation.
         These will replace the defaults obtained for the specified
-        `design_class`.
+        `design_class`. The ``'opensees'`` entry of ``'bnsm'`` selects the
+        exported models, ``'py'`` (OpenSeesPy, default) or ``'tcl'``
+        (OpenSees Tcl). The given dictionaries are not modified.
     outdir : str | Path, optional
         Path to the user-defined output directory.
         If None, set to `Path.cwd() / 'Outputs'`. by default None.
+        The directory is created if needed and its other contents are kept;
+        only the outputs written by this function (``BCIM.csv`` and the
+        ``BDIM`` and ``BNSM`` subdirectories) are replaced.
 
     Returns
     -------
@@ -63,6 +69,8 @@ def generate(
     ------
     KeyError
         `inputs['bcim']['design_class']` is not specified.
+    ValueError
+        `inputs['bnsm']['opensees']` is neither 'py' nor 'tcl'.
 
     Examples
     --------
@@ -99,11 +107,11 @@ def generate(
                     "sigma_y": 0.35,
                 },
                 "steel": {
-                    "tag": ["S400", "S500"],
+                    "grade": ["S400", "S500"],
                     "probability": [0.10, 0.90],
                 },
                 "concrete": {
-                    "tag": ["C20/25", "C25/30", "C30/37", "C35/45"],
+                    "grade": ["C20/25", "C25/30", "C30/37", "C35/45"],
                     "probability": [0.30, 0.45, 0.20, 0.05],
                 },
                 "ground_storey_height": {
@@ -115,8 +123,8 @@ def generate(
                 "slab_typology": {
                     "ss1_prob_given_ss1_or_hs": 0.50,
                     "ss2_prob_given_ss2_or_hs": 0.65,
-                    "upper_lim_for_min_ss_span_length": 6.0,
-                    "upper_lim_for_max_ss2_span_ratio": 2.0,
+                    "max_ss_short_span": 6.0,
+                    "max_ss2_aspect_ratio": 2.0,
                     "staircase_slab_depth": 0.15,
                     "floor_slab_thickness": 0.15,
                 },
@@ -126,7 +134,7 @@ def generate(
                 "seed": 1993,
             },
             "bnsm": {
-                "model": "CP03",
+                "model": "CP01",
                 "load_factors": {"G": 1.0, "Q": 0.3},
                 "mass_factors": {"G": 1.0, "Q": 0.3},
                 "scheme": "EQL",
@@ -142,13 +150,13 @@ def generate(
     if not bcim_inputs or not bcim_inputs.get('design_class'):
         raise KeyError('design_class in bcim is not specified!')
 
-    # Get bnsm settings
-    bnsm_inputs = inputs.get('bnsm')
-    lang = 'py'
-    if bnsm_inputs is None:
-        bnsm_inputs = {}
-    elif bnsm_inputs.get('opensees'):
-        lang = bnsm_inputs.pop('opensees')
+    # Get bnsm settings (a copy, the caller's inputs are not modified)
+    bnsm_inputs = dict(inputs.get('bnsm') or {})
+    lang = str(bnsm_inputs.pop('opensees', 'py') or 'py').strip().lower()
+    if lang not in ('py', 'tcl'):
+        raise ValueError(
+            f"Invalid opensees option: {lang!r}. Valid options are: "
+            "'py', 'tcl'.")
 
     # Create output directory
     if outdir is None:
@@ -158,9 +166,12 @@ def generate(
     bcim_path = outdir / "BCIM.csv"
     bdim_path = outdir / 'BDIM'
     bnsm_path = outdir / 'BNSM'
-    make_dir(outdir)
-    make_dir(bdim_path)
-    make_dir(bnsm_path)
+    outdir.mkdir(parents=True, exist_ok=True)  # keep any existing contents
+    for path in (bdim_path, bnsm_path):
+        if path.exists():
+            warnings.warn(f"Replacing the existing outputs in {path}.",
+                          UserWarning)
+        make_dir(path)
 
     # Initialize BCIM
     bcim = BCIM()
@@ -178,7 +189,7 @@ def generate(
         # Initialize BDIM
         bdim_ = BDIM(taxonomy)
         # To ensure the reproducibility of BDIM set the seed
-        bdim_.set_seed_for_quality_adjustments(bcim.inputs.seed)
+        bdim_.set_seed_for_quality_adjustments(bcim.inputs.seed + i)
         # Make simumlated design
         bdim_.run_iterative_design_algorithm()
         # Update BCIM in case some properties changed during design
@@ -206,6 +217,8 @@ def generate(
             bdim.append(bdim_)
             bnsm.append(bnsm_)
         else:
+            print(f"No design solution is found; building {i + 1} is "
+                  "skipped.")
             bdim.append(None)
             bnsm.append(None)
     # Save bcim information

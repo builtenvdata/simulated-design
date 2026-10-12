@@ -10,7 +10,7 @@ optional; default values are applied when not specified.
 .. code-block:: python
 
     "bnsm": {
-        "model": "CP03",
+        "model": "CP01",
         "opensees": "py",
 
         "load_factors": {"G": 1.0, "Q": 0.3},
@@ -22,9 +22,10 @@ optional; default values are applied when not specified.
 
         "include_infills": True,
         "cyclic_model": False,
-        "cracked_beam": False,
-        "cracked_column": False,
-        "infill_column_connection": "parallel"
+        "cracked_beam": None,
+        "cracked_column": None,
+        "infill_column_connection": "parallel",
+        "beam_loads": "auto"
     }
 
 Model Selection
@@ -39,24 +40,37 @@ inherits the same default treatment for the following components:
   (``forceBeamColumn``) using a ``HingeRadau`` plastic-hinge integration scheme.
   Inelasticity is concentrated within finite plastic-hinge lengths at the
   element ends, while the interior is represented by an elastic section
-  (optionally using cracked-section flexural stiffness). End-hinge
-  moment-rotation behaviour follows a ``Hysteretic`` uniaxial material with a
-  trilinear backbone (yield, capping, residual). Yield is computed using the
-  approach of Panagiotakos and Fardis (2001); capping moment, plastic rotation
-  capacity, and post-capping rotation capacity follow Haselton et al. (2008,
-  2016), and yield rotation follows EN 1998-3:2004. Plastic hinge length is
-  computed per Priestley et al. (2007). A bond-slip modification factor adjusts
-  the hinge properties.
+  (optionally using cracked-section flexural stiffness, see
+  ``cracked_beam``). End-hinge moment-curvature behaviour follows a
+  ``Hysteretic`` uniaxial material with a trilinear backbone (yield, capping,
+  residual). The yield moment and curvature follow the empirical expressions
+  of Panagiotakos and Fardis (2001), or a simplified moment-curvature section
+  analysis in the models noted below. The yield chord rotation follows
+  EN 1998-3:2005 (Eq. A.10b), with the tension shift factor set from the
+  shear cracking resistance of EN 1992-1-1:2004 (6.2.2); the capping moment,
+  plastic rotation capacity and post-capping rotation capacity follow
+  Haselton et al. (2008, 2016). The yield curvature of the hinges is adjusted
+  so that the member yields at the yield chord rotation: the elastic interior
+  gives the flexural part ``My·Ls/(3·EI)`` and the hinges carry the rest
+  (tension shift, shear distortion and bond-slip) over the plastic hinge
+  length, computed per Priestley et al. (2007). A bond-slip modification
+  factor adjusts the hinge properties. By default, beam gravity loads are applied as point
+  loads at the element ends when the joints are inelastic, as in O'Reilly and
+  Sullivan (2019), and as uniformly distributed loads otherwise; see
+  ``beam_loads``.
 
 - **Columns** use the same ``forceBeamColumn`` / ``HingeRadau`` framework as
   beams, but with a P-Delta geometric transformation to capture second-order
   effects under gravity. Flexural behaviour about both local axes (``My``,
   ``Mz``) is represented by ``Hysteretic`` materials assembled in an aggregated
-  hinge section. When capacity-design shear is not enforced, the aggregated
-  section additionally includes ``Pinching4`` shear hinges (``Vy``, ``Vz``)
-  wrapped with ``MinMax`` limiters, calibrated following Zimos et al. (2015)
-  with input from Sezen and Moehle (2004), Priestley et al. (1994), Mergos and
-  Kappos (2012), and O'Reilly (2016).
+  hinge section, with the same backbone and yield curvature adjustment as the
+  beams (including the axial load). When capacity-design shear is not
+  enforced, the aggregated section additionally includes ``Pinching4`` shear
+  hinges (``Vy``, ``Vz``) wrapped with ``MinMax`` limiters, calibrated
+  following Zimos et al. (2015) with input from Sezen and Moehle (2004),
+  Priestley et al. (1994), Mergos and Kappos (2012), and O'Reilly (2016); the
+  shear distortion term is then left out of the yield chord rotation, since
+  the shear springs model it.
 
 - **Beam-column joints** are represented by rotational spring models that can
   be rigid, elastic, or inelastic.
@@ -77,7 +91,7 @@ inherits the same default treatment for the following components:
 Each model below either uses these defaults directly or replaces specific
 components with calibrated alternatives.
 
-**model** (str, default: ``"CP03"``)
+**model** (str, default: ``"CP01"``)
    Identifier of the nonlinear modelling strategy to use. The following
    pre-defined models are currently available, organised by plasticity
    formulation.
@@ -105,8 +119,7 @@ components with calibrated alternatives.
 
    - ``"CP03"``: Extends CP01 by representing the plastic hinges explicitly as
      ``zeroLength`` (beams) and ``zeroLengthSection`` (columns) elements placed
-     in series with an elastic interior beam-column element, with hinge
-     stiffness corrected following Ibarra and Krawinkler (2005). Rigid joint
+     in series with an elastic interior beam-column element. Rigid joint
      offsets are modelled with rigid-like ``elasticBeamColumn`` elements rather
      than ``geomTransf`` joint offsets, which allows auxiliary plastic hinge
      nodes to be defined explicitly. The infill formulation (ESRM20
@@ -138,7 +151,8 @@ components with calibrated alternatives.
      ``fiber``-discretized sections at both ends of beams and columns,
      explicitly capturing axial-flexure interaction and the influence of
      reinforcement detailing. Concrete confinement follows Mander et al.
-     (1988), and reinforcing steel is wrapped with ``MinMax`` limiters
+     (1988) with ``Concrete04`` (default), or the modified Kent and Park
+     model (Scott et al., 1982) with ``Concrete01``, and reinforcing steel is wrapped with ``MinMax`` limiters
      enforcing strain bounds that approximate bar buckling or rupture per
      Priestley et al. (2007). The interior section of beams and columns can be
      defined as elastic or inelastic. Infills are inherited from the base
@@ -150,6 +164,16 @@ components with calibrated alternatives.
      elastic by default. Beam modelling reverts to the DP01 aggregated-section
      formulation. Joints, base-library diagonal-strut infills, diaphragms, and
      foundations are inherited unchanged.
+
+   - ``"DP05"``: DP03 with an axial release at one end of each beam. The rigid
+     floor diaphragm forces zero axial strain in the beams, whereas the axis of
+     a fiber-section RC beam elongates as it cracks and yields; DP03 beams
+     therefore develop fictitious axial compression that raises their flexural
+     strength and stiffness. In DP05, the end section of each beam frames into
+     an auxiliary node connected to the joint by a ``zeroLength`` element that
+     is free along the beam axis and rigid otherwise (OpenSees Wiki, Rigid
+     Diaphragm Consequences), so the beams carry no axial force. Columns,
+     joints, infills, diaphragms and foundations are as in DP03.
 
 **opensees** (``"py"`` or ``"tcl"``, default: ``"py"``)
    Output format for the generated OpenSees model script.
@@ -171,6 +195,22 @@ Load and Mass Parameters
 
    - ``"G"`` (float): factor for permanent (dead) loads.
    - ``"Q"`` (float): factor for variable (live) loads.
+
+**beam_loads** (``"auto"``, ``"uniform"`` or ``"point"``, default: ``"auto"``)
+   How the beam gravity loads are applied in the numerical model.
+
+   - ``"uniform"``: uniformly distributed element loads (``beamUniform``);
+     the load over the rigid joint regions at the beam ends is applied as
+     point loads at the element ends.
+   - ``"point"``: equivalent point loads at the beam element ends, i.e., half
+     of the total beam load at each end, as in O'Reilly and Sullivan (2019).
+     The beams (and thus the columns) then carry no gravity-induced moments.
+   - ``"auto"``: ``"point"`` if the beam-column joints are modelled as
+     inelastic, as in the original joint model of O'Reilly and Sullivan
+     (2019), and ``"uniform"`` otherwise (elastic or rigid joints).
+
+   All options apply the total beam load over the beam length measured
+   between the grid lines, as in the design.
 
 Pushover Analysis Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -208,13 +248,27 @@ Modelling Settings
    If ``True``, model parameters are adjusted for cyclic (as opposed to
    monotonic) analysis.
 
-**cracked_beam** (bool, default: ``False``)
-   If ``True``, effective (cracked-section) flexural stiffness is used for
-   elastic beam elements. If ``False``, gross-section properties are applied.
+**cracked_beam** (``None``, bool or float, default: ``None``)
+   Effective (cracked-section) flexural stiffness of the elastic beam sections:
 
-**cracked_column** (bool, default: ``False``)
-   If ``True``, effective (cracked-section) flexural stiffness is used for
-   elastic column elements. If ``False``, gross-section properties are applied.
+   - ``None`` or ``False``: gross-section properties.
+   - ``True``: ``EIeff = My / phi_y`` with the yield moment and curvature of
+     the plastic hinges (Panagiotakos and Fardis, 2001, or the simplified
+     section analysis, see the model descriptions above), averaged over both
+     end sections and bending directions. Flexure only.
+   - float: user-defined ratio of effective to gross flexural stiffness,
+     ``0 < EIeff / EIg <= 1`` (e.g., ``0.5`` as in EN 1998-1 4.3.1(7)).
+
+   .. note::
+
+      CP01 and CP02 should keep gross sections: their
+      ``ConcentratedPlasticity`` integration gives the hinges a weight of one
+      length unit and reduces the elastic interior accordingly, so cracked
+      interior sections give inconsistent results.
+
+**cracked_column** (``None``, bool or float, default: ``None``)
+   Same as ``cracked_beam``, for the elastic column sections. With ``True``,
+   ``My / phi_y`` includes the effect of the gravity axial load.
 
 **infill_column_connection** (``"parallel"`` or ``"series"``, default: ``"parallel"``)
    .. note:: This parameter is only applicable to ``"CP03"``.
@@ -230,6 +284,13 @@ Modelling Settings
 
 References
 ^^^^^^^^^^
+
+CEN (2004). Eurocode 2: Design of concrete structures - Part 1-1: General
+rules and rules for buildings. *EN 1992-1-1:2004*. Brussels, Belgium.
+
+CEN (2005). Eurocode 8: Design of structures for earthquake resistance -
+Part 3: Assessment and retrofitting of buildings. *EN 1998-3:2005*.
+Brussels, Belgium.
 
 Crowley, H. M., Dabbeek, J., Despotaki, V., Rodrigues, D., Martins, L.,
 Silva, V., Romão, X., Pereira, N., Weatherill, G. A., & Danciu, L. (2021).
@@ -259,10 +320,6 @@ Haselton, C. B., Liel, A. B., Taylor-Lange, S. C., & Deierlein, G. G. (2016).
 Calibration of model to simulate response of reinforced concrete beam-columns to collapse.
 *ACI Structural Journal*, 113(6).
 
-Ibarra, L. F., & Krawinkler, H. (2005).
-Global collapse of frame structures under seismic excitations.
-*Technical Report 152*, John A. Blume Earthquake Engineering Center, Stanford University.
-
 Mander, J. B., Priestley, M. J. N., & Park, R. (1988).
 Theoretical stress-strain model for confined concrete.
 *Journal of Structural Engineering*, 114(8), 1804-1826.
@@ -278,6 +335,10 @@ O'Reilly, G. J. (2016).
 *Performance-based seismic assessment and retrofit of existing RC frame
 buildings in Italy*. Doctoral dissertation, IUSS Pavia.
 
+O'Reilly, G. J., & Sullivan, T. J. (2019). Modeling techniques for the seismic
+assessment of the existing Italian RC frame structures.
+*Journal of Earthquake Engineering*, 23(8), 1262-1296.
+
 Panagiotakos, T. B., & Fardis, M. N. (2001).
 Deformations of reinforced concrete members at yielding and ultimate.
 *Structural Journal*, 98(2), 135-148.
@@ -289,6 +350,10 @@ https://doi.org/10.1061/(ASCE)0733-9445(1994)120:8(2310)
 
 Priestley, M. J. N., Calvi, G. M., & Kowalsky, M. J. (2007).
 *Displacement-based seismic design of structures*. IUSS Press, Pavia.
+
+Scott, B. D., Park, R., & Priestley, M. J. N. (1982).
+Stress-strain behavior of concrete confined by overlapping hoops at low and
+high strain rates. *Journal of the American Concrete Institute*, 79(1), 13-27.
 
 Sezen, H., & Moehle, J. P. (2004).
 Shear strength model for lightly reinforced concrete columns.

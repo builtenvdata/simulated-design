@@ -66,7 +66,7 @@ class Building(BuildingBase):
     Notes
     -----
     - Design follows limit state design approach.
-    - Main reference building code is TBEC-2007 (high ductility class).
+    - Main reference building code is TBEC-2007 (normal ductility class).
     - Basic units are kN, m, sec
     - Overrides :meth:`_change_beam_type` method to update slab type
       together with beam type.

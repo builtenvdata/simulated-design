@@ -57,11 +57,14 @@ class Rebars(RebarsBase):
             Maximum spacing between longitudinal bars (reinforcement)
             for beams.
         """
-        # Art 91 in REBAP (1983) - defined for tensile reinforcement
+        # Art 91 and Quadro XIV in REBAP (1983), mildly aggressive
+        # environment (w = 0.3 mm) - defined for tensile reinforcement
         if self.steel.fsyk == 400:
-            return 100 * mm
-        elif self.steel.fsyk == 500:
             return 125 * mm
+        elif self.steel.fsyk == 500:
+            return 100 * mm
+        # No spacing limit is imposed for A235
+        return 2000 * mm
 
     def _get_col_max_sbh(self, **kwargs) -> float | np.ndarray:
         """Get maximum spacing between horizontal bars

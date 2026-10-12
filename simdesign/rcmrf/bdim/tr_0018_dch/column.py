@@ -263,9 +263,10 @@ class Column(ColumnBase):
         Ashy_sbh_req = 0
         for force in self.design_forces:
             # Design forces
-            Vd_x = max(force.Vx1, force.Vx9)
-            Vd_y = max(force.Vy1, force.Vy9)
-            Nd = max(abs(force.N1), abs(force.N9))
+            Vd_x = max(abs(force.Vx1), abs(force.Vx9))
+            Vd_y = max(abs(force.Vy1), abs(force.Vy9))
+            # Compressive axial force only (tension is taken as zero)
+            Nd = max(0.0, -min(force.N1, force.N9))
             niu = Nd / (self.Ag * self.fck)
 
             # Shear force due to gravity loads
@@ -283,11 +284,11 @@ class Column(ColumnBase):
             ratio1 = 0.3 * (self.Ag / Ack - 1) * (self.fck / self.fsyk)
             ratio2 = 0.075 * (self.fck / self.fsyk)
             if niu > 0.20:
-                Ashx_sh_min = max(ratio1, ratio2) * dx
-                Ashy_sh_min = max(ratio1, ratio2) * dy
+                Ashx_sh_min = max(ratio1, ratio2) * dy
+                Ashy_sh_min = max(ratio1, ratio2) * dx
             else:
-                Ashx_sh_min = (2 / 3) * max(ratio1, ratio2) * dx
-                Ashy_sh_min = (2 / 3) * max(ratio1, ratio2) * dy
+                Ashx_sh_min = (2 / 3) * max(ratio1, ratio2) * dy
+                Ashy_sh_min = (2 / 3) * max(ratio1, ratio2) * dx
 
             # Shear force resisted by concrete, Eq.8.1 in TS500-2000
             Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * \

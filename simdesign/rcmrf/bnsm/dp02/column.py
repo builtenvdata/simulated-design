@@ -2,17 +2,16 @@
 in the BNSM layer.
 """
 # Imports from installed packages
-import numpy as np
 import openseespy.opensees as ops
-from typing import Literal, List, Tuple, Dict
+from typing import Literal, List, Tuple
 
 # Imports from bnsm base library
-from ..baselib.column import ColumnBase, ColumnDesign
+from ..baselib.column import ColumnBase
 
 # Imports from utils library
 from ....utils.units import MPa
 from ....utils.misc import round_list
-from ....utils.rcsection import get_moments
+from ....utils.tags import sub_tag
 
 
 class Column(ColumnBase):
@@ -48,52 +47,22 @@ class Column(ColumnBase):
     @property
     def mz_mat_tag_(self) -> int:
         """Pinching4 material tag for the flexural hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def my_mat_tag_(self) -> int:
         """Pinching4 material tag for the flexural hinge about local-y (My)."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
-    def __init__(
-        self, design: ColumnDesign, bondslip_factor: float,
-        capacity_design: bool, load_factors: Dict[Literal['G', 'Q'], float],
-        cyclic_model: bool = False, cracked_section: bool = False
-    ) -> None:
-        """Initialize the Column object.
-
-        Parameters
-        ----------
-        design : ColumnDesign
-            Instance of column design information model.
-        bondslip_factor : float
-            Bondslip factor considered while defining plastic hinges.
-        capacity_design : bool
-            Flag to check whether capacity shear design is followed or not.
-        load_factors :  Dict[Literal['G', 'Q'], float]
-            Load factors used to compute gravity loads/forces on the column.
-        cyclic_model : bool, optional
-            If True, the model parameters will be adjusted for cyclic analysis.
-            By default False.
-        cracked_section : bool, optional
-            If True, the elastic sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
-
-        Notes
-        -----
-        Removed cracked section computations here to reduce the time.
-        It is being computed in later stages.
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the Column object (see ``ColumnBase``), with the
+        yield point of the plastic hinges from section analysis, consistent
+        with the cracked-section method.
         """
-        self.design = design
-        self.bondslip_factor = bondslip_factor
-        self.capacity_design = capacity_design
-        self.cyclic_model = cyclic_model
-        self.cracked_section = cracked_section
-        self.axial_force = -(load_factors['G'] * design.hinge_Ng
-                             + load_factors['Q'] * design.hinge_Nq)
-        self.ele_load = float(design.self_wg * load_factors['G'])
-        self.jnt_offsets = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        super().__init__(*args, **kwargs)
+        self.yield_mom_curv = 'analytical'
+        # Update the cracked-section properties for the section yield point
+        self._set_cracked_properties()
 
     def add_to_ops(self) -> None:
         """Adds column components to the OpenSees domain
@@ -124,6 +93,8 @@ class Column(ColumnBase):
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
         ops.section(*self._get_inelastic_sec_inputs())
+        if not self.capacity_design:  # Interior section with shear springs
+            ops.section(*self._get_interior_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -213,6 +184,12 @@ class Column(ColumnBase):
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in self._get_interior_sec_inputs()
+            )
+            content.append(f"ops.section({interior_sec_inputs})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -285,6 +262,10 @@ class Column(ColumnBase):
             f"{item}" for item in self._get_inelastic_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ' '.join(
+                f"{item}" for item in self._get_interior_sec_inputs())
+            content.append(f"section {interior_sec_inputs}")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -339,12 +320,6 @@ class Column(ColumnBase):
         if axis == 'x':
             # Section height
             h = self.design.by  # along y
-            # Section width
-            b = self.design.bx  # along x
-            # Number of internal web reinforcement (intermediate)
-            nbl_v = np.array(self.design.nbly_int_q, dtype=int)
-            # Number of internal reinforcement (on a single side)
-            nbl_int = np.array(self.design.nblx_int_q, dtype=int)
             # The integer tag for the material describing flexure behaviour
             # around local -x (corresponds to z in ops)
             flex_mat_tag = self.mz_mat_tag_
@@ -353,27 +328,16 @@ class Column(ColumnBase):
         elif axis == 'y':
             # Section height
             h = self.design.bx  # along x
-            # Section width
-            b = self.design.by  # along y
-            # Number of internal web reinforcement (intermediate)
-            nbl_v = np.array(self.design.nblx_int_q, dtype=int)
             # Number of internal reinforcement (on a single side)
-            nbl_int = np.array(self.design.nbly_int_q, dtype=int)
             # The integer tag for the material describing flexure behaviour
             # around local -y axis (corresponds to y in ops)
             flex_mat_tag = self.my_mat_tag_
             minmax_mat_tag = self.my_mat_tag
 
-        # Number of corner reinforcement (on a single side)
-        nbl_cor = 2
-        # Diameter of corner reinforcement
-        dbl_cor = self.design.dbl_cor_q
         # Diameter of internal reinforcement
         dbl_int = self.design.dbl_int_q
         # Concrete compressive strength in base units
         fc = self.design.fc_q
-        # Longitudinal steel yield strength in base units
-        fsyl = self.design.fsyl_q
         # Concrete cover
         cover = self.design.cover_q
         # Horizontal (stirrup) reinforcement diameter
@@ -382,34 +346,10 @@ class Column(ColumnBase):
         Nu = max(-self.axial_force, 0)
         # Normalized axial load ratio (dimensionless)
         nu = Nu / (self.design.Ag * fc)
-        # Concrete modulus of elasticity
-        Ec = self.Ecm_q
-        # Steel modulus of elasticity
-        Es = self.design.Es
 
-        # Reinforcement layout (top to bottom)
-        y_ct = cover + dbh + dbl_cor / 2
-        y_it = cover + dbh + dbl_int / 2
-        y_cb = h - (cover + dbh + dbl_cor / 2)
-        y_ib = h - (cover + dbh + dbl_int / 2)
-        dv = (y_cb - y_ct) / (nbl_v + 1)
-        y_layers = [y_it, y_ct] + [y_ct + (i + 1) * dv for i in range(nbl_v)
-                                   ] + [y_cb, y_ib]
-        # Reinforcement area per layer (top to bottom)
-        Ab_c = 0.25*np.pi*dbl_cor**2
-        Ab_i = 0.25*np.pi*dbl_int**2
-        As_c = nbl_cor * Ab_c
-        As_i = nbl_int * Ab_i
-        As_web = 2 * Ab_i  # on both sides
-        As_layers = [As_i, As_c] + [As_web for _ in range(nbl_v)
-                                    ] + [As_c, As_i]
-        # Cracking and yield moments
-        _, _, _, My, phi_y, cy = get_moments(
-            h=h, b=b, fc=fc, Ec=Ec,
-            Pext=Nu, fyL=fsyl, Es=Es,
-            As_layers=As_layers,
-            y_layers=y_layers,
-        )
+        # Moment, curvature, and neutral axis depth at yielding
+        My, phi_y, cy = self._get_my_phiy_analytical(axis)
+
         # Capping to yield moment ratio
         Mc_My = 1.077  # O'Reilly 2016 - Eqn. 2.2
         # Ultimate to capping moment ratio
@@ -435,8 +375,10 @@ class Column(ColumnBase):
         phi_r = phi_c + (Mr - Mc) / kpp  # Fig. 2.2
 
         # Rupture and buckling curvature limits, assuming the same yield N.A.
-        dd = y_layers[-1]  # Distance from top fiber to bottom rebars
-        dd_prime = y_layers[0]  # Distance from top fiber to top rebars
+        # Distance from top fiber to bottom rebars
+        dd = cover + dbh + dbl_int / 2
+        # Distance from top fiber to top rebars
+        dd_prime = h - (cover + dbh + dbl_int / 2)
         yb = dd - cy  # rupture case (assuming c=cy - O'Reilly 2016)
         yt = cy - dd_prime  # buckling case (assuming c=cy - O'Reilly 2016)
         e_su = 0.08  # Rupture strain DBD book-p141 (conservative value)
@@ -495,19 +437,5 @@ class Column(ColumnBase):
         # Rounding to precision
         flex_mat_inputs = round_list(flex_mat_inputs)
         minmax_mat_inputs = round_list(minmax_mat_inputs)
-
-        # Save neutral axis depth for shear hinge calculations
-        if axis == 'x':
-            self._cy = cy
-        elif axis == 'y':
-            self._cx = cy
-
-        # Save effective moment inertia for elastic section
-        EIeff = My / phi_y
-        Ieff = EIeff / Ec
-        if axis == 'x':
-            self._Ix_eff = Ieff
-        elif axis == 'y':
-            self._Iy_eff = Ieff
 
         return flex_mat_inputs, minmax_mat_inputs

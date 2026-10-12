@@ -33,3 +33,19 @@ and nspa loads."""
 NSPA_P_TAG = 2
 """Tag for load pattern which associates nspa time-series with the
 nspa point loads."""
+NSPA_EQUILIBRIUM_TOL = 0.01
+"""Largest relative difference between the base shear (sum of the support
+reactions) and the applied lateral load accepted in a pushover step."""
+NSPA_MAX_STIFFNESS_RATIO = 1.5
+"""Largest ratio of the tangent stiffness of a pushover step (base shear over
+control displacement increment) to the initial stiffness accepted."""
+MIN_EIGEN_MODES = 3
+"""Minimum number of modes solved for in the eigenvalue analysis. For a
+single mode, the default ARPACK solver uses only two Lanczos vectors and may
+not converge, in which case OpenSees returns unset eigenvalues without an
+error. At least this number of modes is computed, and only the requested
+ones are reported."""
+MIN_EIGEN_VALUE = 1e-6
+"""Smallest valid eigenvalue (rad^2/s^2), i.e., periods up to about 6300 s.
+Smaller values are taken as unset eigenvalues of an unconverged solution,
+and the next eigen solver is tried."""

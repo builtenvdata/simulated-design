@@ -6,12 +6,14 @@ import openseespy.opensees as ops
 from typing import Tuple, List
 
 # Imports from bnsm base library
-from ..baselib.beam import BeamBase
+from ..baselib.beam import BeamBase, HYSTERETIC_PARAMETERS
 from ..baselib.node import Node
 from ..baselib.constants import RIGID_MAT, LINEAR_TRANSF_X, LINEAR_TRANSF_Y
+from ..cp01.column import STIFF_INTERIOR_FACTOR
 
 # Imports from utils library
 from ....utils.misc import round_list
+from ....utils.tags import element_end_node_tag
 
 
 class Beam(BeamBase):
@@ -29,20 +31,11 @@ class Beam(BeamBase):
     hinge are constrained to behave rigidly using rigid materials, so the
     hinge represents concentrated flexural nonlinearity.
 
-    Since the hinge and elastic beam elements act in series, the elastic
-    stiffness of the interior member is modified following the recommendations
-    by Ibarra & Krawinkler (2005) and Zareian & Medina (2010).
-
-    References
-    ---------
-    Ibarra, L. F. and Krawinkler, H. (2005). Global collapse of frame
-    structures under seismic excitations. Technical Report 152,
-    Stanford University.
-
-    Zareian, F. and Medina R. A. (2010). A practical method for proper
-    modeling of structural damping in inelastic plane structural systems.
-    Computers and Structures, 88(1-2), 45-53.
-    https://doi.org/10.1016/j.compstruc.2009.08.001
+    The hinge backbone rotations are chord rotations of the whole member
+    (the yield rotation includes the elastic deformations), so the elastic
+    member is nearly rigid in flexure about local-z
+    (``STIFF_INTERIOR_FACTOR``) and the hinges carry the whole flexural
+    flexibility.
 
     Attributes
     ----------
@@ -58,6 +51,7 @@ class Beam(BeamBase):
     :class:`~simdesign.rcmrf.bnsm.baselib.beam.BeamBase`
         Base beam definition extended by this class.
     """
+
     hinge_node_i: Node
     hinge_node_j: Node
 
@@ -87,14 +81,14 @@ class Beam(BeamBase):
         """Initialize the *i-end* elastic element node.
         """
         coords = self.hinge_node_i.coordinates.copy()
-        tag = int(self.hinge_node_i.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_i.tag)
         self.ele_node_i = Node(tag, coords)
 
     def set_ele_node_j(self) -> None:
         """Initialize the *j-end* elastic element node.
         """
         coords = self.hinge_node_j.coordinates.copy()
-        tag = int(self.hinge_node_j.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_j.tag)
         self.ele_node_j = Node(tag, coords)
 
     def add_to_ops(self) -> None:
@@ -226,15 +220,17 @@ class Beam(BeamBase):
         # Nodes
         hinge_i_nodes = [self.hinge_node_i.tag, self.ele_node_i.tag]
         hinge_j_nodes = [self.ele_node_j.tag, self.hinge_node_j.tag]
-        # Orientation
+        # Orientation: rotation about local y (dir 5) is positive under
+        # sagging (bottom fibres in tension), consistent with the positive
+        # branch of the hinge material (My_pos)
         if self.design.direction == 'x':
             vecx = [1.0, 0.0, 0.0]
-            vecyp = [0.0, 1.0, 0.0]
-            # cross product is vecz = [0, 0, 1]
+            vecyp = [0.0, -1.0, 0.0]
+            # cross product is vecz = [0, 0, -1]
         elif self.design.direction == 'y':
             vecx = [0.0, 1.0, 0.0]
-            vecyp = [-1.0, 0.0, 0.0]
-            # cross product is vecz = [0, 0, 1]
+            vecyp = [1.0, 0.0, 0.0]
+            # cross product is vecz = [0, 0, -1]
         orientation = [*vecx, *vecyp]
         # Uniaxial Materials
         hinge_i_mats = [RIGID_MAT, RIGID_MAT, RIGID_MAT,
@@ -267,27 +263,21 @@ class Beam(BeamBase):
         hinge_j_mat_inputs : List[str | float | int]
             Hysteretic material model inputs for hinge at the end section.
         """
-        # Plastic hinge properties
+        # Backbone of the plastic hinges
         (
             _, My_neg, Mc_neg, Mr_neg,
             theta_y_neg, theta_cap_pl_neg, theta_pc_neg,
             _, My_pos, Mc_pos, Mr_pos,
             theta_y_pos, theta_cap_pl_pos, theta_pc_pos,
-            pinchx, pinchy, damage1, damage2, beta,
         ) = self._get_rot_hinge_props()
 
-        # Elastic stiffness modification factor
-        n_factor = 10  # n=10 is used in Ibarra and Krawinkler (2005)
-
-        # Rotation values for monotonic loading
-        theta_1_neg = theta_y_neg / n_factor
-        theta_2_neg = (theta_y_neg / n_factor) + theta_cap_pl_neg
-        theta_3_neg = (theta_y_neg / n_factor) + theta_cap_pl_neg + \
-            theta_pc_neg
-        theta_1_pos = theta_y_pos / n_factor
-        theta_2_pos = (theta_y_pos / n_factor) + theta_cap_pl_pos
-        theta_3_pos = (theta_y_pos / n_factor) + theta_cap_pl_pos + \
-            theta_pc_pos
+        # Rotation values for monotonic loading.
+        theta_1_neg = theta_y_neg
+        theta_2_neg = theta_1_neg + theta_cap_pl_neg
+        theta_3_neg = theta_2_neg + theta_pc_neg
+        theta_1_pos = theta_y_pos
+        theta_2_pos = theta_1_pos + theta_cap_pl_pos
+        theta_3_pos = theta_2_pos + theta_pc_pos
 
         # Material inputs
         hinge_i_mat_inputs = [
@@ -298,7 +288,7 @@ class Beam(BeamBase):
             -My_neg[0], -theta_1_neg[0],
             -Mc_neg[0], -theta_2_neg[0],
             -Mr_neg[0], -theta_3_neg[0],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
         hinge_j_mat_inputs = [
             'Hysteretic', self.mz_j_mat_tag,
@@ -308,7 +298,7 @@ class Beam(BeamBase):
             -My_neg[-1], -theta_1_neg[-1],
             -Mc_neg[-1], -theta_2_neg[-1],
             -Mr_neg[-1], -theta_3_neg[-1],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision
@@ -324,21 +314,28 @@ class Beam(BeamBase):
         -------
         List[str | float | int]
             List of elastic beam element inputs.
+
+        Notes
+        -----
+        The moment of inertia about local-z (Iz) is multiplied by
+        ``STIFF_INTERIOR_FACTOR``, since the hinges carry the whole flexural
+        flexibility. The weak-axis flexure (Iy) has no hinge and keeps its
+        elastic stiffness.
         """
-        # Ibarra and Krawinkler (2005) - Equation B.3
-        n_factor = 10  # n=10 is used in the reference
-        if self.cracked_section:
-            Iz_mod = self._Iz_eff * (n_factor + 1) / n_factor
+        # Check if cracked section is being used or not
+        if self.cracked:
+            Iz = self._Iz_eff
         else:
-            Iz_mod = self.design.Iz * (n_factor + 1) / n_factor
-        Iy_mod = self.design.Iy * (n_factor + 1) / n_factor
+            Iz = self.design.Iz
+        # Nearly rigid in flexure about local-z
+        Iz = Iz * STIFF_INTERIOR_FACTOR
 
         # List of elasticBeamColumn element inputs
         ele_inputs = [
             'elasticBeamColumn', self.ele_tag,
             self.ele_node_i.tag, self.ele_node_j.tag,
             self.design.Ag, self.Ecm_q, self.Gcm_q,
-            self.design.J, Iy_mod, Iz_mod
+            self.design.J, self.design.Iy, Iz
         ]
         # Append geometric transformation
         if self.design.direction == 'x':

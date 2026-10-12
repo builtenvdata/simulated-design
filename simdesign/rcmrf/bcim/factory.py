@@ -9,6 +9,7 @@ import json
 import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Union
+import warnings
 
 # Imports from bcim library
 from .parametrization import ArchetypeData, InputData
@@ -377,7 +378,9 @@ class BCIM:
         **inputs
             Contains input parameters required for data generation.
             These will replace the defaults obtained for the specified
-            `design_class`.
+            `design_class`. Nested parameters may be given partially; the
+            other entries keep their default values. Unknown inputs are
+            ignored with a warning.
 
         Examples
         --------
@@ -405,11 +408,11 @@ class BCIM:
                     "sigma_y": 0.35
                 },
                 "steel": {
-                    "tag": ["S400", "S500"],
+                    "grade": ["S400", "S500"],
                     "probability": [0.10, 0.90]
                 },
                 "concrete": {
-                    "tag": ["C20", "C25", "C30", "C35"],
+                    "grade": ["C20/25", "C25/30", "C30/37", "C35/45"],
                     "probability": [0.30, 0.45, 0.20, 0.05]
                 },
                 "ground_storey_height": {
@@ -418,27 +421,27 @@ class BCIM:
                     "probability": [0.55, 0.10, 0.20, 0.10, 0.05]
                 },
                 "construction_quality": {
-                    "quality" [1, 2, 3]
+                    "quality": [1, 2, 3],
                     "probability": [0.6, 0.3, 0.1]
                 },
                 "slab_typology": {
                     "ss1_prob_given_ss1_or_hs": 0.50,
                     "ss2_prob_given_ss2_or_hs": 0.65,
-                    "upper_lim_for_min_ss_span_length": 6.0,
-                    "upper_lim_for_max_ss2_span_ratio": 2.0,
+                    "max_ss_short_span": 6.0,
+                    "max_ss2_aspect_ratio": 2.0,
                     "staircase_slab_depth": 0.15,
                     "floor_slab_thickness": 0.15
                 },
                 "exterior_infill_type": {
-                    "typology" [1, 2, 3]
+                    "typology": [1, 2, 3],
                     "probability": [0.4, 0.4, 0.2]
                 },
                 "interior_infill_type": {
-                    "typology" [1, 2]
+                    "typology": [1, 2],
                     "probability": [0.5, 0.5]
                 },
                 "infill_configuration": {
-                    "configuration" [1, 2, 5, 6]
+                    "configuration": [1, 2, 5, 6],
                     "probability": [0.2, 0.2, 0.3, 0.3]
                 },
                 "wb_prob_given_hs": 0.50,
@@ -450,21 +453,26 @@ class BCIM:
                 "sample_size": 150
             }
         """
-        # Retrieve default input parameters for the design class
-        defaults = self.__defaults.get(design_class).__dict__
-        # Update the parameters based on user input
-        for key in inputs.keys():
-            if key in defaults.keys():
-                bool1 = isinstance(inputs[key], dict)
-                bool2 = isinstance(defaults[key], dict)
-                if bool1 and bool2:
-                    inputs_sub: dict = inputs[key]
-                    defaults_sub: dict = defaults[key]
-                    for subkey in inputs_sub:
-                        if subkey in defaults_sub.keys():
-                            defaults_sub[subkey] = inputs_sub[subkey]
-                else:
-                    defaults[key] = inputs[key]
+        # Retrieve a copy of the default input parameters for the design
+        # class (nested parameters as dictionaries)
+        defaults = self.__defaults.get(design_class).model_dump()
+        # Update the parameters based on user input (unknown inputs are
+        # ignored with a warning)
+        for key, value in inputs.items():
+            if key not in defaults:
+                warnings.warn(f"Unknown input '{key}' is ignored.",
+                              UserWarning)
+                continue
+            if isinstance(value, dict) and isinstance(defaults[key], dict):
+                for subkey, subvalue in value.items():
+                    if subkey in defaults[key]:
+                        defaults[key][subkey] = subvalue
+                    else:
+                        warnings.warn(
+                            f"Unknown input '{subkey}' in '{key}' is "
+                            "ignored.", UserWarning)
+            else:
+                defaults[key] = value
         # Store the updated input parameters
         self.inputs = InputData(**defaults)
         # Add all floor layout names

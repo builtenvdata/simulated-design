@@ -54,7 +54,7 @@ class Infill(InfillBase):
         epsc0 = -0.0013  # from Hak et al. 2012, Figure 12b
         epscu = -0.0045  # from Hak et al. 2012, Figure 12b
         mat_inputs = round_list([fpc, epsc0, fpcu, epscu], PRECISION)
-        mat_inputs = ['Concrete01', self.design.rectangle.tag] + mat_inputs
+        mat_inputs = ['Concrete01', self.mat_tag] + mat_inputs
         Aw = 1.0 * m**2
 
         return mat_inputs, Aw

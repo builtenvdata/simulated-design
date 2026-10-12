@@ -27,6 +27,7 @@ from ..baselib.constants import (
 # Imports from utils library
 from ....utils.misc import make_dir
 from ....utils import plotter as pl
+from ....utils.tags import sub_tag
 
 
 class Building(BuildingBase):
@@ -93,8 +94,10 @@ class Building(BuildingBase):
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
-        cracked_beam: bool = False, cracked_column: bool = False,
-        infill_column_connection: Literal['series', 'parallel'] = 'parallel'
+        cracked_beam: Optional[bool | float] = None,
+        cracked_column: Optional[bool | float] = None,
+        infill_column_connection: Literal['series', 'parallel'] = 'parallel',
+        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto',
     ) -> None:
         """Initialize BNSM object.
 
@@ -107,8 +110,8 @@ class Building(BuildingBase):
             default {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent load factor
             - 'Q' : Variable load factor
-        mass_sources : Dict[Literal['G', 'Q'], float], optional
-            Mass sources used to compute seismic masses. By default
+        mass_factors : Dict[Literal['G', 'Q'], float], optional
+            Mass factors used to compute seismic masses. By default
             {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent mass factor
             - 'Q' : Variable mass factor
@@ -131,14 +134,18 @@ class Building(BuildingBase):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_beam: bool, optional
-            If True, the elastic beam sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
-        cracked_column : bool, optional
-            If True, the elastic column sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_beam : None | bool | float, optional
+            Cracked-section (effective) flexural properties of the elastic
+            beam sections: True for My / phi_y of the plastic hinges, or a
+            float as the ratio of effective to gross flexural stiffness. If
+            None or False, gross-section properties are used.
+            By default None.
+        cracked_column : None | bool | float, optional
+            Cracked-section (effective) flexural properties of the elastic
+            column sections: True for My / phi_y of the plastic hinges, or a
+            float as the ratio of effective to gross flexural stiffness. If
+            None or False, gross-section properties are used.
+            By default None.
         infill_column_connection : {'series', 'parallel'}, optional
             Defines the modelling assumption governing the interaction between
             masonry infill struts and column lateral response. By default
@@ -150,6 +157,15 @@ class Building(BuildingBase):
             - 'parallel' : The infill strut acts in parallel with the column
             lateral response, allowing the direct contribution of the infills
             to the global lateral strength.
+        beam_loads : Literal['auto', 'uniform', 'point'], optional
+            How the beam gravity loads are applied. By default 'auto'.
+            - 'uniform' : Uniformly distributed element loads, with the
+            load over the rigid joint regions applied at the element ends.
+            - 'point' : Equivalent point loads at the beam element ends
+            (half of the total beam load at each end), as in O'Reilly and
+            Sullivan (2019). The beams then carry no gravity moments.
+            - 'auto' : 'point' if the beam-column joints are modelled as
+            inelastic, 'uniform' otherwise.
         """
         self.design = design
         self.load_factors = load_factors
@@ -161,6 +177,7 @@ class Building(BuildingBase):
         self.cyclic_model = cyclic_model
         self.cracked_beam = cracked_beam
         self.cracked_column = cracked_column
+        self.beam_loads = beam_loads
         self.infill_column_connection = infill_column_connection
         self.foundations = []
         self.floors = []
@@ -184,7 +201,8 @@ class Building(BuildingBase):
         bondslip_fact = self.design.quality.model.bondslip_factor
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, self.cracked_beam)
+                           self.cyclic_model, self.cracked_beam,
+                           self.beam_load_type)
             for beam in self.design.beams
             ]
         # Initialize beam nodes at floor levels
@@ -305,10 +323,10 @@ class Building(BuildingBase):
                 c1t = self._find_column_by_design(design.columns[0][1])
                 if self.infill_column_connection == 'series':
                     s1_ni = c1b.ele_node_i
-                    s2_ni = c1t.ele_node_i
+                    s2_ni = c1t.ele_node_j
                 elif self.infill_column_connection == 'parallel':
                     s1_ni = c1b.hinge_node_i
-                    s2_ni = c1t.hinge_node_i
+                    s2_ni = c1t.hinge_node_j
             else:
                 c1 = self._find_column_by_design(design.columns[0])
                 if self.infill_column_connection == 'series':
@@ -483,8 +501,8 @@ class Building(BuildingBase):
         infills = []
         if self.include_infills:
             for infill in self.infills:
-                s1 = int(str(infill.design.rectangle.tag) + '001')
-                s2 = int(str(infill.design.rectangle.tag) + '002')
+                s1 = sub_tag(infill.design.rectangle.tag, 1)
+                s2 = sub_tag(infill.design.rectangle.tag, 2)
                 infills.append(s1)
                 infills.append(s2)
         groups = [

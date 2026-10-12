@@ -279,7 +279,17 @@ class LoadsBase(ABC):
             Seismic forces acting at each storey, distributed
             proportionally to the product of weight and height.
             Same shape as ``weights``.
+
+        Notes
+        -----
+        The base shear is computed from the weights above the base
+        (``heights > 0``), i.e., the mass above the foundation
+        (EN 1998-1:2004, 4.3.3.2.2). The weights lumped at the base, such as
+        half of the self-weight of the ground-storey columns, receive no
+        force.
         """
+        # Weights above the base
+        weights = np.where(np.asarray(heights) > 0, weights, 0.0)
         base_shear = np.sum(beta * weights)
         forces = base_shear * (weights * heights) / np.sum(weights * heights)
 

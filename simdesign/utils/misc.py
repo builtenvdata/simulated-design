@@ -67,7 +67,8 @@ def run_time(start_time: int) -> str:
     return text
 
 
-def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
+def handle_remove_read_only(func: Callable, path: str,
+                            exc: Union[BaseException, tuple]) -> None:
     """Grant write permission to a file and remove it using the provided
     function.
 
@@ -77,16 +78,19 @@ def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
         remove function.
     path : str
         file path.
-    exc : tuple
-        Exception tuple.
+    exc : BaseException | tuple
+        The exception raised (``onexc`` of ``shutil.rmtree``, Python 3.12 or
+        newer), or the exception information tuple (``onerror``, earlier
+        versions).
 
     Raises
     ------
     Warning
         Path is in use.
     """
-    excvalue: OSError = exc[1]
-    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+    excvalue = exc[1] if isinstance(exc, tuple) else exc
+    if (func in (os.rmdir, os.remove, os.unlink)
+            and getattr(excvalue, 'errno', None) == errno.EACCES):
         os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
         func(path)
     else:
@@ -185,9 +189,15 @@ def dot(a: List[float], b: List[float]) -> float:
     -------
     float
         Dot product
+
+    Raises
+    ------
+    ValueError
+        If the lists have different lengths.
     """
     if len(a) != len(b):
-        return 0.0
+        raise ValueError(
+            f"dot: lists have different lengths ({len(a)} != {len(b)}).")
 
     return sum(i[0] * i[1] for i in zip(a, b))
 
@@ -266,6 +276,45 @@ def round_list(input_list: List[Any],
     ]
 
 
+_TRUE_STRINGS = ("true", "1", "yes", "on")
+_FALSE_STRINGS = ("false", "0", "no", "off")
+
+
+def _to_bool(name: str, value: Any) -> bool:
+    """Convert an input value to bool.
+
+    Parameters
+    ----------
+    name : str
+        Name of the parameter, used in the error message.
+    value : Any
+        Input value: a bool, an integer 0 or 1 (including NumPy types), or a
+        string such as 'true', 'false', 'yes', 'no', '1', '0' (any case).
+
+    Returns
+    -------
+    bool
+        Converted value.
+
+    Raises
+    ------
+    ValueError
+        If the value cannot be interpreted as a bool.
+    """
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _TRUE_STRINGS:
+            return True
+        if text in _FALSE_STRINGS:
+            return False
+    raise ValueError(
+        f"Cannot interpret {value!r} as a bool for '{name}'.")
+
+
 def filter_args(method: Callable, data: Mapping[str, Any]) -> Dict[str, Any]:
     """Filter and convert input values so they match the signature of a method.
 
@@ -316,10 +365,7 @@ def filter_args(method: Callable, data: Mapping[str, Any]) -> Dict[str, Any]:
 
         # Handle bool explicitly
         if annotation is bool:
-            try:
-                filtered_data[name] = str(raw_value).lower() == "true"
-            except Exception:
-                filtered_data[name] = raw_value
+            filtered_data[name] = _to_bool(name, raw_value)
 
         # Handle integers
         elif annotation is int:

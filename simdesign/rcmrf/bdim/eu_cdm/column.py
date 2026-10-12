@@ -18,15 +18,14 @@ ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
 MAX_NIU = 1.0
 """Maximum allowed value of axial load ratio."""
-TAU_C_VECT = np.array([0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15]
-                      ) * MPa
+TAU_C_VECT = np.array([0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15])
 """Vector of allowable shear stresses that carried by the concrete or
-vector of the design shear strength values of concrete."""
-TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]) * MPa
+vector of the design shear strength values of concrete (in MPa)."""
+TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
 """Vector of allowable shear stresses that can be carried by
-the column section."""
-FCK_VECT = np.array([12, 16, 20, 25, 30, 35, 40, 45, 50]) * MPa
-"""Vector of characteristic concrete compressive strength values."""
+the column section (in MPa)."""
+FCK_VECT = np.array([12, 16, 20, 25, 30, 35, 40, 45, 50])
+"""Vector of characteristic concrete compressive strength values (in MPa)."""
 MODULAR_RATIO = 15
 """Assumed steel to concrete elastic modular ratio for reinf. computation."""
 BETA_FC_VECTOR = [1.00, 0.93, 0.88, 0.88, 0.93]
@@ -127,7 +126,7 @@ class Column(ColumnBase):
         ) / (self.bx * dy)
 
         # Allowable shear stress that can be carried by the beam
-        tau_max = np.interp(self.concrete.fck_cube, FCK_VECT, TAU_MAX_VECT)
+        tau_max = np.interp(self.concrete.fck, FCK_VECT, TAU_MAX_VECT) * MPa
         # Verify the adequacy of the section dimensions
         if max_mu_y > ECONOMIC_MU or max_tau_x > tau_max:
             # Need to increase dimension parallel to global-x
@@ -204,7 +203,7 @@ class Column(ColumnBase):
         """Compute the required transverse reinforcement for design forces.
         """
         # Allowable shear stress that can be carried by the beam
-        tau_c = np.interp(self.concrete.fck, FCK_VECT, TAU_C_VECT)
+        tau_c = np.interp(self.concrete.fck, FCK_VECT, TAU_C_VECT) * MPa
         # Initial transverse reinforcement area to spacing ratio
         Ashx_sh_req, Ashy_sh_req = self.__get_min_transv_reinf()
         for force in self.design_forces:
@@ -219,11 +218,11 @@ class Column(ColumnBase):
             Vx1 = abs(force.Vx1)
             Vy9 = abs(force.Vy9)
             Vx9 = abs(force.Vx9)
-            # Determine loading eccentricty
-            ecc_x1 = force.My1 / force.N1
-            ecc_x9 = force.My9 / force.N9
-            ecc_y1 = force.Mx1 / force.N1
-            ecc_y9 = force.Mx9 / force.N9
+            # Determine loading eccentricty (zero if there is no axial force)
+            ecc_x1 = force.My1 / force.N1 if force.N1 != 0 else 0.0
+            ecc_x9 = force.My9 / force.N9 if force.N9 != 0 else 0.0
+            ecc_y1 = force.Mx1 / force.N1 if force.N1 != 0 else 0.0
+            ecc_y9 = force.Mx9 / force.N9 if force.N9 != 0 else 0.0
             # TO define big and small ecc. section for tensile force and
             # to discard concrete contribution for small eccentricity.
             et_x1 = ecc_x1 / dx
@@ -265,10 +264,6 @@ class Column(ColumnBase):
                 Ash_sh_y9 = (Vy9 - Vcd_y) / (zy * self.fsyd)
             else:
                 Ash_sh_y9 = 0.0
-            Ash_sh_x1 = Vx1 / (zx * self.fsyd)
-            Ash_sh_y1 = Vy1 / (zy * self.fsyd)
-            Ash_sh_x9 = Vx9 / (zx * self.fsyd)
-            Ash_sh_y9 = Vy9 / (zy * self.fsyd)
             # Update the required reinforcement
             Ashx_sh_req = max(Ashx_sh_req, Ash_sh_x1, Ash_sh_x9)
             Ashy_sh_req = max(Ashy_sh_req, Ash_sh_y1, Ash_sh_y9)
@@ -284,15 +279,21 @@ class Column(ColumnBase):
         Tuple[float]
             Transverse reinforcement area (along x and y axes)
             to spacing ratio.
+
+        Notes
+        -----
+        The minimum ratio Asw / (bw s) uses the web width bw perpendicular
+        to the shear force, as in the shear check (i.e., by for the legs
+        along x, which resist the shear along x).
         """
         if self.fsyd < 230 * MPa:
-            Ashx_sh_min = 0.16 * self.bx / 100
-            Ashy_sh_min = 0.16 * self.by / 100
+            Ashx_sh_min = 0.16 * self.by / 100
+            Ashy_sh_min = 0.16 * self.bx / 100
         elif self.fsyd < 400 * MPa:
-            Ashx_sh_min = 0.10 * self.bx / 100
-            Ashy_sh_min = 0.10 * self.by / 100
+            Ashx_sh_min = 0.10 * self.by / 100
+            Ashy_sh_min = 0.10 * self.bx / 100
         else:
-            Ashx_sh_min = 0.08 * self.bx / 100
-            Ashy_sh_min = 0.08 * self.by / 100
+            Ashx_sh_min = 0.08 * self.by / 100
+            Ashy_sh_min = 0.08 * self.bx / 100
 
         return Ashx_sh_min, Ashy_sh_min

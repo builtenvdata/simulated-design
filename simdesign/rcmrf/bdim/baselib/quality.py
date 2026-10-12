@@ -104,7 +104,7 @@ class QualityBase(ABC):
             # Store the quality model
             self.data = QualityData(**data)
         # Set the seed to use
-        if self.seed:
+        if self.seed is not None:
             np.random.seed(self.seed)
 
     @property
@@ -296,11 +296,11 @@ class QualityBase(ABC):
             beam.nbh_b_q = beam.nbh_b
             beam.nbh_h_q = beam.nbh_h
             beam.dbh_q = beam.dbh
-            beam.dbl_t1_q = beam.dbl_t1
-            beam.nbl_t1_q = beam.nbl_t1
-            beam.dbl_t2_q = beam.dbl_t2
-            beam.nbl_t2_q = beam.nbl_t2
-            beam.dbl_b1_q = beam.dbl_b1
-            beam.nbl_b1_q = beam.nbl_b1
-            beam.dbl_b2_q = beam.dbl_b2
-            beam.nbl_b2_q = beam.nbl_b2
+            beam.dbl_t1_q = beam.dbl_t1.copy()
+            beam.nbl_t1_q = beam.nbl_t1.copy()
+            beam.dbl_t2_q = beam.dbl_t2.copy()
+            beam.nbl_t2_q = beam.nbl_t2.copy()
+            beam.dbl_b1_q = beam.dbl_b1.copy()
+            beam.nbl_b1_q = beam.nbl_b1.copy()
+            beam.dbl_b2_q = beam.dbl_b2.copy()
+            beam.nbl_b2_q = beam.nbl_b2.copy()

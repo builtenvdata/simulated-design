@@ -11,7 +11,10 @@ from pathlib import Path
 
 # Imports from bnsm library
 from .constants import (RIGID_MAT, BIG_VALUE, GRAV_TS_TAG, GRAV_P_TAG,
-                        NSPA_TS_TAG, NSPA_P_TAG)
+                        NSPA_TS_TAG, NSPA_P_TAG, NSPA_EQUILIBRIUM_TOL,
+                        NSPA_MAX_STIFFNESS_RATIO,
+                        MIN_EIGEN_MODES,
+                        MIN_EIGEN_VALUE)
 from .foundation import FoundationBase
 from .joint import StairsJointBase, FloorJointBase
 from .floor import FloorDiaphragmBase
@@ -23,8 +26,9 @@ from .infill import InfillBase
 from ...bdim.baselib.building import BuildingBase as BuildingDesign
 
 # Imports from utils library
-from ....utils.misc import make_dir
+from ....utils.misc import make_dir, PRECISION
 from ....utils import plotter as pl
+from ....utils.tags import sub_tag
 
 
 class BuildingBase(ABC):
@@ -90,14 +94,20 @@ class BuildingBase(ABC):
         Flag to check whether include infills in the frame model or not.
     cyclic_model : bool
         If True, the model parameters will be adjusted for cyclic analysis.
-    cracked_beam : bool
-        If True, the elastic beam sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
-    cracked_column : bool
-        If True, the elastic column sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
+    cracked_beam : None | bool | float
+        Cracked-section (effective) flexural properties of the elastic
+        beam sections: True for My / phi_y of the plastic hinges, or a float
+        as the ratio of effective to gross stiffness. If None or False,
+        gross-section properties are used.
+    cracked_column : None | bool | float
+        Cracked-section (effective) flexural properties of the elastic
+        column sections: True for My / phi_y of the plastic hinges, or a
+        float as the ratio of effective to gross stiffness. If None or
+        False, gross-section properties are used.
+    beam_loads : Literal['auto', 'uniform', 'point']
+        How the beam gravity loads are applied: 'uniform' element loads,
+        'point' loads at the beam element ends, or 'auto' ('point' if the
+        beam-column joints are inelastic, 'uniform' otherwise).
     """
     design: BuildingDesign
     foundations: List[FoundationBase]
@@ -122,8 +132,9 @@ class BuildingBase(ABC):
     dincr: float
     include_infills: bool
     cyclic_model: bool
-    cracked_beam: bool
-    cracked_column: bool
+    cracked_beam: Optional[bool | float]
+    cracked_column: Optional[bool | float]
+    beam_loads: Literal['auto', 'uniform', 'point']
 
     def __init__(
         self, design: BuildingDesign,
@@ -132,7 +143,9 @@ class BuildingBase(ABC):
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
-        cracked_beam: bool = False, cracked_column: bool = False
+        cracked_beam:  Optional[bool | float] = None,
+        cracked_column: Optional[bool | float] = None,
+        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto',
     ) -> None:
         """Initialize BNSM object.
 
@@ -145,8 +158,8 @@ class BuildingBase(ABC):
             default {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent load factor
             - 'Q' : Variable load factor
-        mass_sources : Dict[Literal['G', 'Q'], float], optional
-            Mass sources used to compute seismic masses. By default
+        mass_factors : Dict[Literal['G', 'Q'], float], optional
+            Mass factors used to compute seismic masses. By default
             {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent mass factor
             - 'Q' : Variable mass factor
@@ -169,14 +182,27 @@ class BuildingBase(ABC):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_beam : bool, optional
-            If True, the elastic beam sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
-        cracked_column : bool, optional
-            If True, the elastic column sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_beam : None | bool | float, optional
+            Cracked-section (effective) flexural properties of the elastic
+            beam sections: True for My / phi_y of the plastic hinges, or a
+            float in (0, 1] as the ratio of effective to gross flexural
+            stiffness. If None or False, gross-section properties are used.
+            By default None.
+        cracked_column : None | bool | float, optional
+            Cracked-section (effective) flexural properties of the elastic
+            column sections: True for My / phi_y of the plastic hinges, or a
+            float in (0, 1] as the ratio of effective to gross flexural
+            stiffness. If None or False, gross-section properties are used.
+            By default None.
+        beam_loads : Literal['auto', 'uniform', 'point'], optional
+            How the beam gravity loads are applied. By default 'auto'.
+            - 'uniform' : Uniformly distributed element loads, with the
+            load over the rigid joint regions applied at the element ends.
+            - 'point' : Equivalent point loads at the beam element ends
+            (half of the total beam load at each end), as in O'Reilly and
+            Sullivan (2019). The beams then carry no gravity moments.
+            - 'auto' : 'point' if the beam-column joints are modelled as
+            inelastic, 'uniform' otherwise.
         """
         self.design = design
         self.load_factors = load_factors
@@ -186,8 +212,10 @@ class BuildingBase(ABC):
         self.dincr = dincr
         self.include_infills = include_infills
         self.cyclic_model = cyclic_model
-        self.cracked_beam = cracked_beam
-        self.cracked_column = cracked_column
+        self.cracked_beam = self._check_cracked('cracked_beam', cracked_beam)
+        self.cracked_column = self._check_cracked(
+            'cracked_column', cracked_column)
+        self.beam_loads = beam_loads
         self.foundations = []
         self.floors = []
         self.floor_joints = []
@@ -203,41 +231,96 @@ class BuildingBase(ABC):
         self._initialize_columns()
         self._initialize_infills()
 
+    @staticmethod
+    def _check_cracked(
+        name: str, value: Optional[bool | float]
+    ) -> Optional[bool | float]:
+        """Validates a cracked-section input (`cracked_beam` or
+        `cracked_column`).
+
+        Parameters
+        ----------
+        name : str
+            Name of the input.
+        value : None | bool | float
+            Input value.
+
+        Returns
+        -------
+        None | bool | float
+            The value, with numbers converted to float.
+
+        Raises
+        ------
+        ValueError
+            If the value is not None, a bool or a number in (0, 1].
+        """
+        if value is None or isinstance(value, (bool, np.bool_)):
+            return None if value is None else bool(value)
+        if isinstance(value, (int, float, np.integer, np.floating)) and (
+                0.0 < value <= 1.0):
+            return float(value)
+        raise ValueError(
+            f"Invalid value for '{name}': {value!r}. "
+            "Use None, a bool or a float in (0, 1].")
+
+    @property
+    def beam_load_type(self) -> Literal['uniform', 'point']:
+        """How the beam gravity loads are applied, with 'auto' resolved from
+        the flexibility model of the floor joints.
+
+        Returns
+        -------
+        Literal['uniform', 'point']
+            'point' if ``beam_loads='auto'`` and the joints are inelastic,
+            'uniform' if ``beam_loads='auto'`` otherwise, else ``beam_loads``.
+        """
+        if self.beam_loads != 'auto':
+            return self.beam_loads
+        inelastic = any(joint.flexibility_model == 'inelastic'
+                        for joint in self.floor_joints)
+        return 'point' if inelastic else 'uniform'
+
     def _initialize_beams(self) -> None:
         """Initialize beam models.
         """
-        # Initialize the beam models
+        # Initialize the beams
         bondslip_fact = self.design.quality.model.bondslip_factor
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, self.cracked_beam)
+                           self.cyclic_model, self.cracked_beam,
+                           self.beam_load_type)
             for beam in self.design.beams
             ]
-        # Initialize beam nodes at floor levels
+        # Initialize beam nodes at floor levels. Beams frame into the
+        # beam-side joint node (floor_node) and columns into center_node, so
+        # that the joint flexibility element acts as a scissors spring in
+        # series between them (O'Reilly & Sullivan, 2019). For rigid joints
+        # floor_node is center_node.
         for joint in self.floor_joints:
             if joint.design.left_beam:
                 design = joint.design.left_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_j = joint.center_node
+                    beam.ele_node_j = joint.floor_node
                     beam.jnt_offsets[3] -= joint.bx / 2
             if joint.design.right_beam:
                 design = joint.design.right_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_i = joint.center_node
+                    beam.ele_node_i = joint.floor_node
                     beam.jnt_offsets[0] += joint.bx / 2
             if joint.design.rear_beam:
                 design = joint.design.rear_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_j = joint.center_node
+                    beam.ele_node_j = joint.floor_node
                     beam.jnt_offsets[4] -= joint.by / 2
             if joint.design.front_beam:
                 design = joint.design.front_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_i = joint.center_node
+                    beam.ele_node_i = joint.floor_node
                     beam.jnt_offsets[1] += joint.by / 2
         # Initialize beam nodes at mid-storeys (stairs beams)
         for joint in self.stairs_joints:
@@ -409,7 +492,7 @@ class BuildingBase(ABC):
                 c1b = self._find_column_by_design(design.columns[0][0])
                 c1t = self._find_column_by_design(design.columns[0][1])
                 s1_ni = c1b.ele_node_i
-                s2_ni = c1t.ele_node_i
+                s2_ni = c1t.ele_node_j
             else:
                 c1 = self._find_column_by_design(design.columns[0])
                 s1_ni = c1.ele_node_i
@@ -465,10 +548,6 @@ class BuildingBase(ABC):
         # Add columns to ops domain (column elements)
         for column in self.columns:
             column.add_to_ops()
-        # Add infills to ops domain (diagonal struts)
-        if self.include_infills:
-            for infill in self.infills:
-                infill.add_to_ops()
 
         # Add gravity time-series and load pattern to ops domain
         ops.timeSeries('Linear', GRAV_TS_TAG)
@@ -488,9 +567,18 @@ class BuildingBase(ABC):
         ops.integrator('LoadControl', 0.1)
         ops.algorithm('Newton')
         ops.analysis('Static')
-        ops.analyze(10)
+        ok = ops.analyze(10)
+        if ok != 0:
+            raise RuntimeError(
+                "Gravity analysis did not converge; the model state is "
+                "invalid for subsequent analyses.")
         ops.loadConst('-time', 0.0)
         ops.wipeAnalysis()
+
+        # Add infills to ops domain (diagonal struts) after gravity
+        if self.include_infills:
+            for infill in self.infills:
+                infill.add_to_ops()
 
     def do_modal(
         self, num_modes: int = 3, out_dir: Optional[str | Path] = None,
@@ -516,7 +604,18 @@ class BuildingBase(ABC):
         Returns
         -------
         Dict[str, List[float]]
-            Dictionary containing modal properties.
+            Dictionary containing modal properties. The per-mode entries
+            (``eigen*`` and ``parti*``) are given for the first `num_modes`
+            modes.
+
+        Notes
+        -----
+        At least ``MIN_EIGEN_MODES`` modes are solved for, because the
+        default ARPACK solver may not converge for a single eigenvalue and
+        then returns unset values (e.g. periods of 1e157 s). Eigenvalues
+        below ``MIN_EIGEN_VALUE`` are taken as unset, and the next solver is
+        tried. The modal properties file written to `out_dir` contains all
+        solved modes.
 
         TODO
         ----
@@ -525,23 +624,22 @@ class BuildingBase(ABC):
         # Build the model
         self.build()
 
-        # Perform eigen value analysis
+        # Perform eigen value analysis, with at least MIN_EIGEN_MODES modes
+        num_solve = max(num_modes, MIN_EIGEN_MODES)
         list_solvers = ['-genBandArpack', '-fullGenLapack', '-symmBandLapack']
         ok = False
         for s in list_solvers:
             try:
-                eigen_values = ops.eigen(s, num_modes)
-                for i in range(num_modes):
-                    if eigen_values[i] < 0 or eigen_values[i] > 1e+300:
-                        ok = False
-                    else:
-                        ok = True
+                eigen_values = ops.eigen(s, num_solve)
+                # All the eigenvalues must be set (not tiny) and finite
+                ok = all(MIN_EIGEN_VALUE < value < 1e+300
+                         for value in eigen_values)
                 if ok:
                     break
             except BaseException as e:
                 print(f"Using {s[1:]} as solver... received an error: {e}")
         if not ok:
-            raise UserWarning(
+            raise RuntimeError(
                 "Could not complete the eigenvalue analysis, "
                 + "something is wrong...\n"
                 + "Try to reduce number of modes to determine..."
@@ -581,6 +679,10 @@ class BuildingBase(ABC):
 
         # Perform modal analysis
         modal_properties = ops.modalProperties(*args)
+        # Keep the requested modes in the per-mode properties
+        for key, values in modal_properties.items():
+            if key.startswith(('eigen', 'parti')):
+                modal_properties[key] = values[:num_modes]
 
         return modal_properties
 
@@ -588,7 +690,7 @@ class BuildingBase(ABC):
         self, ctrl_dof: Literal[1, 2],
         out_dir: Optional[str | Path] = None,
         use_recorder: bool = False
-    ) -> Tuple[List[float], List[float]]:
+    ) -> Tuple[List[float], List[float], int]:
         """Performs nonlinear static pushover analysis (NSPA).
 
         Parameters
@@ -610,18 +712,24 @@ class BuildingBase(ABC):
         base_shear : List[float]
             Base shear value obtained as sum of the reaction forces.
         ok : int
-            Final analysis return code.
-        """
-        # # Check if capacity design is followed for shear
-        # if self.design.OVERSTRENGTH_FACTOR_COLUMN_SHEAR:
-        #     capacity_design = True
-        # else:
-        #     capacity_design = False
-        # # Check if the fiber sections are being used or not
-        # fiber_sections = (
-        #     'dp03' in self.__module__ or 'dp04' in self.__module__
-        # )
+            0 if the analysis ends at the target displacement
+            (``max_drift``) or after a loss of strength, i.e., a converged
+            step with a base shear below 60% of the maximum (recorded).
+            Negative if it stops earlier (see Notes).
 
+        Notes
+        -----
+        A step that fails is repeated with alternative algorithms, smaller
+        displacement increments and, as a last resort, relaxed tolerances.
+        The analysis stops before the target displacement, with ``ok``
+        negative, if no step converges, if a step is out of equilibrium
+        (base shear differing from the applied load by more than
+        ``NSPA_EQUILIBRIUM_TOL``), if the tangent stiffness of a step
+        exceeds ``NSPA_MAX_STIFFNESS_RATIO`` times the initial stiffness,
+        or if the base shear reaches 1.5 times the seismic weight. The
+        exported ``nspa.py`` and ``nspa.tcl`` do not include the
+        equilibrium and stiffness checks.
+        """
         # Analysis direction
         direction = 'x' if ctrl_dof == 1 else 'y'
 
@@ -644,6 +752,8 @@ class BuildingBase(ABC):
         # Add lateral nspa loads to ops domain
         for node, load_values in zip(nodes, loads):
             ops.load(node, *load_values)
+        # Total lateral load of the pattern (load factor of 1)
+        total_load = abs(sum(values[ctrl_dof - 1] for values in loads))
 
         # Set foundation and floor nodes
         supports = [found.foundation_node.tag for found in self.foundations]
@@ -651,8 +761,8 @@ class BuildingBase(ABC):
 
         # Get the base level and storey heights
         base_level = min([ops.nodeCoord(node, 3) for node in supports])
-        storey_heights = [round(ops.nodeCoord(node, 3) - base_level, 1) for
-                          node in floors]
+        storey_heights = [round(ops.nodeCoord(node, 3) - base_level,
+                                PRECISION) for node in floors]
 
         # Output directory is provided, save stuff
         if out_dir:
@@ -695,8 +805,14 @@ class BuildingBase(ABC):
         support_reactions = [[0] * len(supports)]
         ok = 0
         cont = True
+        relaxed = False
+        init_stiffness = np.inf  # initial stiffness, set after the 1st step
 
         while ok == 0 and cont:
+            if relaxed:  # keep the last algorithm, reset the tolerance
+                relaxed = False
+                ops.test('NormDispIncr', tol_init, 100)
+
             # Index for the current displacement increment
             dincr_idx = dincr_values.index(dincr)
 
@@ -705,10 +821,11 @@ class BuildingBase(ABC):
                 dincr_idx -= 1
                 dincr = dincr_values[dincr_idx]
 
-            # Set current step size and try performing analysis with it
-            ops.integrator(
-                'DisplacementControl', ctrl_node, ctrl_dof, dincr
-            )
+                # Set current step size and try performing analysis with it
+                ops.integrator(
+                    'DisplacementControl', ctrl_node, ctrl_dof, dincr
+                )
+
             ok = ops.analyze(1)
 
             # Try same dincr with alternative algorithms first
@@ -728,6 +845,7 @@ class BuildingBase(ABC):
 
             # If still failing, relax tolerance
             if ok != 0:  # Increase tolerance by factor of 10
+                relaxed = True
                 ok = self._set_nspa_algorithm(
                     10 * tol_init, ctrl_node, ctrl_dof, dincr, iter=100,
                 )
@@ -735,6 +853,7 @@ class BuildingBase(ABC):
                 ok = self._set_nspa_algorithm(
                     100 * tol_init, ctrl_node, ctrl_dof, dincr, iter=200
                 )
+
             # Get the base shear force
             ops.reactions()
             current_ctrl_disp = ops.nodeDisp(ctrl_node, ctrl_dof)
@@ -743,31 +862,38 @@ class BuildingBase(ABC):
             ]
             current_base_shear = abs(sum(current_reactions))
 
+            # Stop if a step is accepted out of equilibrium, i.e., the base
+            # shear differs from the applied load. This can happen with the
+            # relaxed tolerances, and the analysis would continue from an
+            # invalid committed state (e.g., unrealistic base shear spikes).
+            applied_load = abs(ops.getLoadFactor(NSPA_P_TAG)) * total_load
+            if ok == 0 and abs(current_base_shear - applied_load) > (
+                    NSPA_EQUILIBRIUM_TOL * max(applied_load, 1.0)):
+                ok = -1
+
+            # Check the base shear limits
+            within_limits = (current_base_shear < shear_lim and
+                             current_base_shear >= 0.6 * max(base_shear))
             # Set continue flag
-            cont = (current_ctrl_disp < max_disp and
-                    current_base_shear < shear_lim and
-                    current_base_shear >= 0.6 * max(base_shear))
+            cont = within_limits and current_ctrl_disp < max_disp
 
-            # # Update the flag based on slope
-            # if (
-            #     len(base_shear) > 1
-            #     and ok == 0
-            #     and not capacity_design  # This issue will not occur
-            #     and not fiber_sections  # This issue will not occur
-            # ):
-            #     dV_cur = current_base_shear - base_shear[-1]
-            #     dU_cur = current_ctrl_disp - ctrl_disp[-1]
-            #     dV_prev = base_shear[-1] - base_shear[-2]
-            #     dU_prev = ctrl_disp[-1] - ctrl_disp[-2]
+            # Stop if the tangent stiffness of the step clearly exceeds the
+            # initial stiffness, which a valid pushover curve never does. Such
+            # a jump indicates a degenerate element state (unrealistic spikes).
+            if ok == 0 and len(base_shear) > 1:
+                dU = abs(current_ctrl_disp - ctrl_disp[-1])
+                dV = current_base_shear - base_shear[-1]
+                if dV > NSPA_MAX_STIFFNESS_RATIO * init_stiffness * dU:
+                    ok = -1
 
-            #     if dV_cur > 0:
-            #         slope_cur = abs(dV_cur / dU_cur)
-            #         slope_prev = abs(dV_prev / dU_prev)
-            #         # Slope should generally decrease for increasing shear
-            #         cont = (slope_cur < 2 * slope_prev) and cont
+            # Initial stiffness, from the first step
+            if ok == 0 and len(base_shear) == 1 and current_ctrl_disp != 0:
+                init_stiffness = current_base_shear / abs(current_ctrl_disp)
 
-            # Append the results
-            if ok == 0 and cont:
+            # Append the results, including the step reaching max_disp and
+            # a converged step where the base shear drops below 60% of the
+            # maximum (sudden loss of strength, which ends the analysis)
+            if ok == 0 and current_base_shear < shear_lim:
                 ctrl_disp.append(current_ctrl_disp)
                 base_shear.append(current_base_shear)
                 storey_displacements.append(
@@ -884,11 +1010,14 @@ class BuildingBase(ABC):
             mode1 = int(inds[0] + 1)
         else:  # Just build the model
             self.build()
+        # Base level, floor heights are measured from it
+        base_level = min(ops.nodeCoord(foundation.foundation_node.tag, 3)
+                         for foundation in self.foundations)
         for floor in self.floors:
             node = floor.rnode.tag
             nodes.append(node)
             masses.append(sum(floor.masses))
-            heights.append(ops.nodeCoord(node, 3))
+            heights.append(ops.nodeCoord(node, 3) - base_level)
             if self.scheme == 'FMP':
                 modal_disps.append(ops.nodeEigenvector(node, mode1, ctrl_dof))
         # Convert these lists to arrays for performing array operations
@@ -1089,11 +1218,11 @@ class BuildingBase(ABC):
             "add_beams()",
             "# Define components of columns",
             "add_columns()",
-            "# Define components of infills",
-            "if infills:",
-            "    add_infills()",
             "# Perform static analysis under gravity loads",
             "do_gravity()",
+            "# Define components of infills (after gravity, unstressed)",
+            "if infills:",
+            "    add_infills()",
             ""
         ]
 
@@ -1336,7 +1465,7 @@ class BuildingBase(ABC):
         # Add lines for constructing the beam gravity load objects
         content.append("# Add beam gravity loads to ops domain")
         for beam in self.beams:
-            content.append(beam.to_py_grav_loads())
+            content.extend(beam.to_py_grav_loads())
         # Add lines for constructing the column gravity load objects
         content.append("")
         content.append("# Add column gravity loads to ops domain")
@@ -1352,7 +1481,11 @@ class BuildingBase(ABC):
         content.append("ops.integrator('LoadControl', 0.1)")
         content.append("ops.algorithm('Newton')")
         content.append("ops.analysis('Static')")
-        content.append("ops.analyze(10)")
+        content.append("ok = ops.analyze(10)")
+        content.append("if ok != 0:")
+        content.append("    raise RuntimeError('Gravity analysis did not "
+                       "converge; the model state is invalid for subsequent "
+                       "analyses.')")
         content.append("ops.loadConst('-time', 0.0)")
         content.append("ops.wipeAnalysis()")
         content.append("")
@@ -1405,8 +1538,15 @@ class BuildingBase(ABC):
         content.append("build_model()")
         # Add lines for performing eigenvalue analysis
         content.append("")
-        content.append("# Perform eigen value analysis")
-        content.append("ops.eigen(num_modes)")
+        content.append("# Perform eigen value analysis, with at least "
+                       f"{MIN_EIGEN_MODES} modes (ARPACK is unreliable for a "
+                       "single eigenvalue)")
+        content.append(f"eigen_values = ops.eigen(max(num_modes, "
+                       f"{MIN_EIGEN_MODES}))")
+        content.append(f"if not all({MIN_EIGEN_VALUE} < value < 1e+300 "
+                       "for value in eigen_values):")
+        content.append("    raise RuntimeError(f'Invalid eigenvalues: "
+                       "{eigen_values}')")
         # Add lines for looping through eigenvectors and saving them
         content.append("# Save eigen vectors for retained floor nodes")
         content.append(f"nodes = [{nodes}]")
@@ -1430,6 +1570,10 @@ class BuildingBase(ABC):
                        "'ModalProperties.txt').as_posix()")
         content.append("results = ops.modalProperties('-print', '-return', "
                        "'-file', report_file_path, '-unorm')")
+        content.append("# Keep the requested modes in the per-mode properties")
+        content.append("for key, values in results.items():")
+        content.append("    if key.startswith(('eigen', 'parti')):")
+        content.append("        results[key] = values[:num_modes]")
         content.append("")
         # Add return statement
         content.append("return results")
@@ -1602,11 +1746,14 @@ class BuildingBase(ABC):
         content.append("    current_disp = ops.nodeDisp(ctrl_node, ctrl_dof)")
         content.append("    current_shear = abs(sum([ops.nodeReaction(node, "
                        "ctrl_dof) for node in supports]))")
+        content.append("    # Check the base shear limit")
+        content.append("    within_limits = current_shear >= "
+                       "0.6 * max(base_shear)")
         content.append("    # Set continue flag")
-        content.append("    cont = current_disp < max_disp and"
-                       " current_shear >= 0.6 * max(base_shear)")
-        content.append("    # Append base shear and control node displacement")
-        content.append("    if ok == 0 and cont:")
+        content.append("    cont = within_limits and current_disp < max_disp")
+        content.append("    # Append base shear and control node displacement,"
+                       " including the step reaching max_disp")
+        content.append("    if ok == 0 and within_limits:")
         content.append("        base_shear.append(current_shear)")
         content.append("        ctrl_disp.append(current_disp)")
         # Add lines for wiping the model
@@ -1814,12 +1961,12 @@ class BuildingBase(ABC):
             "source beams.tcl",
             "# Define components of columns",
             "source columns.tcl",
-            "# Define components of infills",
+            "# Perform static analysis under gravity loads",
+            "source gravity.tcl",
+            "# Define components of infills (after gravity, unstressed)",
             "if {$::infills} {",
             "    source infills.tcl",
             "}",
-            "# Perform static analysis under gravity loads",
-            "source gravity.tcl",
             ""
         ]
 
@@ -1964,7 +2111,7 @@ class BuildingBase(ABC):
 
         content.append("    # Add beam gravity loads to ops domain")
         for beam in self.beams:
-            content.append("    " + beam.to_tcl_grav_loads())
+            content.extend(["    " + i for i in beam.to_tcl_grav_loads()])
 
         content.append("")
         content.append("    # Add column gravity loads to ops domain")
@@ -1981,7 +2128,10 @@ class BuildingBase(ABC):
         content.append("integrator LoadControl 0.1")
         content.append("algorithm Newton")
         content.append("analysis Static")
-        content.append("analyze 10")
+        content.append("if {[analyze 10] != 0} {")
+        content.append("    error \"Gravity analysis did not converge; the "
+                       "model state is invalid for subsequent analyses.\"")
+        content.append("}")
         content.append("loadConst -time 0.0")
         content.append("wipeAnalysis")
         content.append("")
@@ -2024,8 +2174,17 @@ class BuildingBase(ABC):
         content.append("source model.tcl")
         # Add lines for performing eigenvalue analysis
         content.append("")
-        content.append("# Perform eigenvalue analysis")
-        content.append("set eigenVals [eigen $numModes]")
+        content.append(f"# Perform eigenvalue analysis, with at least "
+                       f"{MIN_EIGEN_MODES} modes (ARPACK is unreliable for a "
+                       "single eigenvalue)")
+        content.append(f"set eigenVals [eigen [expr {{max($numModes, "
+                       f"{MIN_EIGEN_MODES})}}]]")
+        content.append("foreach lambda $eigenVals {")
+        content.append(f"    if {{$lambda <= {MIN_EIGEN_VALUE} || "
+                       "$lambda > 1e+300} {")
+        content.append('        error "Invalid eigenvalues: $eigenVals"')
+        content.append("    }")
+        content.append("}")
         # Add lines for looping through eigenvectors and saving them
         content.append("# Save eigen vectors for retained floor nodes")
         content.append(f'set nodes [list {nodes}]')
@@ -2243,27 +2402,34 @@ class BuildingBase(ABC):
         content.append("    # Get the base shear force")
         content.append("    reactions")
         content.append("    set current_disp [nodeDisp $ctrl_node $ctrl_dof]")
-        content.append("    set current_shear 0")
+        content.append("    set sum_reactions 0")
         content.append("    foreach foundation_node $supports {")
         content.append(
             "        set reaction [nodeReaction $foundation_node $ctrl_dof]")
         content.append(
-            "        set current_shear [expr $current_shear + abs($reaction)]")
+            "        set sum_reactions [expr {$sum_reactions + $reaction}]")
         content.append("    }")
-        content.append("    # Calculate the maximum encountered shear value")
+        content.append("    set current_shear [expr {abs($sum_reactions)}]")
+        content.append("    # Check the base shear limit")
         content.append(
             "    "
-            "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
-        )
+            "set within_limits [expr {$current_shear >= "
+            "0.6 * $max_base_shear}]")
         content.append("    # Set continue flag")
         content.append(
             "    "
-            "set cont [expr {($current_disp < $max_disp) && "
-            "($current_shear >= 0.6 * $max_base_shear)}]")
-        content.append("    # Append base shear and control node displacement")
-        content.append("    if { $ok == 0 && $cont == 1 } {")
+            "set cont [expr {$within_limits && "
+            "($current_disp < $max_disp)}]")
+        content.append("    # Append base shear and control node displacement,"
+                       " including the step reaching max_disp")
+        content.append("    if { $ok == 0 && $within_limits } {")
         content.append("        lappend base_shear $current_shear")
         content.append("        lappend ctrl_disp $current_disp")
+        content.append("        # Update the maximum recorded shear value")
+        content.append(
+            "        "
+            "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
+        )
         content.append("    }")
         content.append("}")
         # Add lines for wiping the model
@@ -2427,8 +2593,8 @@ class BuildingBase(ABC):
         infills = []
         if self.include_infills:
             for infill in self.infills:
-                s1 = int(str(infill.design.rectangle.tag) + '001')
-                s2 = int(str(infill.design.rectangle.tag) + '002')
+                s1 = sub_tag(infill.design.rectangle.tag, 1)
+                s2 = sub_tag(infill.design.rectangle.tag, 2)
                 infills.append(s1)
                 infills.append(s2)
         groups = [

@@ -3,8 +3,8 @@ Standard geometry module for defining regular frame structures parametrically.
 
 This module provides the :class:`StandardGeometry` class for uniform,
 rectangular RC moment-resisting frames (equal bay widths and storey heights),
-together with six helper functions for encoding and decoding integer tags for
-points, lines, and rectangles from their grid indices.
+using the tag encoding of :mod:`simdesign.utils.tags` for points, lines and
+rectangles (two digits per grid index).
 """
 # Imports from installed packages
 from typing import Literal, Optional
@@ -14,163 +14,10 @@ from .base import GeometryBase, Point, SystemGridData
 
 # Imports from utils library
 from ...utils.misc import round_list
-
-
-def encode_point_tag(i: int, j: int, k: int, factor: int = 10) -> int:
-    """
-    Encode integer grid indices of a point into a single integer tag.
-
-    Parameters
-    ----------
-    i, j, k : int
-        Grid indices along x, y, z respectively (0-based).
-    factor : int, default=10
-        Positional base used for encoding. Must be larger than the
-        maximum index value on any axis to avoid collisions.
-
-    Returns
-    -------
-    int
-        Encoded point tag as a single integer.
-
-    Notes
-    -----
-    The encoding is: ``tag = i * factor**2 + j * factor + k``.
-    """
-    return i * (factor**2) + j * factor + k
-
-
-def decode_point_tag(tag: int, factor: int = 10) -> tuple[int, int, int]:
-    """
-    Decode a point tag back into integer grid indices.
-
-    Parameters
-    ----------
-    tag : int
-        Encoded point tag produced by :func:`encode_point_tag`.
-    factor : int, default=10
-        Positional base used during encoding.
-
-    Returns
-    -------
-    tuple[int, int, int]
-        The grid indices ``(i, j, k)``.
-    """
-    i = tag // (factor**2)
-    j = (tag % (factor**2)) // factor
-    k = tag % factor
-    return i, j, k
-
-
-def encode_line_tag(
-    i: int, j: int, k: int, line_type: Literal["X", "Y", "Z"],
-    factor: int = 10
-) -> int:
-    """
-    Encode a line's anchor grid indices and orientation into a single tag.
-
-    Parameters
-    ----------
-    i, j, k : int
-        Anchor grid indices of the line (the minimum indices along each axis).
-    line_type : {'X', 'Y', 'Z'}
-        Line orientation axis.
-    factor : int, default=10
-        Positional base used for encoding. Should exceed max index on any axis.
-
-    Returns
-    -------
-    int
-        Encoded line tag.
-
-    Notes
-    -----
-    Orientation is encoded as:
-    'X' -> 1, 'Y' -> 2, 'Z' -> 3, placed in the highest position:
-    ``tag = type_code * factor**3 + i * factor**2 + j * factor + k``.
-    """
-    type_code = {"X": 1, "Y": 2, "Z": 3}[line_type]
-    return type_code * (factor**3) + i * (factor**2) + j * factor + k
-
-
-def decode_line_tag(tag: int, factor: int = 10) -> tuple[int, int, int, str]:
-    """
-    Decode a line tag back into anchor grid indices and orientation.
-
-    Parameters
-    ----------
-    tag : int
-        Encoded line tag produced by :func:`encode_line_tag`.
-    factor : int, default=10
-        Positional base used during encoding.
-
-    Returns
-    -------
-    tuple[int, int, int, str]
-        ``(i, j, k, line_type)`` where ``line_type`` is one of
-        {'X', 'Y', 'Z'}. If the type code is not recognized, '?' is returned.
-    """
-    type_map = {1: "X", 2: "Y", 3: "Z"}
-    type_code = tag // (factor**3)
-    i = (tag % (factor**3)) // (factor**2)
-    j = (tag % (factor**2)) // factor
-    k = tag % factor
-    return i, j, k, type_map.get(type_code, "?")
-
-
-def encode_rectangle_tag(
-    i: int, j: int, k: int, plane: Literal["XY", "YZ", "XZ"], factor: int = 10
-) -> int:
-    """
-    Encode a rectangle (panel) anchor indices and its plane into a single tag.
-
-    Parameters
-    ----------
-    i, j, k : int
-        Anchor grid indices of the rectangle (lower/near corner).
-    plane : {'XY', 'YZ', 'XZ'}
-        The plane in which the rectangle lies.
-    factor : int, default=10
-        Positional base used for encoding. Should exceed max index on any axis.
-
-    Returns
-    -------
-    int
-        Encoded rectangle tag.
-
-    Notes
-    -----
-    Plane codes: 'XY' -> 1, 'YZ' -> 2, 'XZ' -> 3.
-    ``tag = plane_code * factor**3 + i * factor**2 + j * factor + k``.
-    """
-    plane_code = {"XY": 1, "YZ": 2, "XZ": 3}[plane]
-    return plane_code * (factor**3) + i * (factor**2) + j * factor + k
-
-
-def decode_rectangle_tag(tag: int, factor: int = 10
-                         ) -> tuple[int, int, int, str]:
-    """
-    Decode a rectangle tag back into anchor indices and plane.
-
-    Parameters
-    ----------
-    tag : int
-        Encoded rectangle tag produced by :func:`encode_rectangle_tag`.
-    factor : int, default=10
-        Positional base used during encoding.
-
-    Returns
-    -------
-    tuple[int, int, int, str]
-        ``(i, j, k, plane)`` where ``plane`` is one of {'XY', 'YZ', 'XZ'}.
-        If the plane code is not recognized, '?' is returned.
-    """
-    plane_map = {1: "XY", 2: "YZ", 3: "XZ"}
-    plane_code = tag // (factor**3)
-    i = (tag % (factor**3)) // (factor**2)
-    j = (tag % (factor**2)) // factor
-    k = tag % factor
-    return i, j, k, plane_map.get(plane_code, "?")
+from ...utils.tags import (  # noqa: F401 (decoders re-exported)
+    encode_point_tag, decode_point_tag, encode_line_tag, decode_line_tag,
+    encode_rectangle_tag, decode_rectangle_tag
+)
 
 
 class StandardGeometry(GeometryBase):
@@ -617,10 +464,9 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k - 1, 'YZ')
                 is_exterior = (i == 0 or i == self._num_bays_x)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True
 
             # 2nd side wall in YZ
@@ -637,10 +483,9 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k, 'YZ')
                 is_exterior = (i == 0 or i == self._num_bays_x)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True
 
             # 1st side wall in XZ
@@ -657,8 +502,7 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k, 'XZ')
                 is_exterior = (j == 0 or j == self._num_bays_y)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True

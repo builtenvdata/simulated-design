@@ -486,19 +486,21 @@ class RebarsBase(ABC):
                 nbl_b2_dict[key] = n
                 bot_Asl_rat_dict[key] = Asl_rat
         else:   # no other rebar options are possible
-            # Using the previous one as lower bar diameter
             i = np.where(self.beam_long_bar_diams == dbl_1)[0][0]
-            dbl_2 = self.beam_long_bar_diams[i - 1]
+            # Using the previous one as lower bar diameter. If dbl_1 is the
+            # smallest diameter, there is none (dbl1 >= dbl2), and only the
+            # solutions with one diameter above are used.
             # NOTE: Alternatively iterate for all lower rebars
             # for db2 in self.long_bar_diams[:i]:
-
-            for m in range(2, max_nbl_1 + 1, 1):
-                n, Asl_rat = get_two_type_long_bar_solution(
-                    Asl_req=Asl_bot, nbl_1=m,
-                    dbl_1=dbl_1, dbl_2=dbl_2)
-                key = f"{m}dbl1{dbl_1}_dbl2{dbl_2}"
-                nbl_b2_dict[key] = n
-                bot_Asl_rat_dict[key] = Asl_rat
+            if i > 0:
+                dbl_2 = self.beam_long_bar_diams[i - 1]
+                for m in range(2, max_nbl_1 + 1, 1):
+                    n, Asl_rat = get_two_type_long_bar_solution(
+                        Asl_req=Asl_bot, nbl_1=m,
+                        dbl_1=dbl_1, dbl_2=dbl_2)
+                    key = f"{m}dbl1{dbl_1}_dbl2{dbl_2}"
+                    nbl_b2_dict[key] = n
+                    bot_Asl_rat_dict[key] = Asl_rat
 
         err_bot = {key: np.sum(rat)
                    for key, rat in bot_Asl_rat_dict.items()}
@@ -608,7 +610,7 @@ class RebarsBase(ABC):
                         break  # break the for loop
 
                 if iterate:
-                    if sbh[j] == sbhy and np.all(nbh_y[j] <= max_nbh_y[j]):
+                    if sbh[j] == sbhy and np.all(nbh_y[j] < max_nbh_y[j]):
                         # add a stirrup leg along y
                         nbh_y[j] += 1
                     elif iterate and dbh[j] < max(self.beam_trans_bar_diams):
@@ -778,7 +780,7 @@ class RebarsBase(ABC):
 
             # Increase num rebars along X to not exceed max spacing limit
             for i in np.where(dist_x > self.col_max_sbl)[0].tolist():
-                while dist_x[i] > self.col_max_sbl[i]:
+                while dist_x[i] > self.col_max_sbl:
                     nbl_2x[i] += 1
                     dist_x[i] = (bx[i] - (nbl_1x * dbl_1 + nbl_2x[i] * dbl_2
                                           + 2 * self.col_cover + 2 * dbh)
@@ -786,7 +788,7 @@ class RebarsBase(ABC):
                     dist_x = np.round(dist_x, PRECISION)
             # Increase num rebars along Y to not exceed max spacing limit
             for i in np.where(dist_y > self.col_max_sbl)[0].tolist():
-                while dist_y[i] > self.col_max_sbl[i]:
+                while dist_y[i] > self.col_max_sbl:
                     nbl_2y[i] += 1
                     dist_y[i] = (by[i] - (nbl_1y * dbl_1 + nbl_2y[i] * dbl_2
                                           + 2 * self.col_cover + 2 * dbh)
@@ -985,10 +987,10 @@ class RebarsBase(ABC):
                         break  # break the for loop
 
                 if iterate:
-                    if sbh[j] == sbhy and np.all(nbh_y[j] <= max_nbh_y[j]):
+                    if sbh[j] == sbhy and np.all(nbh_y[j] < max_nbh_y[j]):
                         # add a stirrup leg along y
                         nbh_y[j] += 1
-                    elif sbh[j] == sbhx and np.all(nbh_x[j] <= max_nbh_x[j]):
+                    elif sbh[j] == sbhx and np.all(nbh_x[j] < max_nbh_x[j]):
                         # add a stirrup leg along x
                         nbh_x[j] += 1
                     elif dbh[j] < max(self.col_trans_bar_diams):

@@ -13,8 +13,10 @@ from ..baselib.column import ColumnBase
 from ....utils.units import MPa, mm
 from ....utils.misc import round_list
 from ....utils.rcsection import (
-    get_mander_confinement, build_column_rebar_layout
+    get_mander_confinement, get_kent_park_confinement,
+    build_column_rebar_layout
 )
+from ....utils.tags import sub_tag
 
 
 class Column(ColumnBase):
@@ -49,6 +51,16 @@ class Column(ColumnBase):
     concrete_material: Literal['Concrete01', 'Concrete04'] = 'Concrete04'
     interior_section: Literal['Elastic', 'Inelastic'] = 'Inelastic'
 
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the Column object (see ``ColumnBase``), with the
+        yield point from section analysis, consistent with the fiber
+        sections.
+        """
+        super().__init__(*args, **kwargs)
+        self.yield_mom_curv = 'analytical'
+        # Update the cracked-section properties for the section yield point
+        self._set_cracked_properties()
+
     @property
     def Ecm_q(self) -> float:
         """
@@ -69,28 +81,28 @@ class Column(ColumnBase):
     @property
     def steel_mat_tag_(self) -> int:
         """Steel material tag."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def steel_mat_tag(self) -> int:
         """MinMax material tag for the steel fibers. Used to simulate
         bar buckling or rupture."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def uconf_conc_mat_tag(self) -> int:
         """Material tag for the unconfined concrete fibers."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def conf_conc_mat_tag(self) -> int:
         """Material tag for the confined concrete fibers."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def inelastic_fiber_sec_tag(self) -> int:
         """Section tag for the inelastic fiber section."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     def add_to_ops(self) -> None:
         """Adds column components to the OpenSees domain
@@ -120,6 +132,8 @@ class Column(ColumnBase):
         section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         if self.interior_section == 'Elastic':  # use elastic interior
             ops.section(*self._get_elastic_sec_inputs())
+            if not self.capacity_design:  # with shear springs
+                ops.section(*self._get_interior_sec_inputs())
         # Fiber section
         ops.section(*section)
         for fiber in fibers:
@@ -214,6 +228,12 @@ class Column(ColumnBase):
                 for item in self._get_elastic_sec_inputs()
             )
             content.append(f"ops.section({elastic_sec_inputs})")
+            if not self.capacity_design:  # with shear springs
+                interior_sec_inputs = ', '.join(
+                    repr(item) if isinstance(item, str) else str(item)
+                    for item in self._get_interior_sec_inputs()
+                )
+                content.append(f"ops.section({interior_sec_inputs})")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ', '.join(
@@ -318,6 +338,10 @@ class Column(ColumnBase):
             elastic_sec_inputs = ' '.join(
                 f"{item}" for item in self._get_elastic_sec_inputs())
             content.append(f"section {elastic_sec_inputs}")
+            if not self.capacity_design:  # with shear springs
+                interior_sec_inputs = ' '.join(
+                    f"{item}" for item in self._get_interior_sec_inputs())
+                content.append(f"section {interior_sec_inputs}")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ' '.join(f"{item}" for item in fb_section)
@@ -482,9 +506,26 @@ class Column(ColumnBase):
 
         Notes
         -----
-        - Concrete confinement parameters are computed using the Mander model.
-        - For Concrete01, residual (crushing) stress is taken as
-          ``fpcu = 0.2 * fpc``.
+        - For ``Concrete04`` (Popovics curve), the confinement parameters
+          follow the Mander model (Mander et al., 1988).
+        - For ``Concrete01``, which implements the Kent-Scott-Park curve, they
+          follow the modified Kent and Park model (Scott et al., 1982):
+          ``fpc = K fc``, ``epsc0 = 0.002 K``, ``fpcu = 0.2 fpc`` and ``epsU``
+          the strain at which the descending branch reaches ``fpcu``. Mander
+          parameters would give ``Concrete01`` a too small initial stiffness
+          (``2 fpc / epsc0``) and treat the hoop fracture strain as the
+          strain at 20% residual stress.
+
+        References
+        ----------
+        Mander, J. B., Priestley, M. J. N., & Park, R. (1988). Theoretical
+        stress-strain model for confined concrete. Journal of Structural
+        Engineering, 114(8), 1804-1826.
+
+        Scott, B. D., Park, R., & Priestley, M. J. N. (1982). Stress-strain
+        behavior of concrete confined by overlapping hoops at low and high
+        strain rates. Journal of the American Concrete Institute, 79(1),
+        13-27.
         """
         # Materials [MPa]
         fc = self.design.fc_q / MPa
@@ -504,26 +545,28 @@ class Column(ColumnBase):
         dbl_cor = self.design.dbl_cor_q / mm
         dbl_int = self.design.dbl_int_q / mm
 
-        # Get reinforcement layout
-        layout = build_column_rebar_layout(
-            dbl_cor, dbl_int, nbl_int_x, nbl_int_y, dbh, lx, ly, cv
-        )
-        # Determine confinement based on Mander model
-        params = get_mander_confinement(
-            fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
-            legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
-            rein_x=layout['rein_x'], rein_y=layout['rein_y'],
-            rein_d=layout['rein_d']
-        )  # note that strength parameters are in MPa
-
-        # Set concrete01 material parameters
+        # Set concrete01 material parameters (Kent-Scott-Park curve)
         if self.concrete_material == 'Concrete01':
+            params = get_kent_park_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh
+            )  # strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc0 = -params['eps_cc']  # concrete strain at comp. strength
             fpcu = 0.2*fpc  # concrete crushing strength
             epsU = -params['eps_cu']  # concrete strain at crushing strength
             mat_inputs = [fpc, epsc0, fpcu, epsU]
         elif self.concrete_material == 'Concrete04':
+            # Reinforcement layout and confinement by the Mander model
+            layout = build_column_rebar_layout(
+                dbl_cor, dbl_int, nbl_int_x, nbl_int_y, dbh, lx, ly, cv
+            )
+            params = get_mander_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
+                rein_x=layout['rein_x'], rein_y=layout['rein_y'],
+                rein_d=layout['rein_d']
+            )  # note that strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc = -params['eps_cc']  # concrete strain at compressive strength
             epscu = -params['eps_cu']  # concrete strain at crushing strength

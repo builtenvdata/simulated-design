@@ -13,6 +13,9 @@ All model implementations inherit from ``BuildingBase`` and define
 specific modelling strategies.
 """
 
+# Imports from installed packages
+import warnings
+
 from .baselib import BuildingBase
 from .cp01 import CP01
 from .cp02 import CP02
@@ -21,6 +24,7 @@ from .dp01 import DP01
 from .dp02 import DP02
 from .dp03 import DP03
 from .dp04 import DP04
+from .dp05 import DP05
 from ...utils.misc import filter_args
 
 
@@ -31,7 +35,8 @@ MODELLERS = {
     "DP01": DP01,
     "DP02": DP02,
     "DP03": DP03,
-    "DP04": DP04
+    "DP04": DP04,
+    "DP05": DP05
 }
 """Registry of available BNSM implementations or numerical model constructors.
 """
@@ -61,8 +66,10 @@ class BNSM:
         Distributed plasticity model variant 02.
     :class:`DP03 <simdesign.rcmrf.bnsm.dp03.building.Building>`
         Distributed plasticity model variant 03.
-    :class:`DP04 <simdesign.rcmrf.bnsm.dp02.building.Building>`
+    :class:`DP04 <simdesign.rcmrf.bnsm.dp04.building.Building>`
         Distributed plasticity model variant 04.
+    :class:`DP05 <simdesign.rcmrf.bnsm.dp05.building.Building>`
+        Distributed plasticity model variant 05.
     """
 
     def __new__(cls, **kwargs) -> BuildingBase:
@@ -73,7 +80,7 @@ class BNSM:
         ----------
         model : str | None, optional
             Identifier of the BNSM implementation to instantiate.
-            If not provided, defaults to ``'CP03'``.
+            If not provided, defaults to ``'CP01'``.
         **kwargs
             Keyword arguments forwarded to the constructor (``__init__``) of
             the selected model implementation. Therefore, the valid set of
@@ -99,12 +106,13 @@ class BNSM:
         :class:`~simdesign.rcmrf.bnsm.dp01.DP01`,
         :class:`~simdesign.rcmrf.bnsm.dp02.DP02`,
         :class:`~simdesign.rcmrf.bnsm.dp03.DP03`,
-        :class:`~simdesign.rcmrf.bnsm.dp04.DP04`
+        :class:`~simdesign.rcmrf.bnsm.dp04.DP04`,
+        :class:`~simdesign.rcmrf.bnsm.dp05.DP05`
 
             BNSM implementations whose constructor parameters define the
             accepted ``**kwargs`` for the corresponding ``model`` value.
         """
-        model = kwargs.get('model') or 'CP03'
+        model = kwargs.get('model') or 'CP01'
         # Check if the model in kwargs is valid
         if model not in MODELLERS.keys():
             valid_options = ", ".join(MODELLERS.keys())
@@ -117,4 +125,10 @@ class BNSM:
         bnsm = MODELLERS.get(model)
         # Instantiate and return the appropriate class
         filtered_args = filter_args(bnsm.__init__, kwargs)
+        # Warn about the inputs not used by the selected model
+        for name in kwargs:
+            if name != 'model' and name not in filtered_args:
+                warnings.warn(
+                    f"Unknown input '{name}' is ignored by model {model}.",
+                    UserWarning)
         return bnsm(**filtered_args)

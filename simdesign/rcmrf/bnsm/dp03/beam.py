@@ -12,7 +12,10 @@ from ..baselib.beam import BeamBase
 # Imports from utils library
 from ....utils.units import MPa, mm
 from ....utils.misc import round_list
-from ....utils.rcsection import get_mander_confinement, build_beam_rebar_layout
+from ....utils.rcsection import (
+    get_mander_confinement, get_kent_park_confinement, build_beam_rebar_layout
+)
+from ....utils.tags import sub_tag
 
 
 class Beam(BeamBase):
@@ -46,6 +49,16 @@ class Beam(BeamBase):
     concrete_material: Literal['Concrete01', 'Concrete04'] = 'Concrete04'
     interior_section: Literal['Elastic', 'Inelastic'] = 'Inelastic'
 
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the Beam object (see ``BeamBase``), with the
+        yield point of the plastic hinges from section analysis, consistent
+        with the cracked-section method.
+        """
+        super().__init__(*args, **kwargs)
+        self.yield_mom_curv = 'analytical'
+        # Update the cracked-section properties for the section yield point
+        self._set_cracked_properties()
+
     @property
     def Ecm_q(self) -> float:
         """
@@ -66,39 +79,39 @@ class Beam(BeamBase):
     @property
     def steel_mat_tag_(self) -> int:
         """Steel material tag."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def steel_mat_tag(self) -> int:
         """MinMax material tag for the steel fibers. Used to simulate
         bar buckling or rupture."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def uconf_conc_mat_tag(self) -> int:
         """Material tag for the unconfined concrete fibers."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def conf_conc_mat_tag_i(self) -> int:
         """Material tag for the confined concrete fibers at the *i-end*."""
-        return int(str(self.design.line.tag) + '994')
+        return sub_tag(self.design.line.tag, 94)
 
     @property
     def conf_conc_mat_tag_j(self) -> int:
         """Material tag for the confined concrete fibers at the *j-end*."""
-        return int(str(self.design.line.tag) + '995')
+        return sub_tag(self.design.line.tag, 95)
 
     @property
     def conf_conc_mat_tag_m(self) -> int:
         """Material tag for the confined concrete fibers at the *mid-section*.
         """
-        return int(str(self.design.line.tag) + '996')
+        return sub_tag(self.design.line.tag, 96)
 
     @property
     def inelastic_sec_m_tag(self) -> int:
         """Section tag for the inelastic middle (interior) section."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain
@@ -551,9 +564,26 @@ class Beam(BeamBase):
 
         Notes
         -----
-        - Concrete confinement parameters are computed using the Mander model.
-        - For Concrete01, residual (crushing) stress is taken as
-          ``fpcu = 0.2 * fpc``.
+        - For ``Concrete04`` (Popovics curve), the confinement parameters
+          follow the Mander model (Mander et al., 1988).
+        - For ``Concrete01``, which implements the Kent-Scott-Park curve, they
+          follow the modified Kent and Park model (Scott et al., 1982):
+          ``fpc = K fc``, ``epsc0 = 0.002 K``, ``fpcu = 0.2 fpc`` and ``epsU``
+          the strain at which the descending branch reaches ``fpcu``. Mander
+          parameters would give ``Concrete01`` a too small initial stiffness
+          (``2 fpc / epsc0``) and treat the hoop fracture strain as the
+          strain at 20% residual stress.
+
+        References
+        ----------
+        Mander, J. B., Priestley, M. J. N., & Park, R. (1988). Theoretical
+        stress-strain model for confined concrete. Journal of Structural
+        Engineering, 114(8), 1804-1826.
+
+        Scott, B. D., Park, R., & Priestley, M. J. N. (1982). Stress-strain
+        behavior of concrete confined by overlapping hoops at low and high
+        strain rates. Journal of the American Concrete Institute, 79(1),
+        13-27.
         """
         # Index for the specified end section
         if section == 'i':
@@ -591,26 +621,28 @@ class Beam(BeamBase):
         dbl_t1 = self.design.dbl_t1_q[idx] / mm
         dbl_t2 = self.design.dbl_t2_q[idx] / mm
 
-        layout = build_beam_rebar_layout(
-            dbl_b1, dbl_b2, dbl_t1, dbl_t2, nbl_b1, nbl_b2, nbl_t1, nbl_t2,
-            dbh, lx, ly, cv
-        )
-
-        params = get_mander_confinement(
-            fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
-            legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
-            rein_x=layout['rein_x'], rein_y=layout['rein_y'],
-            rein_d=layout['rein_d']
-        )  # strength parameters are in MPa
-
-        # Set concrete01 material parameters
+        # Set concrete01 material parameters (Kent-Scott-Park curve)
         if self.concrete_material == 'Concrete01':
+            params = get_kent_park_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh
+            )  # strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc0 = -params['eps_cc']  # concrete strain at comp. strength
             fpcu = 0.2*fpc  # concrete crushing strength
             epsU = -params['eps_cu']  # concrete strain at crushing strength
             mat_inputs = [fpc, epsc0, fpcu, epsU]
         elif self.concrete_material == 'Concrete04':
+            layout = build_beam_rebar_layout(
+                dbl_b1, dbl_b2, dbl_t1, dbl_t2, nbl_b1, nbl_b2, nbl_t1, nbl_t2,
+                dbh, lx, ly, cv
+            )
+            params = get_mander_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
+                rein_x=layout['rein_x'], rein_y=layout['rein_y'],
+                rein_d=layout['rein_d']
+            )  # strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc = -params['eps_cc']  # concrete strain at compressive strength
             epscu = -params['eps_cu']  # concrete strain at crushing strength

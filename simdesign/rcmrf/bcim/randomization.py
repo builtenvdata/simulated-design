@@ -117,7 +117,7 @@ class Sampler:
         # Set the sample size
         self.sample_size = num_sample
         # Set the seed for random number generator
-        if seed:
+        if seed is not None:
             np.random.seed(seed)
 
     def set_stair_span_length_x(self, lower_bound: float, upper_bound: float

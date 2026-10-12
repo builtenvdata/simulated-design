@@ -125,7 +125,7 @@ class Beam(BeamBase):
                 bymin = min(col.by for col in self.columns if col)
                 clear_length = self.L - (bymax + bymin) / 2
 
-            h_max_code = max(3.5 * self.b, clear_length / 4)
+            h_max_code = min(3.5 * self.b, clear_length / 4)
             if bool1 or bool2:
                 return min(self.MAX_H_EB, h_max_code)
             else:
@@ -355,7 +355,7 @@ class Beam(BeamBase):
             rho = k3 * (fcd / fyd) * (1 - (1 - (2 * K) / (k3 * fcd)) ** 0.5)
             As_required[mask] = rho * bw * d
             Asprime_required[mask] = 0
-        else:  # Double reinforcement
+        if np.any(~mask):  # Double reinforcement
             As1 = 0.235 * (fcd / fyd) * bw * d
             Mr2 = Md[~mask] - Mr1
             As2 = Mr2 / (fyd * (d - dprime))

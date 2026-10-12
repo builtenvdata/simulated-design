@@ -40,12 +40,12 @@ class Beam(BeamCP01):
 
         References
         ---------
-        Hasanoglu, S. and O'Reilly G. J. (2026). A hysteretic energy-based
-        framework for seismic fragility assessment of ductile reinforced
-        concrete frame buildings
+        Hasanoglu, S. and O'Reilly G. J. (2027). Calibration of cyclic
+        backbone parameters for numerical modelling and hysteretic energy
+        capacity of ductile reinforced concrete members.
         """
         h = self.design.h
-        ln = self.design.L
+        ln = self.clear_length  # Clear length, without the joint offsets
         fc_mpa = self.design.fc_q / MPa
         fsyl_mpa = self.design.fsyl_q / MPa
         dbh = self.design.dbh_q
@@ -61,8 +61,8 @@ class Beam(BeamCP01):
 
         # Compute yield moments in positive and negative directions at both
         # end sections of the beam (i and j) - Panagiotakos and Fardis (2001)
-        My_pos, _ = self._compute_yield_point('positive')
-        My_neg, _ = self._compute_yield_point('negative')
+        My_pos, _, _ = self._get_my_phiy('positive')
+        My_neg, _, _ = self._get_my_phiy('negative')
 
         # Capping moment capacities in positive and negative directions
         Mc_My = (1.08 ** niu) * (1.38 ** (10*rhol)) * (1.14 ** (0.1*rSsD))
@@ -75,8 +75,8 @@ class Beam(BeamCP01):
         Mu_neg = Mu_Mc * Mc_neg
 
         # Zero moment values in positive and negative directions
-        M0_pos = 0.1 * Mc_pos
-        M0_neg = 0.1 * Mc_neg
+        M0_pos = 0.1 * Mu_pos
+        M0_neg = 0.1 * Mu_neg
 
         # Yield rotation capacities in positive and negative directions
         EI_ratio = np.clip(0.08 * (1.25 ** (10*niu)) * (1.2 ** rSsD), 0.2, 0.8)
@@ -86,17 +86,20 @@ class Beam(BeamCP01):
         theta_y_neg = My_neg * ls / (3 * EIy)
 
         # Plastic rotation capacities before capping
-        theta_cap_pl_pos = 0.009 * (0.25 ** (0.01*fc_mpa)) * (0.23 ** niu) * \
+        theta_cap_pl_sym = 0.009 * (0.25 ** (0.01*fc_mpa)) * (0.23 ** niu) * \
             (2.17 ** (100*rhol))
-        ratio_pos_neg = (
-            np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
-            / np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
-        ) ** 0.225
-        theta_cap_pl_neg = ratio_pos_neg * theta_cap_pl_pos
+        # Non-symmetric beam section - Haselton et al. 2016 - Equation 7
+        # (max(0.01, w_compression) / max(0.01, w_tension)) ** 0.225
+        w_top = np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
+        w_bot = np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
+        # Negative: top rebar in tension, bottom rebar in compression
+        theta_cap_pl_neg = ((w_bot / w_top) ** 0.225) * theta_cap_pl_sym
+        # Positive: bottom rebar in tension, top rebar in compression
+        theta_cap_pl_pos = ((w_top / w_bot) ** 0.225) * theta_cap_pl_sym
 
         # Post-capping rotation capacity
-        theta_pc_pos = 0.01 * (0.07 ** niu) * (1.78 ** (100*rhoh)) * \
-            (1.18 ** (0.01*fsyl_mpa))
+        theta_pc_pos: np.ndarray = 0.01 * (0.07 ** niu) * \
+            (1.78 ** (100*rhoh)) * (1.18 ** (0.01*fsyl_mpa))
         theta_pc_neg = theta_pc_pos.copy()
 
         # Post-ultimate rotation capacity
@@ -104,51 +107,25 @@ class Beam(BeamCP01):
         theta_pu_pos = np.minimum(theta_pu_pos, 4*theta_pc_pos)
         theta_pu_neg = theta_pu_pos.copy()
 
-        # Rotation values for cyclic loading (HystereticSM material)
-        if self.cyclic_model:
-            # Positive backbone
-            moment_1_pos = My_pos
-            moment_2_pos = Mc_pos
-            moment_3_pos = Mu_pos
-            moment_4_pos = M0_pos
-            theta_1_pos = theta_y_pos
-            theta_2_pos = theta_y_pos + theta_cap_pl_pos
-            theta_3_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos
-            theta_4_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos + \
-                theta_pu_pos
-            # Negative backbone
-            moment_1_neg = My_neg
-            moment_2_neg = Mc_neg
-            moment_3_neg = Mu_neg
-            moment_4_neg = M0_neg
-            theta_1_neg = theta_y_neg
-            theta_2_neg = theta_y_neg + theta_cap_pl_neg
-            theta_3_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg
-            theta_4_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg + \
-                theta_pu_neg
-        else:
-            # These modifiers were determined based on the suggested
-            # values in ATC 72-1 report
-            # Positive backbone
-            moment_1_pos = My_pos
-            moment_2_pos = 1.1 * Mc_pos
-            moment_3_pos = 1.1 * Mu_pos
-            moment_4_pos = M0_pos
-            theta_1_pos = theta_y_pos
-            theta_2_pos = theta_y_pos + 1.4*theta_cap_pl_pos
-            theta_3_pos = theta_y_pos + 1.4*theta_cap_pl_pos + 2*theta_pc_pos
-            theta_4_pos = theta_y_pos + 1.4*theta_cap_pl_pos + \
-                2*theta_pc_pos + 2*theta_pu_pos
-            # Negative backbone
-            moment_1_neg = My_neg
-            moment_2_neg = 1.1 * Mc_neg
-            moment_3_neg = 1.1 * Mu_neg
-            moment_4_neg = M0_neg
-            theta_1_neg = theta_y_neg
-            theta_2_neg = theta_y_neg + 1.4*theta_cap_pl_neg
-            theta_3_neg = theta_y_neg + 1.4*theta_cap_pl_neg + 2*theta_pc_neg
-            theta_4_neg = theta_y_neg + 1.4*theta_cap_pl_neg + \
-                2*theta_pc_neg + 2*theta_pu_neg
+        # Positive backbone (HystereticSM material)
+        moment_1_pos = My_pos
+        moment_2_pos = Mc_pos
+        moment_3_pos = Mu_pos
+        moment_4_pos = M0_pos
+        theta_1_pos = theta_y_pos
+        theta_2_pos = theta_1_pos + theta_cap_pl_pos
+        theta_3_pos = theta_2_pos + theta_pc_pos
+        theta_4_pos = theta_3_pos + theta_pu_pos
+
+        # Negative backbone (HystereticSM material)
+        moment_1_neg = My_neg
+        moment_2_neg = Mc_neg
+        moment_3_neg = Mu_neg
+        moment_4_neg = M0_neg
+        theta_1_neg = theta_y_neg
+        theta_2_neg = theta_1_neg + theta_cap_pl_neg
+        theta_3_neg = theta_2_neg + theta_pc_neg
+        theta_4_neg = theta_3_neg + theta_pu_neg
 
         # Pinching factor for strain (or deformation) during reloading
         pinchx = 1.0

@@ -3,6 +3,7 @@ implementation for the ``eu_cdh`` design class.
 """
 # Imports from installed packages
 from typing import List, Type
+import numpy as np
 
 # Imports from the design class (eu_cdh) library
 from .analysis import ElasticModel
@@ -120,6 +121,15 @@ class Building(BuildingBase):
     OVERSTRENGTH_FACTOR_COLUMN_MOMENT = 1.3  # EN 1998-1:2004 clause 4.4.2.3(4)
     OVERSTRENGTH_FACTOR_BEAM_SHEAR = 1.0  # EN 1998-1:2004 clause 5.4.2.2(2)
     OVERSTRENGTH_FACTOR_COLUMN_SHEAR = 1.1  # EN 1998-1:2004 clause 5.4.2.3(2)
+    LOCAL_DUCTILITY_ITER_MAX = 5
+    """Maximum number of transverse reinforcement updates of a base column
+    for the local ductility requirement of EN 1998-1:2004, 5.4.3.2.2(8)."""
+    CT = 0.075
+    """Coefficient Ct of the approximate fundamental period of RC moment
+    resisting frames, T1 = Ct H^(3/4) (EN 1998-1:2004, 4.6.3.2, Eq. 4.6)."""
+    TC = 0.5  # Assumed: most buildings are located at B sites
+    """Corner period Tc (s) of the constant spectral acceleration branch,
+    ground type B, Type 1 spectrum (EN 1998-1:2004, Table 3.2)."""
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
         """Initialize the Building object.
@@ -153,6 +163,72 @@ class Building(BuildingBase):
         super().__init__(taxonomy=taxonomy)
         # Set the maximum column dimensions for full design routine
         self._set_maximum_column_dimensions()
+
+    def _check_columns_local_ductility(self) -> None:
+        """Check the local ductility requirement of EN 1998-1:2004,
+        5.4.3.2.2(8), in the critical regions at the base of the columns
+        (see ``Column.check_local_ductility_requirement``).
+
+        If a base column does not satisfy the requirement, its required
+        ratio of transverse reinforcement area to spacing is increased in
+        proportion to the shortfall of ``alpha omega_wd``, and its transverse
+        reinforcement is selected again. This is repeated up to
+        ``LOCAL_DUCTILITY_ITER_MAX`` times. If the requirement is still not
+        satisfied, the column is marked as failed (``ok_x``, ``ok_y``), so
+        that its dimensions are increased, which reduces the normalised
+        axial force.
+
+        Notes
+        -----
+        - The curvature ductility factor uses the approximate fundamental
+          period ``T1 = CT H^(3/4)``, with the height ``H`` of the building
+          above the base, and the corner period ``TC``.
+        - The transverse reinforcement of the whole ground-storey column is
+          increased, not only that of its critical region.
+        """
+        if self.columns_fail:  # Columns have already failed
+            return
+        factors = self._get_unique_seism_combo_grav_factors()
+        # Ground level, where the base columns start
+        z0 = min(self.geometry.system_grid_data.z.ordinates)
+        # Approximate fundamental period - EN 1998-1:2004, Eq. 4.6
+        height = max(self.geometry.system_grid_data.z.ordinates) - z0
+        T1 = self.CT * height**0.75
+        for col in self.columns:
+            z_bottom = min(p.coordinates[2] for p in col.line.points)
+            if not np.isclose(z_bottom, z0):
+                continue  # Not a base column
+            for _ in range(self.LOCAL_DUCTILITY_ITER_MAX):
+                ok, alpha_omega_wd, required = (
+                    col.check_local_ductility_requirement(
+                        factors, T1=T1, Tc=self.TC))
+                if ok:
+                    break
+                # Increase the required transverse reinforcement (at least
+                # the provided one) in proportion to the shortfall
+                factor = 1.05 * required / max(alpha_omega_wd, 1e-6)
+                Ab = 0.25 * np.pi * col.dbh**2
+                col.Ashx_sbh_req = factor * max(
+                    col.Ashx_sbh_req, col.nbh_x * Ab / col.sbh)
+                col.Ashy_sbh_req = factor * max(
+                    col.Ashy_sbh_req, col.nbh_y * Ab / col.sbh)
+                # Select the transverse reinforcement again
+                dbh, sbh, nbh_x, nbh_y = self.rebars.get_column_transv_rebars(
+                    np.array([col.bx]), np.array([col.by]),
+                    np.array([col.Ashx_sbh_req]),
+                    np.array([col.Ashy_sbh_req]),
+                    np.array([col.dbl_cor]), np.array([col.nblx_int]),
+                    np.array([col.nbly_int]))
+                col.dbh, col.sbh = dbh[0], sbh[0]
+                col.nbh_x, col.nbh_y = nbh_x[0], nbh_y[0]
+                col.validate_transverse_reinforcement()
+            else:
+                ok, _, _ = col.check_local_ductility_requirement(
+                    factors, T1=T1, Tc=self.TC)
+            if not ok:
+                # Increase the column dimensions in the next iteration
+                col.ok_x = False
+                col.ok_y = False
 
     def _set_maximum_column_dimensions(self) -> None:
         """Set the maximum column dimensions based on number of storeys.

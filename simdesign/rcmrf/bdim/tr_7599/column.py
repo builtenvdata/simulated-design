@@ -447,19 +447,20 @@ class Column(ColumnBase):
         dx = (self.bx - 2 * self.cover - 0.008)
         dy = (self.by - 2 * self.cover - 0.008)
 
-        # Minimum transverse reinforcement area to spacing ratio
-        Ash_sh_min = self.rhoh_min * dy * dx
-        Ashx_sh_min = Ash_sh_min * dx / (dx + dy)
-        Ashy_sh_min = Ash_sh_min * dy / (dx + dy)
+        # Minimum transverse reinforcement area to spacing ratio, Eq. 6.1 in
+        # TBEC-1975 (volumetric ratio, shared equally by both directions)
+        Ashx_sh_min = 0.5 * self.rhoh_min * dy
+        Ashy_sh_min = 0.5 * self.rhoh_min * dx
 
         # Calculate the required transverse reinforcement area
         Ashx_sbh_req = 0
         Ashy_sbh_req = 0
         for force in self.design_forces:
             # Design shear forces
-            Vd_x = max(force.Vx1, force.Vx9)
-            Vd_y = max(force.Vy1, force.Vy9)
-            Nd = max(abs(force.N1), abs(force.N9))
+            Vd_x = max(abs(force.Vx1), abs(force.Vx9))
+            Vd_y = max(abs(force.Vy1), abs(force.Vy9))
+            # Compressive axial force only (tension is taken as zero)
+            Nd = max(0.0, -min(force.N1, force.N9))
 
             # Shear force resisted by concrete, Section 8.3 in TS500-1984
             Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * \

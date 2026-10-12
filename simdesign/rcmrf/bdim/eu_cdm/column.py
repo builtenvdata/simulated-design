@@ -218,11 +218,11 @@ class Column(ColumnBase):
             Vx1 = abs(force.Vx1)
             Vy9 = abs(force.Vy9)
             Vx9 = abs(force.Vx9)
-            # Determine loading eccentricty
-            ecc_x1 = force.My1 / force.N1
-            ecc_x9 = force.My9 / force.N9
-            ecc_y1 = force.Mx1 / force.N1
-            ecc_y9 = force.Mx9 / force.N9
+            # Determine loading eccentricty (zero if there is no axial force)
+            ecc_x1 = force.My1 / force.N1 if force.N1 != 0 else 0.0
+            ecc_x9 = force.My9 / force.N9 if force.N9 != 0 else 0.0
+            ecc_y1 = force.Mx1 / force.N1 if force.N1 != 0 else 0.0
+            ecc_y9 = force.Mx9 / force.N9 if force.N9 != 0 else 0.0
             # TO define big and small ecc. section for tensile force and
             # to discard concrete contribution for small eccentricity.
             et_x1 = ecc_x1 / dx
@@ -264,10 +264,6 @@ class Column(ColumnBase):
                 Ash_sh_y9 = (Vy9 - Vcd_y) / (zy * self.fsyd)
             else:
                 Ash_sh_y9 = 0.0
-            Ash_sh_x1 = Vx1 / (zx * self.fsyd)
-            Ash_sh_y1 = Vy1 / (zy * self.fsyd)
-            Ash_sh_x9 = Vx9 / (zx * self.fsyd)
-            Ash_sh_y9 = Vy9 / (zy * self.fsyd)
             # Update the required reinforcement
             Ashx_sh_req = max(Ashx_sh_req, Ash_sh_x1, Ash_sh_x9)
             Ashy_sh_req = max(Ashy_sh_req, Ash_sh_y1, Ash_sh_y9)

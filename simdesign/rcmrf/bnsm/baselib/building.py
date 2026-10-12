@@ -730,16 +730,6 @@ class BuildingBase(ABC):
         exported ``nspa.py`` and ``nspa.tcl`` do not include the
         equilibrium and stiffness checks.
         """
-        # # Check if capacity design is followed for shear
-        # if self.design.OVERSTRENGTH_FACTOR_COLUMN_SHEAR:
-        #     capacity_design = True
-        # else:
-        #     capacity_design = False
-        # # Check if the fiber sections are being used or not
-        # fiber_sections = (
-        #     'dp03' in self.__module__ or 'dp04' in self.__module__
-        # )
-
         # Analysis direction
         direction = 'x' if ctrl_dof == 1 else 'y'
 

@@ -348,14 +348,14 @@ class SlabBase(ABC):
         elif self.orientation == 3:
             if self.lx > self.ly:
                 # Trapezoid area
-                ax = (((self.lx - self.ly) + self.lx) * self.ly) / 2
+                ax = (((self.lx - self.ly) + self.lx) * self.ly) / 4
                 # Triangle area
                 ay = ((self.ly / 2) * self.ly) / 2
             else:
                 # Triangle area
                 ax = ((self.lx / 2) * self.lx) / 2
                 # Trapezoid area
-                ay = (((self.ly - self.lx) + self.ly) * self.lx) / 2
+                ay = (((self.ly - self.lx) + self.ly) * self.lx) / 4
 
         ax = round(ax, PRECISION)
         ay = round(ay, PRECISION)

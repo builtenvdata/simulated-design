@@ -209,6 +209,9 @@ class Rebars(RebarsBase):
                     b=b[j], h=h[j], dbh=dbh[j],
                     dbl=dbl_t1[j], cover=self.beam_cover)
                 max_sbh = np.round(max_sbh, PRECISION)
+                # The code limit can fall below the smallest spacing,
+                # use the smallest one
+                max_sbh = max(max_sbh, min(self.beam_trans_bar_spacings))
             else:
                 max_sbh = self._get_beam_max_sbh_mid(
                     b=b[j], h=h[j], dbh=dbh[j],

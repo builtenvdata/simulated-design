@@ -360,7 +360,8 @@ class ElasticModelBase(ABC):
         in seismic loading. If nodal masses are not specified, the centre of
         mass is computed based on 1.0G + 1.0Q. To define rigid diaphragms,
         also retained nodes and corresponding single-point constraints are
-        added.
+        added. If they exist from a previous call, they are removed and
+        created again at the new centre of mass.
         """
         perp_dirn = 3
         if masses is None:  # Set the masses for finding the center of mass
@@ -375,6 +376,10 @@ class ElasticModelBase(ABC):
         floor_lx = []
         floor_ly = []
         for i, nodes in enumerate(self.geometry.floor_level_points):
+            # Floor retained node tag
+            rnode = diaphragm_node_tag(i + 1)
+            # The diaphragm exists from a previous call (other masses)
+            rebuild = rnode in ops.getNodeTags()
             sum_mass = 0  # summation of the masses
             sum_mass_moment = 0  # summation of the mass moments
             cnodes = []
@@ -387,23 +392,23 @@ class ElasticModelBase(ABC):
                 all_coords.append(coords)
                 sum_mass += mass
                 sum_mass_moment += mass * coords
-            # Find centre of (CM)
+                if rebuild:  # remove the old diaphragm constraint of the node
+                    ops.remove('mp', node.tag)
+            # Find centre of mass (CM)
             cm = np.round(sum_mass_moment / sum_mass, 2)
-            # Floor retained node tag
-            rnode = diaphragm_node_tag(i + 1)
             # Rigid diaphragm node tags
             floor_nodes = [rnode] + cnodes
-            # Recreate the retained nodes with new CM
-            if rnode in ops.getNodeTags():
-                ops.remove('node', rnode)
-                ops.node(rnode, *cm.tolist())
-            else:
-                # Create floor retained node
-                ops.node(rnode, *cm.tolist())
-                # Add single-point restraints for the retained node
-                ops.fix(rnode, 0, 0, 1, 1, 1, 0)
-                # Create the rigid diaphragm
-                ops.rigidDiaphragm(perp_dirn, *floor_nodes)
+            # Remove the existing retained node components
+            if rebuild:
+                ops.remove('node', rnode)  # Remove the old retained node
+                for dof in (3, 4, 5):  # Remove old SP-restraints
+                    ops.remove('sp', rnode, dof)
+            # Create floor retained node at CM
+            ops.node(rnode, *cm.tolist())
+            # Add single-point restraints for the retained node
+            ops.fix(rnode, 0, 0, 1, 1, 1, 0)
+            # Create the rigid diaphragm
+            ops.rigidDiaphragm(perp_dirn, *floor_nodes)
             # Rigid diaphragm dimensions
             rnodes.append(rnode)
             all_coords = np.array(all_coords)

@@ -106,8 +106,9 @@ class Loads(LoadsBase):
         Unlike
         :meth:`~simdesign.rcmrf.bdim.baselib.loads.LoadsBase.get_seismic_loads`,
         this implementation distributes forces proportionally to storey
-        weight alone, without height weighting. The ``heights`` parameter
-        is therefore not required and should not be passed.
+        weight alone, without height weighting. The ``heights`` are only
+        used to leave out the weights lumped at the base (``heights <= 0``),
+        which receive no force and do not contribute to the base shear.
 
         Parameters
         ----------
@@ -119,6 +120,9 @@ class Loads(LoadsBase):
                 building weight.
             weights : np.ndarray
                 Array of storey weights in kN.
+            heights : np.ndarray, optional
+                Array of heights measured from the base, with the same shape
+                as ``weights``. If not given, all weights are used.
 
         Returns
         -------
@@ -135,6 +139,9 @@ class Loads(LoadsBase):
         """
         beta = kwargs['beta']
         weights = kwargs['weights']
+        # Weights above the base
+        if kwargs.get('heights') is not None:
+            weights = np.where(np.asarray(kwargs['heights']) > 0, weights, 0.0)
         base_shear = np.sum(beta * weights)
         forces = base_shear * (weights) / np.sum(weights)
 

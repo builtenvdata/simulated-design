@@ -19,6 +19,7 @@ Pipeline::
 
 from typing import Dict, Literal, Tuple, List
 from pathlib import Path
+import warnings
 
 from .bcim import BCIM
 from .bdim import BDIM, TaxonomyData
@@ -49,6 +50,9 @@ def generate(
     outdir : str | Path, optional
         Path to the user-defined output directory.
         If None, set to `Path.cwd() / 'Outputs'`. by default None.
+        The directory is created if needed and its other contents are kept;
+        only the outputs written by this function (``BCIM.csv`` and the
+        ``BDIM`` and ``BNSM`` subdirectories) are replaced.
 
     Returns
     -------
@@ -158,9 +162,12 @@ def generate(
     bcim_path = outdir / "BCIM.csv"
     bdim_path = outdir / 'BDIM'
     bnsm_path = outdir / 'BNSM'
-    make_dir(outdir)
-    make_dir(bdim_path)
-    make_dir(bnsm_path)
+    outdir.mkdir(parents=True, exist_ok=True)  # keep any existing contents
+    for path in (bdim_path, bnsm_path):
+        if path.exists():
+            warnings.warn(f"Replacing the existing outputs in {path}.",
+                          UserWarning)
+        make_dir(path)
 
     # Initialize BCIM
     bcim = BCIM()

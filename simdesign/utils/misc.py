@@ -67,7 +67,8 @@ def run_time(start_time: int) -> str:
     return text
 
 
-def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
+def handle_remove_read_only(func: Callable, path: str,
+                            exc: Union[BaseException, tuple]) -> None:
     """Grant write permission to a file and remove it using the provided
     function.
 
@@ -77,16 +78,19 @@ def handle_remove_read_only(func: Callable, path: str, exc: tuple) -> None:
         remove function.
     path : str
         file path.
-    exc : tuple
-        Exception tuple.
+    exc : BaseException | tuple
+        The exception raised (``onexc`` of ``shutil.rmtree``, Python 3.12 or
+        newer), or the exception information tuple (``onerror``, earlier
+        versions).
 
     Raises
     ------
     Warning
         Path is in use.
     """
-    excvalue: OSError = exc[1]
-    if func in (os.rmdir, os.remove) and excvalue.errno == errno.EACCES:
+    excvalue = exc[1] if isinstance(exc, tuple) else exc
+    if (func in (os.rmdir, os.remove, os.unlink)
+            and getattr(excvalue, 'errno', None) == errno.EACCES):
         os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
         func(path)
     else:

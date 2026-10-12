@@ -146,8 +146,8 @@ class BuildingBase(ABC):
             default {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent load factor
             - 'Q' : Variable load factor
-        mass_sources : Dict[Literal['G', 'Q'], float], optional
-            Mass sources used to compute seismic masses. By default
+        mass_factors : Dict[Literal['G', 'Q'], float], optional
+            Mass factors used to compute seismic masses. By default
             {'G': 1.0, 'Q': 0.3}.
             - 'G' : Permanent mass factor
             - 'Q' : Variable mass factor

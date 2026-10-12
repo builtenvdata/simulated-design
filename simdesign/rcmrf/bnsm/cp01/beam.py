@@ -5,7 +5,7 @@ the BNSM layer.
 from typing import Tuple, List
 
 # Imports from bnsm base library
-from ..baselib.beam import BeamBase
+from ..baselib.beam import BeamBase, HYSTERETIC_PARAMETERS
 
 # Imports from utils library
 from ....utils.misc import round_list
@@ -42,22 +42,21 @@ class Beam(BeamBase):
         hinge_j_mat_inputs : List[str | float | int]
             Hysteretic material model inputs for hinge at the end section.
         """
-        # Plastic hinge properties
+        # Backbone of the plastic hinges
         (
             _, My_neg, Mc_neg, Mr_neg,
             theta_y_neg, theta_cap_pl_neg, theta_pc_neg,
             _, My_pos, Mc_pos, Mr_pos,
             theta_y_pos, theta_cap_pl_pos, theta_pc_pos,
-            pinchx, pinchy, damage1, damage2, beta,
         ) = self._get_rot_hinge_props()
 
         # Rotation values
         theta_1_neg = theta_y_neg
-        theta_2_neg = theta_y_neg + theta_cap_pl_neg
-        theta_3_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg
+        theta_2_neg = theta_1_neg + theta_cap_pl_neg
+        theta_3_neg = theta_2_neg + theta_pc_neg
         theta_1_pos = theta_y_pos
-        theta_2_pos = theta_y_pos + theta_cap_pl_pos
-        theta_3_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos
+        theta_2_pos = theta_1_pos + theta_cap_pl_pos
+        theta_3_pos = theta_2_pos + theta_pc_pos
 
         # Material inputs
         hinge_i_mat_inputs = [
@@ -68,7 +67,7 @@ class Beam(BeamBase):
             -My_neg[0], -theta_1_neg[0],
             -Mc_neg[0], -theta_2_neg[0],
             -Mr_neg[0], -theta_3_neg[0],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
         hinge_j_mat_inputs = [
             'Hysteretic', self.mz_j_mat_tag,
@@ -78,7 +77,7 @@ class Beam(BeamBase):
             -My_neg[-1], -theta_1_neg[-1],
             -Mc_neg[-1], -theta_2_neg[-1],
             -Mr_neg[-1], -theta_3_neg[-1],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision

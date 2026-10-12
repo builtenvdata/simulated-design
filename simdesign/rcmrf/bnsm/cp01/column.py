@@ -7,10 +7,10 @@ import openseespy.opensees as ops
 from typing import Literal, List, Tuple
 
 # Imports from bnsm base library
-from ..baselib.column import ColumnBase
+from ..baselib.column import ColumnBase, HYSTERETIC_PARAMETERS
 
 # Imports from utils library
-from ....utils.units import MPa, MN
+from ....utils import rcsection as rc
 from ....utils.misc import round_list
 
 
@@ -268,36 +268,23 @@ class Column(ColumnBase):
 
         # Plastic hinge properties
         (
-            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc,
-            pinchx, pinchy, damage1, damage2, beta
+            _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc
          ) = self._get_rot_hinge_props(axis)
-        # Exclude the shear distortion term from the yield rotation when the
-        # shear deformations are modelled explicitly by the shear springs
-        if not self.capacity_design:
-            theta_y -= self._get_shear_yield_rotation(axis)
+        # The shear distortion term is excluded from the yield rotation when
+        # the shear deformations are modelled explicitly by the shear springs
+        # (see _get_rot_hinge_props)
 
         # Rotation values for monotonic loading
         theta_1 = theta_y
-        theta_2 = theta_y + theta_cap_pl
-        theta_3 = theta_y + theta_cap_pl + theta_pc
+        theta_2 = theta_1 + theta_cap_pl
+        theta_3 = theta_2 + theta_pc
 
-        # Pinching factor for strain (or deformation) during reloading
-        pinchx = 1.0  # no pinching (default)
-        # Pinching factor for stress (or force) during reloading
-        pinchy = 1.0  # no pinching (default)
-        # Damage due to ductility: D1(mu-1)
-        damage1 = 0.0  # no degradation (default)
-        # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.0  # no degradation (default)
-        # Power used to determine the degraded unloading stiffness based on
-        # ductility, mu-beta (optional, default=0.0)
-        beta = 0.0  # elastic unloading (default)
-        # Material inputs other than tag and type
+        # Material inputs
         rot_mat_inputs = [
             'Hysteretic', flex_mat_tag,
             My, theta_1, Mc, theta_2, Mr, theta_3,
             -My, -theta_1, -Mc, -theta_2, -Mr, -theta_3,
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision
@@ -389,58 +376,36 @@ class Column(ColumnBase):
 
         # Horizontal (stirrup) reinforcement diameter
         dbh = self.design.dbh_q
-        # Concrete compressive strength in MPa
-        fc_mpa = self.design.fc_q / MPa  # convert to MPa
         # Nominal length of column
         Ln = self.design.H
         # Stirrup spacing
         sbh = self.design.sbh_q
         # Shear span, assuming equal to 50% of the free length of the element
         Ls = Ln / 2  # NOTE: Could be varied with intensity of loading, but ok.
-        # Effective depth: dist. between outer comp. fiber and tens. steel
-        d = 0.9 * h
         # Transverse reinforcement yield strength (quality adjusted)
-        fsyh_mpa = self.design.fsyh_q / MPa  # in MPa
         fsyh = self.design.fsyh_q  # in base units
         # Gross corss-section area
         Ag = self.design.Ag
         # Compressive axial load (+) - Positive in compression
         Nu = max(-self.axial_force, 0)
-        # Axial load in Mega Newton (mN) - Positive in compression
-        Nu_MN = Nu / MN  # convert to mN
         # Transverse reinforcement area
         Av = nbh * np.pi * (dbh**2) / 4
-        # Initial shear strength, see ASCE/SEI 41-17 - Equation 10-3si
-        k = 1.0  # Degradation factor (1.0 for initial strength)
-        lambda_ = 1.0  # Assuming normal weight concrete aggregate
-        d = 0.8 * h  # Effective depth, permitted to assume by ASCE
-        alpha = np.interp(sbh / d, [0.75, 1.0], [1.0, 0.0])
-        M_V_rat = Ls  # Largest ratio of moment to shear, assumed
-        M_Vd_rat = min(max(M_V_rat / d, 2), 4)  # Should satify: 2 <= M/Vd <= 4
-        Vn = k * (
-            alpha * (Av * fsyh_mpa * d / sbh)
-            + lambda_
-            * (
-                (fc_mpa**0.5)
-                / (2 * M_Vd_rat)
-                * (1 + (2 * Nu_MN) / ((fc_mpa**0.5) * Ag)) ** 0.5
-            )
-            * (0.8 * Ag)
-        )
-        # Convert from MPa units to based units
-        Vn *= MN
+        # Initial shear strength - ASCE/SEI 41-17 - Equation 10-3, with the
+        # effective depth permitted by ASCE (0.8 h)
+        Vn = rc.get_shear_strength_asce41_17(
+            self.design.fc_q, Ag, 0.8 * h, Av, fsyh, sbh, Ls, Nu)
         # Number of shear springs in series along the member; the same hinge
         # section (with the shear springs) is used at both ends
         n_springs = 2
         # Shear-spring elastic slope - LeBorgne and Ghannoum (2014) - Eqn. 1
         # NOTE: The member stiffness is multiplied by the number of springs
         # so that springs in series give the member shear stiffness.
-        k_el = n_springs * (5 / 6) * (self.Gcm_q * Ag / Ln)
-        # Degrading slope of the shear-drift spring backbone
-        # Shoraka and Elwood (2013) - Eqn. 20
-        k_deg = (
-            4.5 * Nu * (((Av * fsyh * 0.9 * h) / (Nu * sbh)) * 4.6 + 1) ** 2
-        ) / Ln
+        k_el = n_springs * rc.get_shear_stiffness_leborgne_ghannoum2014(
+            self.Gcm_q, Ag, Ln)
+        # Degrading slope of the shear-drift spring backbone, with the core
+        # depth taken as 0.9 h - Shoraka and Elwood (2013) - Eqn. 20
+        k_deg = rc.get_shear_degrading_slope_shoraka_elwood2013(
+            Nu, Av, fsyh, 0.9 * h, sbh, Ln)
 
         # Inputs for Three-Point Limit Curve - Elwood and Moehle 2003
         # integer element tag for the associated beam-column element

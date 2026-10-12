@@ -18,14 +18,12 @@ providing instantiable component implementations.
 - Beam:
   Concentrated plasticity (CP) with explicit zeroLength end hinges
   placed in series with an elastic interior beam element.
-  Hinge moment-rotation behaviour follows CP01, with elastic stiffness
-  modification according to Ibarra & Krawinkler (2005).
+  Hinge moment-rotation behaviour follows CP01.
 
 - Column:
   Concentrated plasticity with explicit zeroLengthSection end hinges
   and an elastic interior column element.
-  Flexural hinge behaviour follows CP01, with elastic stiffness
-  modification according to Ibarra & Krawinkler (2005) and optional
+  Flexural hinge behaviour follows CP01, with optional
   degrading shear hinges supported through the inherited CP01 Column.
 
 - Joints:
@@ -50,12 +48,6 @@ providing instantiable component implementations.
   unified OpenSees domain. Extends base implementation by introducing auxiliary
   plastic hinge nodes, rigid-like offset elements, and configurable
   series or parallel infill-column shear interaction.
-
-**References**
-
-Ibarra, L. F., & Krawinkler, H. (2005).
-Global collapse of frame structures under seismic excitations.
-Technical Report 152, Stanford University.
 """
 
 from .building import Building as CP03

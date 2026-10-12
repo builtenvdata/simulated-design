@@ -49,9 +49,16 @@ class Column(ColumnBase):
     """
     concrete_material: Literal['Concrete01', 'Concrete04'] = 'Concrete04'
     interior_section: Literal['Elastic', 'Inelastic'] = 'Inelastic'
-    cracked_section = 'section'
-    """Cracked-section method consistent with the end sections based
-    on section analysis, used for the BNSM option 'auto'."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the Column object (see ``ColumnBase``), with the
+        yield point from section analysis, consistent with the fiber
+        sections.
+        """
+        super().__init__(*args, **kwargs)
+        self.yield_mom_curv = 'analytical'
+        # Update the cracked-section properties for the section yield point
+        self._set_cracked_properties()
 
     @property
     def Ecm_q(self) -> float:

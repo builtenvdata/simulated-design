@@ -61,8 +61,8 @@ class Beam(BeamCP01):
 
         # Compute yield moments in positive and negative directions at both
         # end sections of the beam (i and j) - Panagiotakos and Fardis (2001)
-        My_pos, _ = self._compute_yield_point('positive')
-        My_neg, _ = self._compute_yield_point('negative')
+        My_pos, _, _ = self._get_my_phiy('positive')
+        My_neg, _, _ = self._get_my_phiy('negative')
 
         # Capping moment capacities in positive and negative directions
         Mc_My = (1.08 ** niu) * (1.38 ** (10*rhol)) * (1.14 ** (0.1*rSsD))
@@ -98,8 +98,8 @@ class Beam(BeamCP01):
         theta_cap_pl_pos = ((w_top / w_bot) ** 0.225) * theta_cap_pl_sym
 
         # Post-capping rotation capacity
-        theta_pc_pos = 0.01 * (0.07 ** niu) * (1.78 ** (100*rhoh)) * \
-            (1.18 ** (0.01*fsyl_mpa))
+        theta_pc_pos: np.ndarray = 0.01 * (0.07 ** niu) * \
+            (1.78 ** (100*rhoh)) * (1.18 ** (0.01*fsyl_mpa))
         theta_pc_neg = theta_pc_pos.copy()
 
         # Post-ultimate rotation capacity
@@ -113,10 +113,9 @@ class Beam(BeamCP01):
         moment_3_pos = Mu_pos
         moment_4_pos = M0_pos
         theta_1_pos = theta_y_pos
-        theta_2_pos = theta_y_pos + theta_cap_pl_pos
-        theta_3_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos
-        theta_4_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos + \
-            theta_pu_pos
+        theta_2_pos = theta_1_pos + theta_cap_pl_pos
+        theta_3_pos = theta_2_pos + theta_pc_pos
+        theta_4_pos = theta_3_pos + theta_pu_pos
 
         # Negative backbone (HystereticSM material)
         moment_1_neg = My_neg
@@ -124,10 +123,9 @@ class Beam(BeamCP01):
         moment_3_neg = Mu_neg
         moment_4_neg = M0_neg
         theta_1_neg = theta_y_neg
-        theta_2_neg = theta_y_neg + theta_cap_pl_neg
-        theta_3_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg
-        theta_4_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg + \
-            theta_pu_neg
+        theta_2_neg = theta_1_neg + theta_cap_pl_neg
+        theta_3_neg = theta_2_neg + theta_pc_neg
+        theta_4_neg = theta_3_neg + theta_pu_neg
 
         # Pinching factor for strain (or deformation) during reloading
         pinchx = 1.0

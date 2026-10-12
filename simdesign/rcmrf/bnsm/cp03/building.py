@@ -94,12 +94,10 @@ class Building(BuildingBase):
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
-        cracked_beam: (
-            Literal['section', 'fardis', 'auto'] | float | None) = None,
-        cracked_column: (
-            Literal['section', 'fardis', 'auto'] | float | None) = None,
+        cracked_beam: Optional[bool | float] = None,
+        cracked_column: Optional[bool | float] = None,
         infill_column_connection: Literal['series', 'parallel'] = 'parallel',
-        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto'
+        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto',
     ) -> None:
         """Initialize BNSM object.
 
@@ -136,23 +134,17 @@ class Building(BuildingBase):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_beam : str | float | None, optional
+        cracked_beam : None | bool | float, optional
             Cracked-section (effective) flexural properties of the elastic
-            beam sections: 'section' from a moment-curvature section
-            analysis, 'fardis' as My / phi_y of the plastic hinges
-            (Panagiotakos and Fardis, 2001), 'auto' for the method
-            consistent with the hinges or end sections of each element,
-            or a float as the ratio of effective to gross flexural
-            stiffness. If None, gross-section properties are used.
+            beam sections: True for My / phi_y of the plastic hinges, or a
+            float as the ratio of effective to gross flexural stiffness. If
+            None or False, gross-section properties are used.
             By default None.
-        cracked_column : str | float | None, optional
+        cracked_column : None | bool | float, optional
             Cracked-section (effective) flexural properties of the elastic
-            column sections: 'section' from a moment-curvature section
-            analysis, 'fardis' as My / phi_y of the plastic hinges
-            (Panagiotakos and Fardis, 2001), 'auto' for the method
-            consistent with the hinges or end sections of each element,
-            or a float as the ratio of effective to gross flexural
-            stiffness. If None, gross-section properties are used.
+            column sections: True for My / phi_y of the plastic hinges, or a
+            float as the ratio of effective to gross flexural stiffness. If
+            None or False, gross-section properties are used.
             By default None.
         infill_column_connection : {'series', 'parallel'}, optional
             Defines the modelling assumption governing the interaction between
@@ -207,13 +199,9 @@ class Building(BuildingBase):
         """
         # Initialize the beam models
         bondslip_fact = self.design.quality.model.bondslip_factor
-        # Cracked-section option, 'auto' for the method of the beams
-        cracked = self.cracked_beam
-        if cracked == 'auto':
-            cracked = self.BeamClass.cracked_section
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, cracked,
+                           self.cyclic_model, self.cracked_beam,
                            self.beam_load_type)
             for beam in self.design.beams
             ]
@@ -276,14 +264,10 @@ class Building(BuildingBase):
             capacity_des = False
 
         # Initialize columns
-        # Cracked-section option, 'auto' for the method of the columns
-        cracked = self.cracked_column
-        if cracked == 'auto':
-            cracked = self.ColumnClass.cracked_section
         self.columns = [
             self.ColumnClass(
                 column, bondslip_fact, capacity_des, self.load_factors,
-                self.cyclic_model, cracked
+                self.cyclic_model, self.cracked_column
             )
             for column in self.design.columns
         ]

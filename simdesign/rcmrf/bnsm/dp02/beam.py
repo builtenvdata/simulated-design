@@ -2,7 +2,6 @@
 the BNSM layer.
 """
 # Imports from installed packages
-import numpy as np
 import openseespy.opensees as ops
 from typing import List, Literal, Tuple
 
@@ -12,7 +11,6 @@ from ..baselib.beam import BeamBase
 # Imports from utils library
 from ....utils.units import MPa
 from ....utils.misc import round_list
-from ....utils.rcsection import get_moments
 from ....utils.tags import sub_tag
 
 
@@ -29,9 +27,15 @@ class Beam(BeamBase):
         Base beam definition extended by this class.
     """
 
-    cracked_section = 'section'
-    """Cracked-section method consistent with the end sections based
-    on section analysis, used for the BNSM option 'auto'."""
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the Beam object (see ``BeamBase``), with the
+        yield point of the plastic hinges from section analysis, consistent
+        with the cracked-section method.
+        """
+        super().__init__(*args, **kwargs)
+        self.yield_mom_curv = 'analytical'
+        # Update the cracked-section properties for the section yield point
+        self._set_cracked_properties()
 
     @property
     def Ecm_q(self) -> float:
@@ -270,10 +274,10 @@ class Beam(BeamBase):
         dissertation, IUSS Pavia).
         """
         # Get pinching4 backbone parameters
-        backbone_pos_i, phi_max_pos_i = self._compute_backbone('positive', 'i')
-        backbone_neg_i, phi_max_neg_i = self._compute_backbone('negative', 'i')
-        backbone_pos_j, phi_max_pos_j = self._compute_backbone('positive', 'j')
-        backbone_neg_j, phi_max_neg_j = self._compute_backbone('negative', 'j')
+        backbone_pos_i, phi_max_pos_i = self._get_backbone('positive', 'i')
+        backbone_neg_i, phi_max_neg_i = self._get_backbone('negative', 'i')
+        backbone_pos_j, phi_max_pos_j = self._get_backbone('positive', 'j')
+        backbone_neg_j, phi_max_neg_j = self._get_backbone('negative', 'j')
 
         # Unloading/Reloading parameters from O'Reilly 2016
         # Ratio of maximum deformation at which reloading begins
@@ -341,9 +345,9 @@ class Beam(BeamBase):
 
         return flex_inputs_i, flex_inputs_j, minmax_inputs_i, minmax_inputs_j
 
-    def _compute_backbone(self, direction: Literal['negative', 'positive'],
-                          end_section: Literal['i', 'j'],
-                          ) -> Tuple[List[float], float]:
+    def _get_backbone(self, direction: Literal['negative', 'positive'],
+                      end_section: Literal['i', 'j']
+                      ) -> Tuple[List[float], float]:
         """Compute moment-curvature backbone parameters for an end section.
 
         Parameters
@@ -380,19 +384,10 @@ class Beam(BeamBase):
             idx = -1
         # Section properties
         h = self.design.h
-        b = self.design.b
         Ag = self.design.Ag
-        fc = float(self.design.fc_q)
-        fsyl = float(self.design.fsyl_q)
-        Es = self.design.steel.Es
-        Ec = float(self.Ecm_q)
         cv = float(self.design.cover_q)
-        nbl_b1 = float(self.design.nbl_b1_q[idx])
-        nbl_b2 = float(self.design.nbl_b2_q[idx])
         dbl_b1 = float(self.design.dbl_b1_q[idx])
         dbl_b2 = float(self.design.dbl_b2_q[idx])
-        nbl_t1 = float(self.design.nbl_t1_q[idx])
-        nbl_t2 = float(self.design.nbl_t2_q[idx])
         dbl_t1 = float(self.design.dbl_t1_q[idx])
         dbl_t2 = float(self.design.dbl_t2_q[idx])
         dbh = float(self.design.dbh_q[idx])
@@ -404,31 +399,17 @@ class Beam(BeamBase):
         yt2 = cv + dbh + dbl_t2 / 2
         yb1 = h - (cv + dbh + dbl_b1 / 2)
         yb2 = h - (cv + dbh + dbl_b2 / 2)
-        # Reinforcement area per layer (top to bottom)
-        Ab_t1 = 0.25*np.pi*dbl_t1**2
-        Ab_t2 = 0.25*np.pi*dbl_t2**2
-        As_t1 = nbl_t1 * Ab_t1
-        As_t2 = nbl_t2 * Ab_t2
-        Ab_b1 = 0.25*np.pi*dbl_b1**2
-        Ab_b2 = 0.25*np.pi*dbl_b2**2
-        As_b1 = nbl_b1 * Ab_b1
-        As_b2 = nbl_b2 * Ab_b2
         # Set the layer distances and total areas
         if direction == 'positive':  # Top section is under compression
             y_layers = [yt2, yt1, yb1, yb2]
-            As_layers = [As_t2, As_t1, As_b1, As_b2]
         elif direction == 'negative':  # Bottom section is under compression
             y_layers = [h-yb2, h-yb1, h-yt1, h-yt2]  # compression comes first
-            As_layers = [As_b2, As_b1, As_t1, As_t2]  # compression comes first
         # Sort the distances in ascending order
-        y_layers, As_layers = map(list, zip(
-            *sorted(zip(y_layers, As_layers))))
-        # Cracking and yield moments
-        _, _, _, My, phi_y, cy = get_moments(
-            h=h, b=b, fc=fc, Ec=Ec,
-            Pext=0.0, fyL=fsyl, Es=Es,
-            As_layers=As_layers,
-            y_layers=y_layers,
+        y_layers = sorted(y_layers)
+
+        # Moment, curvature, and neutral axis depth at yielding
+        My, phi_y, cy = (
+            x[idx] for x in self._get_my_phiy_analytical(direction)
         )
         # Capping to yield moment ratio
         Mc_My = 1.077  # O'Reilly 2016 - Eqn. 2.2

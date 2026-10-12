@@ -6,7 +6,7 @@ representations.
 from abc import ABC
 import numpy as np
 import openseespy.opensees as ops
-from typing import List, Literal, Dict, Tuple
+from typing import List, Literal, Dict, Tuple, Optional
 
 # Imports from bnsm library
 from .node import Node
@@ -17,10 +17,25 @@ from ...bdim.baselib.beam import BeamBase as BeamDesign
 from ...bdim.baselib.beam import Array3
 
 # Imports from utils library
-from ....utils.units import MPa, mm
+from ....utils.units import MPa
 from ....utils.misc import PRECISION, round_list
-from ....utils.rcsection import get_moments
+from ....utils import rcsection as rc
 from ....utils.tags import sub_tag
+
+
+PINCHX = 0.8
+"""Pinching factor for strain (or deformation) during reloading"""
+PINCHY = 0.2
+"""Pinching factor for stress (or force) during reloading"""
+DAMAGE1 = 0.0  # no degradation (default)
+"""Damage due to ductility: D1(mu-1)"""
+DAMAGE2 = 0.0  # no degradation (default)
+"""Damage due to energy: D2(Eii/Eult)"""
+BETA = 0.85  # from Dolšek and Fajfar 2005
+"""Power used to determine the degraded unloading stiffness based on
+ductility, mu-beta (optional, default=0.0)"""
+HYSTERETIC_PARAMETERS = [PINCHX, PINCHY, DAMAGE1, DAMAGE2, BETA]
+"""Hysteretic parameters"""
 
 
 class BeamBase(ABC):
@@ -66,17 +81,21 @@ class BeamBase(ABC):
     jnt_offsets : List[float]
         Rigid joint offset values (dx_i, dy_i, dz_i, dx_j, dy_j, dz_j),
         specified with respect to the global coordinate system.
+    cracked : None | bool | float
+        Cracked-section (effective) flexural properties of the elastic
+        sections: True for ``EIeff = My / phi_y`` with the yield moment and
+        curvature of the plastic hinges computed with the empirical or
+        analytical approach (see `yield_mom_curv`), or a float as the ratio
+        of effective to gross flexural stiffness. If None or False,
+        gross-section properties are used.
+        The class attribute is the method used for the BNSM option
+        ``'auto'`` (see the model classes).
+    yield_mom_curv : Literal['empirical', 'analytical']
+        Method to compute yield moment and curvature of the plastic hinges:
+        ``'empirical'`` (Panagiotakos and Fardis, 2001) or
+        ``'analytical'`` (simplified section analysis).
     cyclic_model : bool
         If True, the model parameters will be adjusted for cyclic analysis.
-    cracked_section : Literal['section', 'fardis'] | float | None
-        Cracked-section (effective) flexural properties of the elastic
-        sections: ``'section'`` from a moment-curvature section analysis,
-        ``'fardis'`` as ``EIeff = My / phi_y`` with the yield moment and
-        curvature of Panagiotakos and Fardis (2001) used by the plastic
-        hinges, or a float as the ratio of effective to gross flexural
-        stiffness. If None, gross-section properties are used.
-        The class attribute holds the method consistent with the plastic
-        hinges or end sections, used for the BNSM option ``'auto'``.
     _Iz_eff : float
         Effective beam moment of inertia around local-z.
 
@@ -137,7 +156,8 @@ class BeamBase(ABC):
     ele_load: float
     load_type: Literal['uniform', 'point']
     jnt_offsets: List[float]
-    cracked_section: Literal['section', 'fardis'] | float | None = 'fardis'
+    cracked: Optional[bool | float] = None
+    yield_mom_curv: Literal['empirical', 'analytical']
     cyclic_model: bool
     _Iz_eff: float
 
@@ -378,8 +398,9 @@ class BeamBase(ABC):
         self, design: BeamDesign, bondslip_factor: float,
         load_factors: Dict[Literal['G', 'Q'], float],
         cyclic_model: bool = False,
-        cracked_section: Literal['section', 'fardis'] | float | None = None,
-        load_type: Literal['uniform', 'point'] = 'point'
+        cracked_section: None | bool | float = None,
+        load_type: Literal['uniform', 'point'] = 'point',
+        yield_mom_curv: Literal['empirical', 'analytical'] = 'empirical'
     ) -> None:
         """Initialize the Beam object.
 
@@ -395,25 +416,28 @@ class BeamBase(ABC):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_section : Literal['section', 'fardis'] | float | None, optional
+        cracked_section : None | bool | float, optional
             Cracked-section (effective) flexural properties of the elastic
-            sections: 'section' from a moment-curvature section analysis,
-            'fardis' as My / phi_y of the plastic hinges (Panagiotakos and
-            Fardis, 2001), or a float as the ratio of effective to gross
-            flexural stiffness. If None, gross-section properties are used.
-            By default None. The class attribute ``cracked_section`` holds
-            the method consistent with the plastic hinges or end sections of
-            the element, which is used for the BNSM option 'auto'.
+            sections: True for My / phi_y of the plastic hinges (see
+            `yield_mom_curv`), or a float as the ratio of effective to gross
+            flexural stiffness. If None or False, gross-section properties
+            are used. By default None.
         load_type : Literal['uniform', 'point'], optional
             How the gravity load is applied: 'uniform' as a uniformly
             distributed element load, 'point' as equivalent point loads at the
             element ends. By default 'point'.
+        yield_mom_curv : Literal['empirical', 'analytical'], optional
+            Yield moment and curvature of the plastic hinges: 'empirical'
+            from the expressions of Panagiotakos and Fardis (2001),
+            'analytical' from a moment-curvature section analysis.
+            By default 'empirical'.
         """
         self.design = design
         self.bondslip_factor = bondslip_factor
         self.cyclic_model = cyclic_model
-        self.cracked_section = cracked_section
+        self.cracked = cracked_section
         self.load_type = load_type
+        self.yield_mom_curv = yield_mom_curv
         # Set the gravity loading based on load factors
         self.ele_load = round(
             float(design.wg_total * load_factors['G']
@@ -422,7 +446,7 @@ class BeamBase(ABC):
         # Initailize joint offsets
         self.jnt_offsets = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         # Set cracked section properties
-        self._set_cracked_section_properties()
+        self._set_cracked_properties()
 
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain
@@ -701,7 +725,7 @@ class BeamBase(ABC):
         List[str | int | float]
             List of elastic beam section inputs.
         """
-        if self.cracked_section:
+        if self.cracked:
             Iz = self._Iz_eff
         else:
             Iz = self.design.Iz
@@ -768,7 +792,7 @@ class BeamBase(ABC):
         Engineering, 132(2), 244-252.
         https://doi.org/10.1061/(asce)0733-9445(2006)132:2(244)
         """
-        Lp = self._get_plastic_hinge_length()
+        Lp = self._get_lp()
         # Beam integration inputs
         int_inputs = [
             'HingeRadau', self.int_tag,
@@ -790,40 +814,29 @@ class BeamBase(ABC):
         mat_inputs_j : List[str | float]
             Hysteretic material model inputs for hinge at the end section.
         """
-        # Plastic hinge properties
+        # Backbone of the plastic hinges
         (
-            _, My_neg, Mc_neg, Mr_neg,
+            phiy_neg, My_neg, Mc_neg, Mr_neg,
             theta_y_neg, theta_cap_pl_neg, theta_pc_neg,
-            _, My_pos, Mc_pos, Mr_pos,
+            phiy_pos, My_pos, Mc_pos, Mr_pos,
             theta_y_pos, theta_cap_pl_pos, theta_pc_pos,
-            pinchx, pinchy, damage1, damage2, beta,
         ) = self._get_rot_hinge_props()
 
-        # Rotation values for monotonic loading
+        # Rotation values
         theta_1_neg = theta_y_neg
-        theta_2_neg = theta_y_neg + theta_cap_pl_neg
-        theta_3_neg = theta_y_neg + theta_cap_pl_neg + theta_pc_neg
+        theta_2_neg = theta_1_neg + theta_cap_pl_neg
+        theta_3_neg = theta_2_neg + theta_pc_neg
         theta_1_pos = theta_y_pos
-        theta_2_pos = theta_y_pos + theta_cap_pl_pos
-        theta_3_pos = theta_y_pos + theta_cap_pl_pos + theta_pc_pos
-        # NOTE: rotation values needs to be adjusted for cyclic loading
-        # theta_cap_pl needs to be factored by 0.7
-        # theta_pc needs to be factored by 0.5
+        theta_2_pos = theta_1_pos + theta_cap_pl_pos
+        theta_3_pos = theta_2_pos + theta_pc_pos
 
-        # Curvature values for monotonic loading. The elastic interior gives
-        # the flexural yield rotation My·Ls/(3·EI); the hinge carries the rest
-        # of θy (tension shift, shear and bond-slip) over Lp, so that the
-        # member reaches θy when the hinge yields. If the interior alone
-        # exceeds θy, the hinge keeps the interior stiffness.
-        Lp = self._get_plastic_hinge_length()
-        ls = self.design.L / 2  # Shear span, as in _get_rot_hinge_props
-        EI = self.Ecm_q * self._get_elastic_sec_inputs()[4]  # interior EI
-        dtheta_neg = np.maximum(theta_y_neg - My_neg * ls / (3 * EI), 0.0)
-        dtheta_pos = np.maximum(theta_y_pos - My_pos * ls / (3 * EI), 0.0)
-        phi_1_neg = My_neg / EI + dtheta_neg / Lp
+        # Curvature values
+        # Accounting for all the flexibility sources of the yield rotation
+        Lp = self._get_lp()
+        phi_1_neg = self._get_phiy_adjusted(My_neg, theta_y_neg, Lp)
+        phi_1_pos = self._get_phiy_adjusted(My_pos, theta_y_pos, Lp)
         phi_2_neg = (theta_2_neg - theta_1_neg) / Lp + phi_1_neg
         phi_3_neg = (theta_3_neg - theta_1_neg) / Lp + phi_1_neg
-        phi_1_pos = My_pos / EI + dtheta_pos / Lp
         phi_2_pos = (theta_2_pos - theta_1_pos) / Lp + phi_1_pos
         phi_3_pos = (theta_3_pos - theta_1_pos) / Lp + phi_1_pos
 
@@ -836,7 +849,7 @@ class BeamBase(ABC):
             -My_neg[0], -phi_1_neg[0],
             -Mc_neg[0], -phi_2_neg[0],
             -Mr_neg[0], -phi_3_neg[0],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
         mat_inputs_j = [
             'Hysteretic', self.mz_j_mat_tag,
@@ -846,7 +859,7 @@ class BeamBase(ABC):
             -My_neg[-1], -phi_1_neg[-1],
             -Mc_neg[-1], -phi_2_neg[-1],
             -Mr_neg[-1], -phi_3_neg[-1],
-            pinchx, pinchy, damage1, damage2, beta
+            *HYSTERETIC_PARAMETERS
         ]
 
         # Rounding to precision
@@ -855,7 +868,40 @@ class BeamBase(ABC):
 
         return mat_inputs_i, mat_inputs_j
 
-    def _get_plastic_hinge_length(self) -> Array3:
+    def _get_phiy_adjusted(
+        self, My: Array3, theta_y: Array3, Lp: Array3
+    ) -> Array3:
+        """Computes the yield curvature of the plastic hinge sections
+        based on yield rotation capacity.
+
+        The hinges account for all the flexibility sources of the yield
+        rotation ``theta_y`` (EN 1998-3 Eq. A.10b: tension shift, shear
+        distortion and bond-slip). The elastic interior gives the flexural
+        yield rotation ``My·Ls/(3·EI)``, and the hinge carries the rest of
+        ``theta_y`` over ``Lp``, so that the member reaches ``theta_y`` when
+        the hinge yields.
+
+        Parameters
+        ----------
+        My : Array3
+            Yield moment of the sections.
+        theta_y : Array3
+            Yield rotation of the sections.
+        Lp : Array3
+            Plastic hinge length of the sections.
+
+        Returns
+        -------
+        phi_y : Array3
+            Yield curvature of the hinge sections.
+        """
+        ls = self.design.L / 2  # Shear span, as in _get_rot_hinge_props
+        EIeff = self.Ecm_q * self._get_elastic_sec_inputs()[4]
+        dtheta = np.maximum(theta_y - My * ls / (3 * EIeff), 0.0)
+        phiy = My / EIeff + dtheta / Lp
+        return phiy
+
+    def _get_lp(self) -> Array3:
         """Computes plastic hinge length for the sections.
 
         Returns
@@ -869,29 +915,20 @@ class BeamBase(ABC):
         *Displacement-based seismic design of structures*. IUSS Press.
         """
         # Shear span, assuming equal to 50% of the free length of the element
-        Ls = self.design.line.length / 2 / mm  # in mm
-        # Diameter of internal reinforcement
-        dbl = (
+        Ls = self.design.line.length / 2
+        # Smallest diameter of the longitudinal reinforcement
+        dbl = np.minimum(
+            self.design.dbl_t1,
             np.minimum(
-                self.design.dbl_t1,
-                np.minimum(
-                    self.design.dbl_t2,
-                    np.minimum(self.design.dbl_b1, self.design.dbl_b2),
-                ),
-            )
-            / mm
-        )  # mm
-        # Longitudinal steel yield strength in base units
-        fsyl = self.design.fsyl_q / MPa  # in MPa
-        # Plastic hinge length based on Priestley et al. 2007
-        Lp = np.round(0.08 * Ls + 0.022 * fsyl * dbl, PRECISION) * mm
+                self.design.dbl_t2,
+                np.minimum(self.design.dbl_b1, self.design.dbl_b2),
+            ),
+        )
+        return rc.get_lp_priestley_2007(Ls, self.design.fsyl_q, dbl)
 
-        return Lp
-
-    def _compute_yield_point(self, direction: Literal['negative', 'positive']
-                             ) -> Tuple[Array3, Array3]:
-        """
-        Computes yield moment and curvatures about local-z axis
+    def _get_my_phiy(self, direction: Literal['negative', 'positive']
+                     ) -> Tuple[Array3, Array3, Array3]:
+        """Computes yield moment and curvatures about local-z axis
         in the given bending direction for beam sections.
 
         Parameters
@@ -904,127 +941,33 @@ class BeamBase(ABC):
         My : Array3
             Yield moment of beam in the specified `direction`.
             Computed for start, mid, end beam sections.
-        fiy : Array3
+        phiy : Array3
             Yield curvature of beam in the specified `direction`.
             Computed for start, mid, end beam sections.
+        cy : Array3
+            Neutral axis depth at yield in the specified `direction`.
+            Computed for start, mid, end beam sections.
 
-        References
-        ----------
-        Panagiotakos, T. B., & Fardis, M. N. (2001).
-        Deformations of reinforced concrete members at yielding and ultimate.
-        Structural Journal, 98(2), 135-148.
+        See Also
+        --------
+        :meth:`_get_my_phiy_empirical` : Empirical expressions, used if
+            ``yield_mom_curv='empirical'``.
+        :meth:`_get_my_phiy_analytical` : Section analysis, used if
+            ``yield_mom_curv='analytical'``.
         """
-        h = self.design.h
-        b = self.design.b
-        fc = self.design.fc_q
-        fsyl = self.design.fsyl_q
-        cover = self.design.cover_q
-        nbl_b1 = self.design.nbl_b1_q
-        nbl_b2 = self.design.nbl_b2_q
-        dbl_b1 = self.design.dbl_b1_q
-        dbl_b2 = self.design.dbl_b2_q
-        nbl_t1 = self.design.nbl_t1_q
-        nbl_t2 = self.design.nbl_t2_q
-        dbl_t1 = self.design.dbl_t1_q
-        dbl_t2 = self.design.dbl_t2_q
-        dbh = self.design.dbh_q
+        if self.yield_mom_curv == 'analytical':
+            return self._get_my_phiy_analytical(direction)
+        return self._get_my_phiy_empirical(direction)
 
-        # Set direction dependent parameters
-        if direction == 'positive':  # positive direction case
-            # Longitudinal reinforcement area under tension
-            As_tens = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2)
-                       + nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
-            # Longitudinal reinforcement area under compression
-            As_comp = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2)
-                       + nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
-            # Dist. from concrete fiber in compression to the rebars in tension
-            dd = h - cover - dbh - 0.5 * dbl_b1
-        elif direction == 'negative':  # negative direction case
-            # Longitudinal reinforcement area under tension
-            As_tens = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2)
-                       + nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
-            # Longitudinal reinforcement area under compression
-            As_comp = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2)
-                       + nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
-            # Dist. from concrete fiber in compression to the rebars in tension
-            dd = h - cover - dbh - 0.5 * dbl_t1
-
-        # Concrete crushing strain used for computing section capacity
-        EPS_CU = 0.0035
-        # Stress-block coefficient used to compute section capacity
-        # Table 22.2.2.4.3 of ACI 318-25
-        if fc < 27.6 * MPa:
-            betac = 0.85
-        elif fc > 55.17 * MPa:
-            betac = 0.65
-        else:
-            betac = 1.05 - 0.05 * fc / (6.9 * MPa)
-        # Concrete modulus of elasticity
-        Ec = self.Ecm_q
-        # Steel modulus of elasticity
-        Es = self.design.Es
-        nyoung = Es / Ec
-        # Yield strain of steel bars
-        esy = fsyl / Es
-        # Distance from ext. concrete fiber (comp.) to the rebars (comp.)
-        dd_prime = h - dd
-        # Balanced c value: dist. to neutral axis from ext. conc. fiber (comp.)
-        cb = (EPS_CU * dd) / (EPS_CU + esy)
-        # Tension and compression longitudinal reinforcement ratio values
-        rhol_tens = As_tens / (b * dd)
-        rhol_comp = As_comp / (b * dd)
-        # Compute distance to neutral axis with outer faces (simplification)
-        c = (As_tens * fsyl - As_comp * fsyl) / (0.85 * fc * b * betac)
-        # Decide whether yielding is controlled by tension or compression zone
-        # Panagiotakos and Fardis 2001 - Equation 4 & 5
-        Acomp_cntrl = rhol_tens + rhol_comp
-        Atens_cntrl = rhol_tens + rhol_comp
-        Bcomp_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
-        Btens_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
-        # Yielding is controlled by the tension steel
-        control = np.ones_like(dd)
-        A_to_use = Atens_cntrl
-        B_to_use = Btens_cntrl
-        # Yielding is controlled by the compression zone
-        control[c >= cb] = 0
-        A_to_use[c >= cb] = Acomp_cntrl[c >= cb]
-        B_to_use[c >= cb] = Bcomp_cntrl[c >= cb]
-        # The compression zone depth: Panagiotakos and Fardis 2001 - Equation 3
-        ky = (
-            (nyoung**2) * (A_to_use**2) + (2 * nyoung * B_to_use)
-        ) ** 0.5 - nyoung * A_to_use
-        # Panagiotakos and Fardis 2001 - Equation 1
-        fiy1 = fsyl / (Es * (1 - ky) * dd)
-        # Panagiotakos and Fardis 2001 - Equation 2
-        fiy2 = (1.8 * (fc) / (Ec * ky * dd))
-        # Yield curvature
-        fiy = fiy1
-        fiy[control == 0] = fiy2[control == 0]
-        # Yield Moment: Panagiotakos and Fardis 2001 - Equation 6
-        rhol_int = 0.0  # Beams do not have web-reinforcement
-        term1 = (Ec * (ky**2) / 2) * (
-            0.5 * (1 + (dd_prime / dd)) - (ky / 3))
-        term2 = (
-            (Es / 2)
-            * (
-                (1 - ky) * rhol_tens
-                + (ky - (dd_prime / dd)) * rhol_comp
-                + (rhol_int / 6) * (1 - (dd_prime / dd))
-            )
-            * (1 - (dd_prime / dd))
-        )
-        My = (b * (dd**3)) * fiy * (term1 + term2)
-
-        return My, fiy
-
-    def _get_rot_hinge_props(self) -> List[Array3 | float]:
-        """Compute backbone and cyclic degradation parameters defining the
-        behaviour of the rotational plastic hinge about the local-z axis.
+    def _get_rot_hinge_props(self) -> List[Array3]:
+        """Computes the backbone parameters of the rotational plastic
+        hinges about the local-z axis.
 
         Returns
         -------
-        props : List[Array3 | float]
-            Ordered list of hinge properties:
+        props : List[Array3]
+            Ordered list of backbone parameters, for the start, mid and end
+            beam sections:
 
             0. ``phiy_neg`` (Array3) Yield curvature in the negative bending
             direction.
@@ -1054,12 +997,6 @@ class BeamBase(ABC):
             capping (positive).
             13. ``theta_pc_pos`` (Array3) Post-capping rotation capacity
             (positive).
-            14. ``pinchx`` (float) Pinching factor for deformation during
-            reloading.
-            15. ``pinchy`` (float) Pinching factor for force during reloading.
-            16. ``damage1`` (float) Ductility-based damage parameter.
-            17. ``damage2`` (float) Energy-based damage parameter.
-            18. ``beta`` (float) Unloading stiffness degradation exponent.
 
         References
         ---------
@@ -1075,15 +1012,12 @@ class BeamBase(ABC):
         CEN (2005) Eurocode 8: Design of structures for earthquake resistance -
         Part 3: Assessment and retrofitting of existing buildings.
         Brussels, Belgium
-
-        Dolšek, M. and Fajfar, P. (2005). Post-test analyses of the SPEAR test
-        building. University of Ljubljana.
         """
         h = self.design.h
         ln = self.design.L
-        fc_mpa = self.design.fc_q / MPa
-        fsyl_mpa = self.design.fsyl_q / MPa
-        dbl_t1 = self.design.dbl_t1_q
+        fc = self.design.fc_q
+        fsyl = self.design.fsyl_q
+        b = self.design.b
         sbh = self.design.sbh_q
         rhol = self.rhol_q
         rhoh = self.rhoh_y_q
@@ -1091,131 +1025,141 @@ class BeamBase(ABC):
         # Shear span, assuming equal to 50% of the free length of the element
         ls = ln / 2  # NOTE: Could be varied with intensity of loading, but ok.
         niu = 0.0  # Axial load ratio, assuming beams do not have any
-        # Post-yield hardening stiffness - Haselton et al. 2008 - Equation 3.17
-        Mc_My = 1.25 * (0.89**niu) * (0.91 ** (0.01 * fc_mpa))
-        #  Residual strength to capping strength ratio - assumed
-        Mr_Mc = 0.1  # 10%
-        # Reinforcing bar buckling coefficient, by Dhakal and Maekawa 2002
-        sn = (sbh / dbl_t1) * (fsyl_mpa / 100) ** 0.5
-        # Shear cracking is expected to precede flexural yield EC8-3 pp 41
-        av = 1.0
-        z = 0.9 * (0.9 * h)  # lever arm
-        # NOTE: av.z is the tension shift of the bending diagram see:
-        # EN 1992-1-1: 2004, 9.2.1.3(2)
 
-        # Compute yield moments in positive and negative directions at both
-        # end sections of the beam (i and j) - Panagiotakos and Fardis (2001)
-        My_neg, phiy_neg = self._compute_yield_point('negative')
-        My_pos, phiy_pos = self._compute_yield_point('positive')
-        # Maximum moment capacity
-        Mc_neg = Mc_My * My_neg
-        Mc_pos = Mc_My * My_pos
-        # Residual moment capacity
-        Mr_neg = Mr_Mc * Mc_neg
-        Mr_pos = Mr_Mc * Mc_pos
+        # Compute yield moments in positive and negative directions
+        My_neg, phiy_neg, _ = self._get_my_phiy('negative')
+        My_pos, phiy_pos, _ = self._get_my_phiy('positive')
 
-        # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
-        c_u = 1.0  # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi
-        theta_cap_pl_sym = (
-            0.12
-            * (1 + 0.55 * self.bondslip_factor)
-            * (0.16**niu)
-            * ((0.02 + 40 * rhoh) ** 0.43)
-            * (0.54 ** (0.01 * c_u * fc_mpa))
-            * (0.66 ** (0.1 * sn))
-            * (2.27 ** (10.0 * rhol))
-        )
-        # Non-symmetric beam section - Equation 7
-        # NOTE: This is different than MATLAB implementation
-        # (max(0.01, w_compression) / max(0.01, w_tension)) ** 0.225
-        w_top = np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
-        w_bot = np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
-        # Negative: top rebar in tension, bottom rebar in compression
-        theta_cap_pl_neg = ((w_bot / w_top) ** 0.225) * theta_cap_pl_sym
-        # Positive: bottom rebar in tension, top rebar in compression
-        theta_cap_pl_pos = ((w_top / w_bot) ** 0.225) * theta_cap_pl_sym
-        # Post-capping rotation capacity by Haselton et al. 2016 - Equation 8
-        theta_pc_neg = 0.76 * (0.031**niu) * ((0.02 + 40 * rhoh) ** 1.02)
-        theta_pc_neg[theta_pc_neg >= 0.10] = 0.10
-        theta_pc_pos = 0.76 * (0.031**niu) * ((0.02 + 40 * rhoh) ** 1.02)
-        theta_pc_pos[theta_pc_pos >= 0.10] = 0.10
+        # Tension reinforcement of each bending direction: negative has top
+        # rebars in tension, positive has bottom rebars in tension
+        As_neg, _, dbl_neg, dd_neg = self._get_rebar_in_direction('negative')
+        As_pos, _, dbl_pos, dd_pos = self._get_rebar_in_direction('positive')
 
         # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
-        theta_y1_neg = phiy_neg * ((ls + (av * z)) / 3)
-        theta_y1_pos = phiy_pos * ((ls + (av * z)) / 3)
-        theta_y2 = 0.0014 * (1 + 1.5 * h / ls)
-        theta_y3_neg = 0.125 * phiy_neg * dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
-        theta_y3_pos = 0.125 * phiy_pos * dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
-        theta_y_neg = (
-            theta_y1_neg + theta_y2 + self.bondslip_factor * theta_y3_neg
-        )
-        theta_y_pos = (
-            theta_y1_pos + theta_y2 + self.bondslip_factor * theta_y3_pos
-        )
+        # (tension shift factor from the shear cracking resistance - EN 1992-1)
+        theta_y_neg = rc.get_yield_rot_eurocode8(
+            phiy_neg, h, ls, fc, fsyl, dbl_neg, self.bondslip_factor,
+            My=My_neg, b=b, As_tens=As_neg, dd=dd_neg)
+        theta_y_pos = rc.get_yield_rot_eurocode8(
+            phiy_pos, h, ls, fc, fsyl, dbl_pos, self.bondslip_factor,
+            My=My_pos, b=b, As_tens=As_pos, dd=dd_pos)
 
-        # Rotation values needs to be adjusted for cyclic loading
-        if self.cyclic_model:  # Haselton et al. 2016
-            theta_cap_pl_pos = 0.7 * theta_cap_pl_pos  # Equation (12)
-            theta_cap_pl_neg = 0.7 * theta_cap_pl_neg  # Equation (12)
-            theta_pc_pos = 0.5 * theta_pc_pos  # Equation (13)
-            theta_pc_neg = 0.5 * theta_pc_neg  # Equation (13)
+        # Maximum moment capacity and plastic rotation capacity by
+        # Haselton et al. 2016. Negative: top rebar in tension, bottom rebar
+        # in compression. Positive: bottom rebar in tension, top rebar in
+        # compression. The rotation capacity of the non-symmetric section is
+        # adjusted for the bending direction - Equation 7
+        # NOTE: This is different than MATLAB implementation
+        # (max(0.01, w_compression) / max(0.01, w_tension)) ** 0.225
+        Mc_neg, theta_cap_pl_neg = rc.get_capping_mom_plastic_rot_haselton2016(
+            My_neg, fc, fsyl, rhol, rhoh, sbh, dbl_neg, niu,
+            self.bondslip_factor, rhol_tens=self.rhol_top_q,
+            rhol_comp=self.rhol_bot_q, cyclic_model=self.cyclic_model)
+        Mc_pos, theta_cap_pl_pos = rc.get_capping_mom_plastic_rot_haselton2016(
+            My_pos, fc, fsyl, rhol, rhoh, sbh, dbl_pos, niu,
+            self.bondslip_factor, rhol_tens=self.rhol_bot_q,
+            rhol_comp=self.rhol_top_q, cyclic_model=self.cyclic_model)
 
-        # Pinching factor for strain (or deformation) during reloading
-        pinchx = 0.8  # no pinching (default)
-        # Pinching factor for stress (or force) during reloading
-        pinchy = 0.2  # no pinching (default)
-        # Damage due to ductility: D1(mu-1)
-        damage1 = 0.0  # no degradation (default)
-        # Damage due to energy: D2(Eii/Eult)
-        damage2 = 0.0  # no degradation (default)
-        # Power used to determine the degraded unloading stiffness based on
-        # ductility, mu-beta (optional, default=0.0)
-        beta = 0.85  # from Dolšek and Fajfar 2005
+        # Residual moment and post-capping rotation capacity by
+        # Haselton et al. 2016
+        Mr_neg, theta_pc_neg = (
+            rc.get_residual_mom_post_capping_rot_haselton2016(
+                Mc_neg, rhoh, niu, cyclic_model=self.cyclic_model))
+        Mr_pos, theta_pc_pos = (
+            rc.get_residual_mom_post_capping_rot_haselton2016(
+                Mc_pos, rhoh, niu, cyclic_model=self.cyclic_model))
 
         # The negative ones are based on top (compression) reinforcement
         # The positive ones are based on bottom (tension) renforcement
-        props = [
+        backbone = [
             phiy_neg, My_neg, Mc_neg, Mr_neg,
             theta_y_neg, theta_cap_pl_neg, theta_pc_neg,
             phiy_pos, My_pos, Mc_pos, Mr_pos,
             theta_y_pos, theta_cap_pl_pos, theta_pc_pos,
-            pinchx, pinchy, damage1, damage2, beta,
         ]
 
-        return props
+        return backbone
 
-    def _set_cracked_section_properties(self) -> None:
+    def _get_rebar_in_direction(
+        self, direction: Literal['negative', 'positive']
+    ) -> Tuple[Array3, Array3, Array3, Array3]:
+        """Gets the longitudinal reinforcement of beam sections which are
+        in tension and compression for the given bending direction.
+
+        Parameters
+        ----------
+        direction : Literal['negative', 'positive']
+            Bending direction. Negative: top rebars in tension. Positive:
+            bottom rebars in tension.
+
+        Returns
+        -------
+        As_tens : Array3
+            Area of the tension reinforcement.
+        As_comp : Array3
+            Area of the compression reinforcement.
+        dbl_tens : Array3
+            Diameter of the (first layer of) tension reinforcement.
+        dd : Array3
+            Distance from the extreme concrete fiber in compression to the
+            centroid of the (first layer of) tension reinforcement.
+            Computed for start, mid, end beam sections.
         """
-        Compute and store cracked-section (effective) flexural properties
-        about local z.
+        cover = self.design.cover_q
+        dbh = self.design.dbh_q
+        # Longitudinal reinforcement area of the bottom and top bars
+        As_bot = (self.design.nbl_b1_q * ((0.25 * np.pi)
+                                          * self.design.dbl_b1_q**2)
+                  + self.design.nbl_b2_q * ((0.25 * np.pi)
+                                            * self.design.dbl_b2_q**2))
+        As_top = (self.design.nbl_t1_q * ((0.25 * np.pi)
+                                          * self.design.dbl_t1_q**2)
+                  + self.design.nbl_t2_q * ((0.25 * np.pi)
+                                            * self.design.dbl_t2_q**2))
 
-        The method assembles a layered longitudinal-reinforcement model for
-        the (i-end) rectangular section using the detailing stored in
-        ``self.design`` (cover, stirrup diameter, bar diameters and counts).
-        It then calls ``get_moments`` to obtain the yield moment ``My`` and
-        yield curvature ``phi_y`` for bending about the local z-axis under
-        zero external axial load (``Pext = 0.0``). From these, it computes the
-        effective flexural rigidity ``EIeff = My / phi_y`` and the
-        corresponding effective second moment of area ``Ieff = EIeff / Ec``.
+        # Set direction dependent parameters
+        if direction == 'positive':  # bottom rebars in tension
+            As_tens, As_comp = As_bot, As_top
+            dbl_tens = self.design.dbl_b1_q
+        elif direction == 'negative':  # top rebars in tension
+            As_tens, As_comp = As_top, As_bot
+            dbl_tens = self.design.dbl_t1_q
+        # Dist. from concrete fiber in compression to the rebars in tension
+        dd = self.design.h - cover - dbh - 0.5 * dbl_tens
 
-        The computed effective inertia is stored as ``self._Iz_eff`` for later
-        use.
+        return As_tens, As_comp, dbl_tens, dd
 
-        Notes
-        -----
-        - Reinforcement layers are created from the top and bottom bar groups
-          (t2, t1, b1, b2) and sorted by depth from the top fiber.
-        - This implementation currently uses only the i-end section
-        - Axial load is neglected in the moment-curvature calculation.
-        - If ``cracked_section`` is ``'fardis'``, ``EIeff = My / phi_y`` uses
-          instead the yield moment and curvature of the plastic hinges
-          (Panagiotakos and Fardis, 2001), averaged over both end sections
-          and bending directions.
+    def _get_my_phiy_empirical(
+        self, direction: Literal['negative', 'positive']
+    ) -> Tuple[Array3, Array3, Array3]:
+        """Computes yield moment and curvatures about local-z axis
+        in the given bending direction for beam sections by the
+        empirical relationship proposed in Panagiotakos and Fardis 2001.
+
+        Parameters
+        ----------
+        direction : Literal['negative', 'positive']
+            Bending direction.
+
+        Returns
+        -------
+        My : Array3
+            Yield moment of beam in the specified `direction`.
+            Computed for start, mid, end beam sections.
+        phiy : Array3
+            Yield curvature of beam in the specified `direction`.
+            Computed for start, mid, end beam sections.
+        cy : Array3
+            Neutral axis depth at yield in the specified `direction`.
+            Computed for start, mid, end beam sections.
 
         See Also
         --------
-        `get_moments`: Computes cracking/yield moments and associated curvature
-        quantities for a layered reinforced-concrete section.
+        :func:`~simdesign.utils.rcsection.get_my_phiy_panagiotakos_fardis2001`
+
+        Notes
+        -----
+        The axial load and the web reinforcement of beams are neglected.
 
         References
         ----------
@@ -1223,20 +1167,44 @@ class BeamBase(ABC):
         Deformations of reinforced concrete members at yielding and ultimate.
         Structural Journal, 98(2), 135-148.
         """
-        if isinstance(self.cracked_section, float):
-            # User-defined ratio of effective to gross flexural stiffness
-            self._Iz_eff = self.cracked_section * self.design.Iz
-            return
-        if self.cracked_section == 'fardis':
-            props = self._get_rot_hinge_props()
-            phiy_neg, My_neg, phiy_pos, My_pos = (
-                props[0], props[1], props[7], props[8])
-            EIeffs = [My_neg[k] / phiy_neg[k] for k in (0, -1)] + [
-                My_pos[k] / phiy_pos[k] for k in (0, -1)]
-            self._Iz_eff = float(np.mean(EIeffs) / self.Ecm_q)
-            return
+        As_tens, As_comp, _, dd = self._get_rebar_in_direction(direction)
 
-        # Section properties
+        return rc.get_my_phiy_panagiotakos_fardis2001(
+            h=self.design.h, b=self.design.b, fc=self.design.fc_q,
+            Ec=self.Ecm_q, Es=self.design.Es, fsyl=self.design.fsyl_q,
+            As_tens=As_tens, As_comp=As_comp, dd=dd)
+
+    def _get_my_phiy_analytical(
+        self, direction: Literal['negative', 'positive']
+    ) -> Tuple[Array3, Array3, Array3]:
+        """Computes yield moment and curvatures about local-z axis
+        in the given bending direction for beam sections by the
+        simplified section analysis.
+
+        Parameters
+        ----------
+        direction : Literal['negative', 'positive']
+            Bending direction: 'positive' for sagging (top in compression),
+            'negative' for hogging (bottom in compression).
+
+        Returns
+        -------
+        My : Array3
+            Yield moment for start, mid, end beam sections.
+        phi_y : Array3
+            Yield curvature for start, mid, end beam sections.
+        cy : Array3
+            Neutral axis depth at yield in the specified `direction`.
+            Computed for start, mid, end beam sections.
+
+        See Also
+        --------
+        :func:`~simdesign.utils.rcsection.do_simplified_section_analysis`
+
+        Notes
+        -----
+        The axial load is neglected in the moment-curvature calculation.
+        """
         h = self.design.h
         b = self.design.b
         fc = float(self.design.fc_q)
@@ -1244,10 +1212,8 @@ class BeamBase(ABC):
         Es = self.design.steel.Es
         Ec = float(self.Ecm_q)
         cv = float(self.design.cover_q)
-
-        # Effective moment of inertia values for end sections
-        Ieffs = []
-        for idx in [0, 2]:
+        My_list, phi_list, cy_list = [], [], []
+        for idx in range(3):
             # Diameter of each rebar type and their quantities
             nbl_b1 = float(self.design.nbl_b1_q[idx])
             nbl_b2 = float(self.design.nbl_b2_q[idx])
@@ -1258,36 +1224,64 @@ class BeamBase(ABC):
             dbl_t1 = float(self.design.dbl_t1_q[idx])
             dbl_t2 = float(self.design.dbl_t2_q[idx])
             dbh = float(self.design.dbh_q[idx])
-
-            # Reinforcement layout (top to bottom)
+            # Reinforcement layout (depths from the top fiber)
             yt1 = cv + dbh + dbl_t1 / 2
             yt2 = cv + dbh + dbl_t2 / 2
             yb1 = h - (cv + dbh + dbl_b1 / 2)
             yb2 = h - (cv + dbh + dbl_b2 / 2)
-            # Reinforcement area per layer (top to bottom)
-            Ab_t1 = 0.25*np.pi*dbl_t1**2
-            Ab_t2 = 0.25*np.pi*dbl_t2**2
-            As_t1 = nbl_t1 * Ab_t1
-            As_t2 = nbl_t2 * Ab_t2
-            Ab_b1 = 0.25*np.pi*dbl_b1**2
-            Ab_b2 = 0.25*np.pi*dbl_b2**2
-            As_b1 = nbl_b1 * Ab_b1
-            As_b2 = nbl_b2 * Ab_b2
-            # Set the layer distances and total areas
             y_layers = [yt2, yt1, yb1, yb2]
-            As_layers = [As_t2, As_t1, As_b1, As_b2]
+            As_layers = [nbl_t2 * 0.25 * np.pi * dbl_t2**2,
+                         nbl_t1 * 0.25 * np.pi * dbl_t1**2,
+                         nbl_b1 * 0.25 * np.pi * dbl_b1**2,
+                         nbl_b2 * 0.25 * np.pi * dbl_b2**2]
+            if direction == 'negative':
+                # Hogging: measure the depths from the bottom fiber
+                y_layers = [h - y for y in y_layers]
             # Sort the distances in ascending order
             y_layers, As_layers = map(list, zip(
                 *sorted(zip(y_layers, As_layers))))
-            # Cracking and yield moments (positive direction)
-            _, _, _, My, phi_y, _ = get_moments(
+            _, _, _, My, phi_y, cy = rc.do_simplified_section_analysis(
                 h=h, b=b, fc=fc, Ec=Ec,
                 Pext=0.0, fyL=fsyl, Es=Es,
                 As_layers=As_layers,
                 y_layers=y_layers,
             )
-            # Save effective moment inertia for elastic section
-            Ieffs.append(float(My / (phi_y * Ec)))
+            My_list.append(float(My))
+            phi_list.append(float(phi_y))
+            cy_list.append(float(cy))
+        return np.array(My_list), np.array(phi_list), np.array(cy_list)
 
-        # Compute the average from two ends
-        self._Iz_eff = sum(Ieffs) / len(Ieffs)
+    def _set_cracked_properties(self) -> None:
+        """
+        Computes and stores cracked-section (effective) flexural properties
+        about local z.
+
+        The effective second moment of area ``self._Iz_eff`` is always
+        computed, regardless of ``cracked``, as ``EIeff / Ec`` with
+        ``EIeff = My / phi_y`` from the yield moment and curvature of the
+        plastic hinges (see ``_get_my_phiy``), averaged over both end
+        sections and bending directions. If ``cracked`` is a float, it is
+        instead the ratio of effective to gross stiffness times ``Iz``.
+        ``self._Iz_eff`` is used by the elastic sections only if ``cracked``
+        is True or a float; if it is None or False, the gross section is
+        used.
+
+        Notes
+        -----
+        The axial load of beams is neglected in the yield point.
+
+        See Also
+        --------
+        :meth:`_get_my_phiy` : Yield point of the plastic hinges.
+        """
+        # EIeff = My/φy. The slope of the section's moment-curvature
+        # response up to yield, so flexure only.
+        # It follows yield_mom_curv (empirical or analytical)
+        My_neg, phiy_neg, _ = self._get_my_phiy('negative')
+        My_pos, phiy_pos, _ = self._get_my_phiy('positive')
+        EIeffs = [My_neg[k] / phiy_neg[k] for k in (0, -1)] + [
+            My_pos[k] / phiy_pos[k] for k in (0, -1)]
+        self._Iz_eff = float(np.mean(EIeffs) / self.Ecm_q)
+        if isinstance(self.cracked, float):
+            # User-defined ratio of effective to gross flexural stiffness
+            self._Iz_eff = self.cracked * self.design.Iz

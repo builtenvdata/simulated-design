@@ -165,9 +165,9 @@ class Column(ColumnCP01):
         moment_3 = Mu
         moment_4 = 0.1 * Mc
         theta_1 = theta_y
-        theta_2 = theta_y + theta_cap_pl
-        theta_3 = theta_y + theta_cap_pl + theta_pc
-        theta_4 = theta_y + theta_cap_pl + theta_pc + theta_pu
+        theta_2 = theta_1 + theta_cap_pl
+        theta_3 = theta_2 + theta_pc
+        theta_4 = theta_3 + theta_pu
 
         # Pinching factor for strain (or deformation) during reloading
         pinchx = 1.0

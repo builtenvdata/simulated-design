@@ -115,7 +115,7 @@ class Beam(BeamBase):
                 bymin = min(col.by for col in self.columns if col)
                 Lnet = self.L - (bymax + bymin) / 2
 
-            h_max_code = max(3.5 * self.b, Lnet / 4)
+            h_max_code = min(3.5 * self.b, Lnet / 4)
             if bool1 or bool2:
                 return min(self.MAX_H_EB, h_max_code)
             else:

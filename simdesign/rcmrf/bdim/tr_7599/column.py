@@ -447,11 +447,10 @@ class Column(ColumnBase):
         dx = (self.bx - 2 * self.cover - 0.008)
         dy = (self.by - 2 * self.cover - 0.008)
 
-        # TBEC-1975 Eq. 6.2: area of a single hoop leg Fe >= a * mu_s * s / 3,
-        # with a the unsupported leg length; a single rectangular hoop has
-        # two legs in each direction (legs along x have length dx, along y dy)
-        Ashx_sh_min = 2 * dx * self.rhoh_min / 3
-        Ashy_sh_min = 2 * dy * self.rhoh_min / 3
+        # Minimum transverse reinforcement area to spacing ratio, Eq. 6.1 in
+        # TBEC-1975 (volumetric ratio, shared equally by both directions)
+        Ashx_sh_min = 0.5 * self.rhoh_min * dy
+        Ashy_sh_min = 0.5 * self.rhoh_min * dx
 
         # Calculate the required transverse reinforcement area
         Ashx_sbh_req = 0

@@ -283,15 +283,21 @@ class Column(ColumnBase):
         Tuple[float]
             Transverse reinforcement area (along x and y axes)
             to spacing ratio.
+
+        Notes
+        -----
+        The minimum ratio Asw / (bw s) uses the web width bw perpendicular
+        to the shear force, as in the shear check (i.e., by for the legs
+        along x, which resist the shear along x).
         """
         if self.fsyd < 230 * MPa:
-            Ashx_sh_min = 0.16 * self.bx / 100
-            Ashy_sh_min = 0.16 * self.by / 100
+            Ashx_sh_min = 0.16 * self.by / 100
+            Ashy_sh_min = 0.16 * self.bx / 100
         elif self.fsyd < 400 * MPa:
-            Ashx_sh_min = 0.10 * self.bx / 100
-            Ashy_sh_min = 0.10 * self.by / 100
+            Ashx_sh_min = 0.10 * self.by / 100
+            Ashy_sh_min = 0.10 * self.bx / 100
         else:
-            Ashx_sh_min = 0.08 * self.bx / 100
-            Ashy_sh_min = 0.08 * self.by / 100
+            Ashx_sh_min = 0.08 * self.by / 100
+            Ashy_sh_min = 0.08 * self.bx / 100
 
         return Ashx_sh_min, Ashy_sh_min

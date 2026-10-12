@@ -23,7 +23,7 @@ from .infill import InfillBase
 from ...bdim.baselib.building import BuildingBase as BuildingDesign
 
 # Imports from utils library
-from ....utils.misc import make_dir
+from ....utils.misc import make_dir, PRECISION
 from ....utils import plotter as pl
 from ....utils.tags import sub_tag
 
@@ -696,8 +696,8 @@ class BuildingBase(ABC):
 
         # Get the base level and storey heights
         base_level = min([ops.nodeCoord(node, 3) for node in supports])
-        storey_heights = [round(ops.nodeCoord(node, 3) - base_level, 1) for
-                          node in floors]
+        storey_heights = [round(ops.nodeCoord(node, 3) - base_level,
+                                PRECISION) for node in floors]
 
         # Output directory is provided, save stuff
         if out_dir:

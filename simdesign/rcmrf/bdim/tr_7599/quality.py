@@ -158,7 +158,7 @@ class Quality(QualityBase):
             # Store the quality model
             self.data = QualityData(**data)
         # Set the seed to use
-        if self.seed:
+        if self.seed is not None:
             np.random.seed(self.seed)
 
     @property

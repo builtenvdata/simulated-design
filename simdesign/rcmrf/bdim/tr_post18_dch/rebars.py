@@ -242,7 +242,7 @@ class Rebars(RebarsBase):
                         break  # break the for loop
 
                 if iterate:
-                    if sbh[j] == sbhy and np.all(nbh_y[j] <= max_nbh_y[j]):
+                    if sbh[j] == sbhy and np.all(nbh_y[j] < max_nbh_y[j]):
                         # add a stirrup leg along y
                         nbh_y[j] += 1
                     elif iterate and dbh[j] < max(self.beam_trans_bar_diams):

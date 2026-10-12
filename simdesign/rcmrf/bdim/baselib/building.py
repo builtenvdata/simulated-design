@@ -342,6 +342,27 @@ class BuildingBase(ABC):
         self.taxonomy.slab_thickness = new_thickness
 
     @property
+    def slab_orientation(self) -> Literal[1, 2, 3] | None:
+        """Slab load-transfer (unloading) orientation in the building.
+
+        Returns
+        -------
+        Literal[1, 2, 3] | None
+            Slab unloading orientation, if set in the taxonomy, otherwise None
+            (inferred for each slab from its typology and span ratio).
+            1: Unloading in beams along X direction.
+            2: Unloading in beams along Y direction.
+            3: Unloading in beams along both directions.
+        """
+        return getattr(self.taxonomy, 'slab_orientation', None)
+
+    @slab_orientation.setter
+    def slab_orientation(self, new_orientation: Literal[1, 2, 3] | None
+                         ) -> None:
+        """Setter for `slab_orientation`."""
+        self.taxonomy.slab_orientation = new_orientation
+
+    @property
     def slab_type(self) -> Literal[1, 2, 3]:
         """Slab typology considered in the building.
 
@@ -825,7 +846,8 @@ class BuildingBase(ABC):
         for rectangle in self.geometry.slab_rectangles:
             slab = self.SlabClass(rectangle=rectangle,
                                   typology=self.slab_type,
-                                  thickness=self.slab_thickness)
+                                  thickness=self.slab_thickness,
+                                  orientation=self.slab_orientation)
             slab.roof = rectangle in self.geometry.roof_rectangles
             self.slabs.append(slab)
         # If slab thickness is not provided, set a global thickness value

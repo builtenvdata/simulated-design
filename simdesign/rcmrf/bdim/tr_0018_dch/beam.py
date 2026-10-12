@@ -355,7 +355,7 @@ class Beam(BeamBase):
             rho = k3 * (fcd / fyd) * (1 - (1 - (2 * K) / (k3 * fcd)) ** 0.5)
             As_required[mask] = rho * bw * d
             Asprime_required[mask] = 0
-        else:  # Double reinforcement
+        if np.any(~mask):  # Double reinforcement
             As1 = 0.235 * (fcd / fyd) * bw * d
             Mr2 = Md[~mask] - Mr1
             As2 = Mr2 / (fyd * (d - dprime))

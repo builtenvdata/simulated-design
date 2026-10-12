@@ -861,8 +861,8 @@ class ColumnBase(ABC):
             b = self.design.bx  # along x
             # Number of horizontal bars (stirrup legs)
             nbh = self.design.nbh_y_q
-            # Transverse reinforcement ratio
-            rhoh = self.rhoh_y_q_
+            # Transverse reinforcement area ratio
+            rhoh = self.rhoh_y_q
             # Neutral axis depth (NOTE: the same value from M-Phi analysis)
             c = self._cy  # An approximate conservative value
             # The integer tag for the MinMax uniaxial material defining failure
@@ -877,8 +877,8 @@ class ColumnBase(ABC):
             b = self.design.by  # along y
             # Number of horizontal bars (stirrup legs)
             nbh = self.design.nbh_x_q
-            # Transverse reinforcement ratio
-            rhoh = self.rhoh_x_q_
+            # Transverse reinforcement area ratio
+            rhoh = self.rhoh_x_q
             # Neutral axis depth (NOTE: the same value from M-Phi analysis)
             c = self._cx  # An approximate conservative value
             # The integer tag for the MinMax uniaxial material defining failure
@@ -927,8 +927,6 @@ class ColumnBase(ABC):
         bc = b - 2*(cover + dbh/2)
         # Transverse reinforcement area
         Av = nbh * np.pi * (dbh**2) / 4
-        # The volumetric ratio of transverse reinforcement
-        rhoh = Av / (sbh * hc)
         # Distance between top concrete fiber and bottom tension steel
         d = h - (cover + dbh + dbl_int/2)
         # Nominal length of column

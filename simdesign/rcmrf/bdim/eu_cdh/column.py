@@ -4,6 +4,7 @@ design class in the BDIM layer.
 # Imports from installed packages
 from math import ceil
 import numpy as np
+from typing import Dict, List, Literal, Tuple
 
 # Imports from the design class (eu_cdh) library
 from .materials import Steel, Concrete
@@ -13,6 +14,7 @@ from ..baselib.column import ColumnBase
 
 # Imports from units library
 from ....utils.units import MPa, m
+from ....utils.rcsection import build_column_rebar_layout, get_sum_wi_sq
 
 # Constants
 ECONOMIC_MU: float = 0.25
@@ -339,61 +341,104 @@ class Column(ColumnBase):
         self.Ashx_sbh_req = max(Ashx_sh_min, Ashx_sh)
         self.Ashy_sbh_req = max(Ashy_sh_min, Ashy_sh)
 
-    def check_local_ductility_requirement(self) -> None:
-        """Check local ductility requirement for column.
+    def check_local_ductility_requirement(
+        self, combo_grav_factors: List[Dict[Literal['G', 'Q'], float]],
+        q0: float = 3.9, T1: float | None = None, Tc: float | None = None
+    ) -> Tuple[bool, float, float]:
+        """Checks the confinement of the critical region at the base of the
+        column against the local ductility requirement of EN 1998-1:2004,
+        5.4.3.2.2(8), Eq. 5.15:
 
-        TODO
-        ----
-        INCOMPLETE !
-        Compute bi values correctly.
-        Come up with strategy to change transverse reinforcement.
-        1. First add more stirrup legs,
-        2. Then, decrease spacing,
-        3. Then, go back to iterations.
+        ``alpha omega_wd >= 30 mu_phi nu_d eps_syd bc / b0 - 0.035``
+
+        Parameters
+        ----------
+        combo_grav_factors : List[Dict[Literal['G', 'Q'], float]]
+            Gravity load factors of the seismic load combinations, e.g., from
+            the ``_get_unique_seism_combo_grav_factors`` method of the
+            building. The largest normalised axial force ``nu_d`` governs.
+        q0 : float, optional
+            Basic value of the behaviour factor. By default 3.9, i.e.,
+            ``3.0 alpha_u / alpha_1`` with ``alpha_u / alpha_1 = 1.3`` for a
+            multi-storey, multi-bay frame of DCM (EN 1998-1:2004, 5.2.2.2).
+        T1 : float | None, optional
+            Fundamental period of the building. If None (or `Tc` is None),
+            ``T1 >= Tc`` is assumed. By default None.
+        Tc : float | None, optional
+            Corner period of the constant spectral acceleration branch.
+            By default None.
+
+        Returns
+        -------
+        ok : bool
+            True if the requirement is satisfied.
+        alpha_omega_wd : float
+            Provided value ``alpha omega_wd``.
+        required : float
+            Required value ``30 mu_phi nu_d eps_syd bc / b0 - 0.035``.
 
         Notes
         -----
-        Use DCM multi-storey frame for behaviour factor.
-        Assume T1>Tc
-        """
-        # alpha_u and alpha_1 ratio, EN 1998-1:2004 5.2.2.2(5)
-        alpha_u_1_rat = 1.3  # Multi-storey, multi-bay frame
-        # Behaviour factor, q0, EN 1998-1:2004 5.2.2.2(2)
-        q0 = 3.0 * alpha_u_1_rat  # DCM frame
-        # EN 1998-1:2004 5.2.3.4(3)
-        curv_duct = 2 * q0 - 1  # Assuming T1>Tc, use eqn. 5.4
-        # Check local ductility requirement in EN 1998-1: 2004, eqn. 5.15
-        b0_x = self.bx - 2 * self.cover - self.dbh
-        nx = self.nbh_x - 1
-        bi_x = b0_x / nx
-        b0_y = self.by - 2 * self.cover - self.dbh
-        ny = self.nbh_y - 1
-        bi_y = b0_y / ny
-        # eqn. 5.16a
-        alpha_n = 1 - (2 * nx * bi_x**2 + 2 * ny * bi_y**2) / (6 * b0_x * b0_y)
-        # eqn. 5.16b
-        alpha_s = (1 - self.sbh / (2 * b0_x)) * (1 - self.sbh / (2 * b0_y))
-        alpha = alpha_n * alpha_s
-        omega_wd_x = self.rhoh_x * (self.fsyd / self.fcd)
-        omega_wd_y = self.rhoh_y * (self.fsyd / self.fcd)
-        alpha_omega_x = alpha * omega_wd_x
-        alpha_omega_y = alpha * omega_wd_y
-        epsyd = self.fsyd / self.Es
-        max_local_curv_duct_x = 0.0
-        max_local_curv_duct_y = 0.0
-        for factors in self.seism_comb_grav_facts:
-            forces = factors['G'] * self.forces['G/seismic'] + \
-                factors['Q'] * self.forces['Q/seismic']
-            niu_d = -forces.N1 / (self.Ag * self.fcd)
-            tmp_x = 2 * (alpha_omega_x + 0.035) / (
-                30 * niu_d * epsyd * (self.by / b0_y))
-            tmp_y = 2 * (alpha_omega_y + 0.035) / (
-                30 * niu_d * epsyd * (self.bx / b0_x))
-            max_local_curv_duct_x = max(max_local_curv_duct_x, tmp_x)
-            max_local_curv_duct_y = max(max_local_curv_duct_y, tmp_y)
+        - The check applies to the critical regions at the base of primary
+          seismic columns; the caller selects these columns. The column
+          attributes are not changed.
+        - Curvature ductility factor (EN 1998-1:2004, 5.2.3.4(3), Eq. 5.4):
+          ``mu_phi = 2 q0 - 1`` if ``T1 >= Tc``, otherwise
+          ``mu_phi = 1 + 2 (q0 - 1) Tc / T1``. The periods are not estimated
+          by the design; without them ``T1 >= Tc`` is assumed, which gives
+          the smaller value for short-period buildings.
+        - ``omega_wd`` is the mechanical volumetric ratio of the hoops within
+          the confined core, ``(hoop volume / core volume) fyd / fcd``. The
+          core dimensions ``b0`` and ``h0`` are measured to the centreline
+          of the hoops.
+        - Confinement effectiveness factor ``alpha = alpha_n alpha_s``
+          (Eqs. 5.16a and 5.16b), with the distances ``bi`` between the
+          centres of consecutive perimeter bars from the bar layout, i.e.,
+          all perimeter bars are assumed to be engaged by a hoop corner or a
+          cross-tie.
+        - ``bc / b0`` is taken for the direction with the larger ratio.
 
-        # Should we increase shear reinforcement instead?
-        if curv_duct > max_local_curv_duct_x:
-            self.ok_y = False
-        if curv_duct > max_local_curv_duct_y:
-            self.ok_x = False
+        References
+        ----------
+        CEN (2004) Eurocode 8: Design of structures for earthquake resistance
+        - Part 1: General rules, seismic actions and rules for buildings.
+        EN 1998-1:2004. Brussels, Belgium.
+        """
+        # Curvature ductility factor - Eq. 5.4
+        if T1 is None or Tc is None or T1 >= Tc:
+            mu_phi = 2 * q0 - 1
+        else:
+            mu_phi = 1 + 2 * (q0 - 1) * Tc / T1
+        # Confined core dimensions, to the centreline of the hoops
+        b0 = self.bx - 2 * self.cover - self.dbh  # along x
+        h0 = self.by - 2 * self.cover - self.dbh  # along y
+        # Confinement effectiveness factor - Eqs. 5.16a and 5.16b, with bi
+        # the distances between the centres of consecutive perimeter bars
+        layout = build_column_rebar_layout(
+            self.dbl_cor, self.dbl_int, int(self.nblx_int),
+            int(self.nbly_int), self.dbh, self.bx, self.by, self.cover)
+        _, sum_bi2, _ = get_sum_wi_sq(
+            layout['rein_x'], layout['rein_y'], layout['rein_d'], clear=False)
+        alpha_n = 1 - sum_bi2 / (6 * b0 * h0)
+        alpha_s = (1 - self.sbh / (2 * b0)) * (1 - self.sbh / (2 * h0))
+        alpha = alpha_n * alpha_s
+        # Mechanical volumetric ratio of the hoops within the core
+        Abh = np.pi * self.dbh**2 / 4
+        rho_w = Abh * (self.nbh_x * b0 + self.nbh_y * h0) / (
+            self.sbh * b0 * h0)
+        omega_wd = rho_w * self.fsyd / self.fcd
+        # Largest normalised axial force in the seismic design situation
+        nu_d = max(
+            -(factors['G'] * self.forces['G/seismic']
+              + factors['Q'] * self.forces['Q/seismic']).N1
+            / (self.Ag * self.fcd)
+            for factors in combo_grav_factors
+        )
+        # Design value of the yield strain of the longitudinal steel
+        eps_syd = self.fsyd / self.Es
+        # Gross to core width ratio
+        bc_b0 = max(self.bx / b0, self.by / h0)
+        # Local ductility requirement - Eq. 5.15
+        alpha_omega_wd = alpha * omega_wd
+        required = 30 * mu_phi * nu_d * eps_syd * bc_b0 - 0.035
+        return alpha_omega_wd >= required, alpha_omega_wd, required

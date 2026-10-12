@@ -383,6 +383,7 @@ def get_sum_wi_sq(
     rein_x: List[float],
     rein_y: List[float],
     rein_ds: List[float],
+    clear: bool = True,
 ) -> Tuple[List[float], float, Dict[str, int]]:
     """
     Compute Mander's w' spacings and their squared-sum for rectangular
@@ -397,11 +398,16 @@ def get_sum_wi_sq(
         y-coordinates of longitudinal reinforcement bars.
     rein_ds : List[float]
         Diameters of longitudinal reinforcement bars.
+    clear : bool, optional
+        If True, the clear spacings ``w'`` of Mander et al. (1988) are
+        returned. If False, the centre-to-centre distances ``bi`` of
+        EN 1998-1:2004, Eq. 5.16a are returned. By default True.
 
     Returns
     -------
     w_dash : list[float]
-        Clear spacings along faces between adjacent perimeter bars.
+        Clear (or centre-to-centre) spacings along faces between adjacent
+        perimeter bars.
     sum_w2 : float
         Summation of w'i^2 values.
     n_face : dict
@@ -442,7 +448,7 @@ def get_sum_wi_sq(
         idx = indices[np.argsort(sort_coord[indices])]
         for a, b in zip(idx[:-1], idx[1:]):
             delta_cc = float(sort_coord[b] - sort_coord[a])  # center-to-center
-            db_avg = 0.5 * float(d[a] + d[b])
+            db_avg = 0.5 * float(d[a] + d[b]) if clear else 0.0
             w = max(delta_cc - db_avg, 0.0)                  # clear spacing
             w_dash.append(w)
 

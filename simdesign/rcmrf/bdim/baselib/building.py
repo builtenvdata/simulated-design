@@ -2432,9 +2432,22 @@ class BuildingBase(ABC):
                 col.nbh_x = nbh_x[i]
                 col.nbh_y = nbh_y[i]
                 col.validate_transverse_reinforcement()
+        # STAGE 4: Local ductility (confinement) requirements, if any
+        self._check_columns_local_ductility()
         # Check if columns fail stage 2 shear design verification
         if self.columns_fail:
             self.__print_column_failure('stage 2 shear')
+
+    def _check_columns_local_ductility(self) -> None:
+        """Check the local ductility (confinement) requirements of the
+        columns after the transverse reinforcement design.
+
+        The base implementation does nothing. Design classes with such
+        requirements override this method, e.g., to increase the transverse
+        reinforcement of the columns, or to mark the columns as failed
+        (``ok_x``, ``ok_y``) so that their dimensions are increased.
+        """
+        return
 
     def _set_expected_axial_forces_on_column_hinges(self) -> None:
         """Set the expected axial forces on column hinges.

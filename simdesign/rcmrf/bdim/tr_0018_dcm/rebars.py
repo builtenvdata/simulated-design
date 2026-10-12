@@ -136,15 +136,15 @@ class Rebars(RebarsBase):
 
         Notes
         -----
-        Based on:
-            Section 7.3.4.1 in TBEC-1998,
-            Section 3.3.4.1 in TBEC-2007.
+        Based on Section 3.7.4.1 in TBEC-2007 (confinement zones of columns
+        with normal ductility level).
         """
         # maximum allowed spacing in current iteration
         by = kwargs["by"]  # column width along y
         bx = kwargs["bx"]  # column width along x
         bmin = np.minimum(by, bx)
-        max_sbh = np.minimum(bmin / 3, 100 * mm)
+        dbl = kwargs["dbl"]  # long. reinf. diameter
+        max_sbh = np.minimum(np.minimum(150 * mm, bmin / 3), 8 * dbl)
         return max_sbh
 
     def get_beam_transv_rebars(

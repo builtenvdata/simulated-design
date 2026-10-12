@@ -3,7 +3,7 @@
 
 This package provides a Design Class Constructor (DCC) for defining the
 Building Design Information Model (BDIM) of reinforced concrete (RC)
-frame buildings corresponding to the Turkish design class ``tr_0018_dch``.
+frame buildings corresponding to the Turkish design class ``tr_0018_dcm``.
 It includes component implementations that inherit from the abstract
 design interfaces defined in ``bdim.baselib``.
 

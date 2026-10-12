@@ -522,12 +522,14 @@ class Column(ColumnBase):
         x3, y3 = mu_y2 * theta_y, k2 * Vn  # the third point TODO: verify
         # Floating point value for the slope of the third branch in the
         # post-failure backbone, assumed to be negative
-        # NOTE: The member slope is multiplied by the number of springs so
-        # that springs in series give the member degrading slope.
-        Kdeg = -n_springs * k_deg
+        # NOTE: Each spring takes the member slope (not multiplied by the
+        # number of springs). If both springs soften, the member degrades at
+        # half the slope of Eq. 20, which helps convergence; if one spring
+        # softens alone (localization), at the slope of Eq. 20.
+        Kdeg = -k_deg
         # Floating point value for the residual force capacity of the
         # post-failure backbone
-        Fres = 0.1  # should be a small value - shear failure
+        Fres = 0.1 * Vn  # should be a small value - shear failure
         # Integer flag for type of deformation defining the abscissa
         # of the limit curve:
         # 1 = maximum beam-column chord rotations

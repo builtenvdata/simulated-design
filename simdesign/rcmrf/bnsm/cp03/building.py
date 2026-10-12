@@ -95,7 +95,8 @@ class Building(BuildingBase):
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
         cracked_beam: bool = False, cracked_column: bool = False,
-        infill_column_connection: Literal['series', 'parallel'] = 'parallel'
+        infill_column_connection: Literal['series', 'parallel'] = 'parallel',
+        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto'
     ) -> None:
         """Initialize BNSM object.
 
@@ -151,7 +152,20 @@ class Building(BuildingBase):
             - 'parallel' : The infill strut acts in parallel with the column
             lateral response, allowing the direct contribution of the infills
             to the global lateral strength.
+        beam_loads : Literal['auto', 'uniform', 'point'], optional
+            How the beam gravity loads are applied. By default 'auto'.
+            - 'uniform' : Uniformly distributed element loads, with the
+            load over the rigid joint regions applied at the element ends.
+            - 'point' : Equivalent point loads at the beam element ends
+            (half of the total beam load at each end), as in O'Reilly and
+            Sullivan (2019). The beams then carry no gravity moments.
+            - 'auto' : 'point' if the beam-column joints are modelled as
+            inelastic, 'uniform' otherwise.
         """
+        if beam_loads not in ('auto', 'uniform', 'point'):
+            raise ValueError(
+                f"Invalid beam_loads option: {beam_loads!r}. Valid options "
+                "are: 'auto', 'uniform', 'point'.")
         self.design = design
         self.load_factors = load_factors
         self.mass_sources = mass_factors
@@ -162,6 +176,7 @@ class Building(BuildingBase):
         self.cyclic_model = cyclic_model
         self.cracked_beam = cracked_beam
         self.cracked_column = cracked_column
+        self.beam_loads = beam_loads
         self.infill_column_connection = infill_column_connection
         self.foundations = []
         self.floors = []
@@ -185,7 +200,8 @@ class Building(BuildingBase):
         bondslip_fact = self.design.quality.model.bondslip_factor
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, self.cracked_beam)
+                           self.cyclic_model, self.cracked_beam,
+                           self.beam_load_type)
             for beam in self.design.beams
             ]
         # Initialize beam nodes at floor levels

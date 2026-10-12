@@ -59,6 +59,10 @@ class BeamBase(ABC):
         Element node at the end of beam.
     ele_load : float
         Uniformly distributed gravity load along the beam.
+    load_type : Literal['uniform', 'point']
+        How the gravity load is applied: 'uniform' as a uniformly distributed
+        element load, 'point' as equivalent point loads at the element ends
+        (as in O'Reilly and Sullivan, 2019).
     jnt_offsets : List[float]
         Rigid joint offset values (dx_i, dy_i, dz_i, dx_j, dy_j, dz_j),
         specified with respect to the global coordinate system.
@@ -126,6 +130,7 @@ class BeamBase(ABC):
     ele_node_i: Node
     ele_node_j: Node
     ele_load: float
+    load_type: Literal['uniform', 'point']
     jnt_offsets: List[float]
     cracked_section: bool
     cyclic_model: bool
@@ -367,7 +372,8 @@ class BeamBase(ABC):
     def __init__(
         self, design: BeamDesign, bondslip_factor: float,
         load_factors: Dict[Literal['G', 'Q'], float],
-        cyclic_model: bool = False, cracked_section: bool = False
+        cyclic_model: bool = False, cracked_section: bool = False,
+        load_type: Literal['uniform', 'point'] = 'point'
     ) -> None:
         """Initialize the Beam object.
 
@@ -387,11 +393,20 @@ class BeamBase(ABC):
             If True, the elastic sections uses cracked-section
             (effective) flexural properties. If False, gross-section
             properties are used. By default False.
+        load_type : Literal['uniform', 'point'], optional
+            How the gravity load is applied: 'uniform' as a uniformly
+            distributed element load, 'point' as equivalent point loads at the
+            element ends. By default 'point'.
         """
+        if load_type not in ('uniform', 'point'):
+            raise ValueError(
+                f"Invalid beam load type: {load_type!r}. Valid options are: "
+                "'uniform', 'point'.")
         self.design = design
         self.bondslip_factor = bondslip_factor
         self.cyclic_model = cyclic_model
         self.cracked_section = cracked_section
+        self.load_type = load_type
         # Set the gravity loading based on load factors
         self.ele_load = round(
             float(design.wg_total * load_factors['G']
@@ -543,42 +558,104 @@ class BeamBase(ABC):
 
         return content
 
+    @property
+    def end_gaps(self) -> Tuple[float, float]:
+        """Lengths of the beam line at the i and j ends that are not part of
+        the deformable element (rigid joint offsets or links).
+
+        Returns
+        -------
+        Tuple[float, float]
+            Gap lengths at the i and j ends.
+        """
+        start = np.array(self.ele_node_i.coordinates) + self.jnt_offsets[:3]
+        end = np.array(self.ele_node_j.coordinates) + self.jnt_offsets[3:]
+        points = [np.array(point.coordinates)
+                  for point in self.design.line.points]
+        gap_i = min(float(np.linalg.norm(start - x)) for x in points)
+        gap_j = min(float(np.linalg.norm(end - x)) for x in points)
+        return gap_i, gap_j
+
+    def _get_grav_point_loads(self) -> Tuple[float, float]:
+        """Vertical point loads at the element end nodes.
+
+        For ``load_type='point'``, half of the total beam load, i.e., of the
+        load over the beam line length, is applied at each end. For
+        ``load_type='uniform'``, the load over the rigid end regions, which
+        is not covered by the uniformly distributed element load, is
+        applied at the corresponding end.
+
+        Returns
+        -------
+        Tuple[float, float]
+            Point loads at the i and j ends (positive downwards).
+        """
+        if self.load_type == 'point':
+            load = self.ele_load * self.design.line.length / 2
+            return round(load, PRECISION), round(load, PRECISION)
+        gap_i, gap_j = self.end_gaps
+        return (round(self.ele_load * gap_i, PRECISION),
+                round(self.ele_load * gap_j, PRECISION))
+
     def add_grav_loads_to_ops(self) -> None:
         """Adds gravity load objects to the OpenSees domain
-        (i.e, uniformly distrubted loads).
-        """
-        ops.eleLoad('-ele', self.ele_tag, '-type', '-beamUniform',
-                    -self.ele_load, 0.0)
+        (i.e, uniformly distributed loads, or point loads at both ends).
 
-    def to_py_grav_loads(self) -> str:
-        """Gets the Python commands to construct beam gravity load object in
-        OpenSees domain (i.e, uniformly distrubted loads).
+        Notes
+        -----
+        Both options apply the total load over the beam line length.
+        """
+        if self.load_type == 'uniform':
+            ops.eleLoad('-ele', self.ele_tag, '-type', '-beamUniform',
+                        -self.ele_load, 0.0)
+        for node, load in zip((self.ele_node_i, self.ele_node_j),
+                              self._get_grav_point_loads()):
+            if load:
+                ops.load(node.tag, 0.0, 0.0, -load, 0.0, 0.0, 0.0)
+
+    def to_py_grav_loads(self) -> List[str]:
+        """Gets the Python commands to construct beam gravity load objects in
+        OpenSees domain (i.e, uniformly distributed loads, or point loads at
+        both ends).
 
         Returns
         -------
-        str
-            Python command for constructing beam gravity load object
-            in OpenSees.
+        List[str]
+            List of Python commands for adding beam gravity loads
+            to OpenSees.
         """
-        return (
-            f"ops.eleLoad('-ele', {self.ele_tag}, '-type', "
-            f"'-beamUniform', {-self.ele_load}, 0.0)"
-        )
+        content = []
+        if self.load_type == 'uniform':
+            content.append(
+                f"ops.eleLoad('-ele', {self.ele_tag}, '-type', "
+                f"'-beamUniform', {-self.ele_load}, 0.0)")
+        for node, load in zip((self.ele_node_i, self.ele_node_j),
+                              self._get_grav_point_loads()):
+            if load:
+                content.append(
+                    f"ops.load({node.tag}, 0.0, 0.0, {-load}, 0.0, 0.0, 0.0)")
+        return content
 
-    def to_tcl_grav_loads(self) -> str:
-        """Gets the Tcl commands to construct beam gravity load object in
-        OpenSees domain (i.e, uniformly distrubted loads).
+    def to_tcl_grav_loads(self) -> List[str]:
+        """Gets the Tcl commands to construct beam gravity load objects in
+        OpenSees domain (i.e, uniformly distributed loads, or point loads at
+        both ends).
 
         Returns
         -------
-        str
-            Tcl command for constructing beam gravity load object
-            in OpenSees.
+        List[str]
+            List of Tcl commands for adding beam gravity loads to OpenSees.
         """
-        return (
-            f"eleLoad -ele {self.ele_tag} -type "
-            f"-beamUniform {-self.ele_load} 0.0"
-        )
+        content = []
+        if self.load_type == 'uniform':
+            content.append(
+                f"eleLoad -ele {self.ele_tag} -type "
+                f"-beamUniform {-self.ele_load} 0.0")
+        for node, load in zip((self.ele_node_i, self.ele_node_j),
+                              self._get_grav_point_loads()):
+            if load:
+                content.append(f"load {node.tag} 0.0 0.0 {-load} 0.0 0.0 0.0")
+        return content
 
     def _get_geo_transf_inputs(self) -> List[str | int | float]:
         """Builds the OpenSees ``geomTransf`` command arguments.

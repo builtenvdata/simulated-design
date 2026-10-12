@@ -99,6 +99,10 @@ class BuildingBase(ABC):
         If True, the elastic column sections uses cracked-section
         (effective) flexural properties. If False, gross-section
         properties are used.
+    beam_loads : Literal['auto', 'uniform', 'point']
+        How the beam gravity loads are applied: 'uniform' element loads,
+        'point' loads at the beam element ends, or 'auto' ('point' if the
+        beam-column joints are inelastic, 'uniform' otherwise).
     """
     design: BuildingDesign
     foundations: List[FoundationBase]
@@ -125,6 +129,7 @@ class BuildingBase(ABC):
     cyclic_model: bool
     cracked_beam: bool
     cracked_column: bool
+    beam_loads: Literal['auto', 'uniform', 'point']
 
     def __init__(
         self, design: BuildingDesign,
@@ -133,7 +138,8 @@ class BuildingBase(ABC):
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
-        cracked_beam: bool = False, cracked_column: bool = False
+        cracked_beam: bool = False, cracked_column: bool = False,
+        beam_loads: Literal['auto', 'uniform', 'point'] = 'auto'
     ) -> None:
         """Initialize BNSM object.
 
@@ -178,7 +184,20 @@ class BuildingBase(ABC):
             If True, the elastic column sections uses cracked-section
             (effective) flexural properties. If False, gross-section
             properties are used. By default False.
+        beam_loads : Literal['auto', 'uniform', 'point'], optional
+            How the beam gravity loads are applied. By default 'auto'.
+            - 'uniform' : Uniformly distributed element loads, with the
+            load over the rigid joint regions applied at the element ends.
+            - 'point' : Equivalent point loads at the beam element ends
+            (half of the total beam load at each end), as in O'Reilly and
+            Sullivan (2019). The beams then carry no gravity moments.
+            - 'auto' : 'point' if the beam-column joints are modelled as
+            inelastic, 'uniform' otherwise.
         """
+        if beam_loads not in ('auto', 'uniform', 'point'):
+            raise ValueError(
+                f"Invalid beam_loads option: {beam_loads!r}. Valid options "
+                "are: 'auto', 'uniform', 'point'.")
         self.design = design
         self.load_factors = load_factors
         self.mass_sources = mass_factors
@@ -189,6 +208,7 @@ class BuildingBase(ABC):
         self.cyclic_model = cyclic_model
         self.cracked_beam = cracked_beam
         self.cracked_column = cracked_column
+        self.beam_loads = beam_loads
         self.foundations = []
         self.floors = []
         self.floor_joints = []
@@ -204,6 +224,23 @@ class BuildingBase(ABC):
         self._initialize_columns()
         self._initialize_infills()
 
+    @property
+    def beam_load_type(self) -> Literal['uniform', 'point']:
+        """How the beam gravity loads are applied, with 'auto' resolved from
+        the flexibility model of the floor joints.
+
+        Returns
+        -------
+        Literal['uniform', 'point']
+            'point' if ``beam_loads='auto'`` and the joints are inelastic,
+            'uniform' if ``beam_loads='auto'`` otherwise, else ``beam_loads``.
+        """
+        if self.beam_loads != 'auto':
+            return self.beam_loads
+        inelastic = any(joint.flexibility_model == 'inelastic'
+                        for joint in self.floor_joints)
+        return 'point' if inelastic else 'uniform'
+
     def _initialize_beams(self) -> None:
         """Initialize beam models.
         """
@@ -211,7 +248,8 @@ class BuildingBase(ABC):
         bondslip_fact = self.design.quality.model.bondslip_factor
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, self.cracked_beam)
+                           self.cyclic_model, self.cracked_beam,
+                           self.beam_load_type)
             for beam in self.design.beams
             ]
         # Initialize beam nodes at floor levels. Beams frame into the
@@ -1355,7 +1393,7 @@ class BuildingBase(ABC):
         # Add lines for constructing the beam gravity load objects
         content.append("# Add beam gravity loads to ops domain")
         for beam in self.beams:
-            content.append(beam.to_py_grav_loads())
+            content.extend(beam.to_py_grav_loads())
         # Add lines for constructing the column gravity load objects
         content.append("")
         content.append("# Add column gravity loads to ops domain")
@@ -1990,7 +2028,7 @@ class BuildingBase(ABC):
 
         content.append("    # Add beam gravity loads to ops domain")
         for beam in self.beams:
-            content.append("    " + beam.to_tcl_grav_loads())
+            content.extend(["    " + i for i in beam.to_tcl_grav_loads()])
 
         content.append("")
         content.append("    # Add column gravity loads to ops domain")

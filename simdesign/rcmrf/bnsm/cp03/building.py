@@ -305,10 +305,10 @@ class Building(BuildingBase):
                 c1t = self._find_column_by_design(design.columns[0][1])
                 if self.infill_column_connection == 'series':
                     s1_ni = c1b.ele_node_i
-                    s2_ni = c1t.ele_node_i
+                    s2_ni = c1t.ele_node_j
                 elif self.infill_column_connection == 'parallel':
                     s1_ni = c1b.hinge_node_i
-                    s2_ni = c1t.hinge_node_i
+                    s2_ni = c1t.hinge_node_j
             else:
                 c1 = self._find_column_by_design(design.columns[0])
                 if self.infill_column_connection == 'series':

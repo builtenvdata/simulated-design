@@ -413,7 +413,7 @@ class BuildingBase(ABC):
                 c1b = self._find_column_by_design(design.columns[0][0])
                 c1t = self._find_column_by_design(design.columns[0][1])
                 s1_ni = c1b.ele_node_i
-                s2_ni = c1t.ele_node_i
+                s2_ni = c1t.ele_node_j
             else:
                 c1 = self._find_column_by_design(design.columns[0])
                 s1_ni = c1.ele_node_i

@@ -163,8 +163,10 @@ the primary taxonomy attributes of the building portfolio.
      capacity design principles and stricter detailing requirements to ensure
      enhanced seismic performance.
 
-**beta_v** (float)
-   Design vertical load factor. This is only required ``"tr_post18_dch"`` and ``"tr_post18_dcm"`` design classes.
+**beta_v** (float, optional)
+   Design vertical load factor, used by the ``"tr_post18_dcm"`` and
+   ``"tr_post18_dch"`` design classes only. If not given, 0.0 is used, i.e.,
+   the vertical seismic load effect is neglected.
 
 Sampling Parameters
 ^^^^^^^^^^^^^^^^^^^^

@@ -11,4 +11,5 @@ simdesign.utils
    plotter
    rcsection
    stats
+   tags
    units

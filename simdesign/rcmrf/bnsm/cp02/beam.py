@@ -86,13 +86,16 @@ class Beam(BeamCP01):
         theta_y_neg = My_neg * ls / (3 * EIy)
 
         # Plastic rotation capacities before capping
-        theta_cap_pl_pos = 0.009 * (0.25 ** (0.01*fc_mpa)) * (0.23 ** niu) * \
+        theta_cap_pl_sym = 0.009 * (0.25 ** (0.01*fc_mpa)) * (0.23 ** niu) * \
             (2.17 ** (100*rhol))
-        ratio_pos_neg = (
-            np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
-            / np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
-        ) ** 0.225
-        theta_cap_pl_neg = ratio_pos_neg * theta_cap_pl_pos
+        # Non-symmetric beam section - Haselton et al. 2016 - Equation 7
+        # (max(0.01, w_compression) / max(0.01, w_tension)) ** 0.225
+        w_top = np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
+        w_bot = np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
+        # Negative: top rebar in tension, bottom rebar in compression
+        theta_cap_pl_neg = ((w_bot / w_top) ** 0.225) * theta_cap_pl_sym
+        # Positive: bottom rebar in tension, top rebar in compression
+        theta_cap_pl_pos = ((w_top / w_bot) ** 0.225) * theta_cap_pl_sym
 
         # Post-capping rotation capacity
         theta_pc_pos = 0.01 * (0.07 ** niu) * (1.78 ** (100*rhoh)) * \

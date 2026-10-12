@@ -1101,7 +1101,7 @@ class BeamBase(ABC):
 
         # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
         c_u = 1.0  # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi
-        theta_cap_pl_pos = (
+        theta_cap_pl_sym = (
             0.12
             * (1 + 0.55 * self.bondslip_factor)
             * (0.16**niu)
@@ -1112,11 +1112,13 @@ class BeamBase(ABC):
         )
         # Non-symmetric beam section - Equation 7
         # NOTE: This is different than MATLAB implementation
-        ratio_pos_neg = (
-            np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
-            / np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
-        ) ** 0.225
-        theta_cap_pl_neg = ratio_pos_neg * theta_cap_pl_pos
+        # (max(0.01, w_compression) / max(0.01, w_tension)) ** 0.225
+        w_top = np.maximum(0.01, fsyl_mpa * self.rhol_top_q / fc_mpa)
+        w_bot = np.maximum(0.01, fsyl_mpa * self.rhol_bot_q / fc_mpa)
+        # Negative: top rebar in tension, bottom rebar in compression
+        theta_cap_pl_neg = ((w_bot / w_top) ** 0.225) * theta_cap_pl_sym
+        # Positive: bottom rebar in tension, top rebar in compression
+        theta_cap_pl_pos = ((w_top / w_bot) ** 0.225) * theta_cap_pl_sym
         # Post-capping rotation capacity by Haselton et al. 2016 - Equation 8
         theta_pc_neg = 0.76 * (0.031**niu) * ((0.02 + 40 * rhoh) ** 1.02)
         theta_pc_neg[theta_pc_neg >= 0.10] = 0.10

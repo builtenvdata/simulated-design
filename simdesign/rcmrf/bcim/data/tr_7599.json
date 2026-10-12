@@ -31,7 +31,7 @@
   "concrete":
     {
       "grade": ["C14", "C16", "C18", "C20", "C25"],
-      "probability": [0.20, 0.30, 0.30, 0.15, 0.05]
+      "probability": [0.30, 0.30, 0.25, 0.10, 0.05]
     },
   "ground_storey_height":
     {

@@ -342,14 +342,14 @@ class Quality(QualityBase):
             beam.nbh_b_q = beam.nbh_b
             beam.nbh_h_q = beam.nbh_h
             beam.dbh_q = beam.dbh
-            beam.dbl_t1_q = beam.dbl_t1
-            beam.nbl_t1_q = beam.nbl_t1
-            beam.dbl_t2_q = beam.dbl_t2
-            beam.nbl_t2_q = beam.nbl_t2
-            beam.dbl_b1_q = beam.dbl_b1
-            beam.nbl_b1_q = beam.nbl_b1
-            beam.dbl_b2_q = beam.dbl_b2
-            beam.nbl_b2_q = beam.nbl_b2
+            beam.dbl_t1_q = beam.dbl_t1.copy()
+            beam.nbl_t1_q = beam.nbl_t1.copy()
+            beam.dbl_t2_q = beam.dbl_t2.copy()
+            beam.nbl_t2_q = beam.nbl_t2.copy()
+            beam.dbl_b1_q = beam.dbl_b1.copy()
+            beam.nbl_b1_q = beam.nbl_b1.copy()
+            beam.dbl_b2_q = beam.dbl_b2.copy()
+            beam.nbl_b2_q = beam.nbl_b2.copy()
 
         if not self._model.rand:
             return
@@ -475,8 +475,12 @@ class Quality(QualityBase):
         - Top layer bar diameters (dbl_t1, dbl_t2).
         - Secondary top bar count (nbl_t2).
 
-        The best combination is selected to minimize the error from
-        the target in-situ/design rhol ratio.
+        A single combination of scaling factors is selected for the whole
+        beam and applied to its start, mid and end sections. Hence, the same
+        bar diameters are kept along the beam, while the bar counts of each
+        section are scaled from their own design values. The best combination
+        minimizes the sum of the relative errors from the target in-situ/design
+        rhol ratio over the three sections.
 
         Parameters
         ----------
@@ -488,14 +492,15 @@ class Quality(QualityBase):
         if target_ratio == 1.0:
             return
 
-        orig_dbl_t1 = beam.dbl_t1[0]
-        orig_dbl_t2 = beam.dbl_t2[0]
-        orig_nbl_t2 = beam.nbl_t2[0]
+        # Design values at the start, mid and end sections, shape (3, 1)
+        orig_dbl_t1 = np.asarray(beam.dbl_t1)[:, None]
+        orig_dbl_t2 = np.asarray(beam.dbl_t2)[:, None]
+        orig_nbl_t2 = np.asarray(beam.nbl_t2)[:, None]
         Ag = beam.Ag
-        original_rhol_top = beam.rhol_top[0]
+        original_rhol_top = np.asarray(beam.rhol_top)[:, None]
         target_rhol_top = target_ratio * original_rhol_top
 
-        # Compute scaled diameters and bar counts
+        # Compute scaled diameters and bar counts, shape (3, n_combinations)
         dbl_t1_scaled = self.__closest_diameter(orig_dbl_t1 * alpha_dbl_flat)
         dbl_t2_scaled = self.__closest_diameter(orig_dbl_t2 * alpha_dbl_flat)
         nbl_t2_scaled = np.maximum(
@@ -506,18 +511,18 @@ class Quality(QualityBase):
         Abl_t1 = (np.pi * dbl_t1_scaled**2) / 4
         Abl_t2 = (np.pi * dbl_t2_scaled**2) / 4
 
-        # Compute rhol_q for all combinations
+        # Compute rhol_q for all combinations and sections
         rhol_top_q = (2 * Abl_t1 + nbl_t2_scaled * Abl_t2) / Ag
-        error = np.abs(rhol_top_q - target_rhol_top)
+        error = np.sum(
+            np.abs(rhol_top_q - target_rhol_top) / original_rhol_top,
+            axis=0
+        )
 
-        # Find best configuration
+        # Find best configuration and apply it to all sections
         best_idx = np.argmin(error)
-        beam.dbl_t1_q[0] = dbl_t1_scaled[best_idx]
-        beam.dbl_t2_q[0] = dbl_t2_scaled[best_idx]
-        beam.nbl_t2_q[0] = nbl_t2_scaled[best_idx]
-        beam.dbl_t1_q[2] = dbl_t1_scaled[best_idx]
-        beam.dbl_t2_q[2] = dbl_t2_scaled[best_idx]
-        beam.nbl_t2_q[2] = nbl_t2_scaled[best_idx]
+        beam.dbl_t1_q[:] = dbl_t1_scaled[:, best_idx]
+        beam.dbl_t2_q[:] = dbl_t2_scaled[:, best_idx]
+        beam.nbl_t2_q[:] = nbl_t2_scaled[:, best_idx]
 
     def _grid_search_reduce_beam_rhol_bot_q(
         self, beam: Beam, target_ratio: float
@@ -531,8 +536,12 @@ class Quality(QualityBase):
         - Bottom layer bar diameters (dbl_b1, dbl_b2).
         - Secondary bottom bar count (nbl_b2).
 
-        The best combination is selected to minimize the error from
-        the target in-situ/design rhol ratio.
+        A single combination of scaling factors is selected for the whole
+        beam and applied to its start, mid and end sections. Hence, the same
+        bar diameters are kept along the beam, while the bar counts of each
+        section are scaled from their own design values. The best combination
+        minimizes the sum of the relative errors from the target in-situ/design
+        rhol ratio over the three sections.
 
         Parameters
         ----------
@@ -544,14 +553,15 @@ class Quality(QualityBase):
         if target_ratio == 1.0:
             return
 
-        orig_dbl_b1 = beam.dbl_b1[0]
-        orig_dbl_b2 = beam.dbl_b2[0]
-        orig_nbl_b2 = beam.nbl_b2[0]
+        # Design values at the start, mid and end sections, shape (3, 1)
+        orig_dbl_b1 = np.asarray(beam.dbl_b1)[:, None]
+        orig_dbl_b2 = np.asarray(beam.dbl_b2)[:, None]
+        orig_nbl_b2 = np.asarray(beam.nbl_b2)[:, None]
         Ag = beam.Ag
-        original_rhol_bot = beam.rhol_bot[0]
+        original_rhol_bot = np.asarray(beam.rhol_bot)[:, None]
         target_rhol_bot = target_ratio * original_rhol_bot
 
-        # Compute scaled diameters and bar counts
+        # Compute scaled diameters and bar counts, shape (3, n_combinations)
         dbl_b1_scaled = self.__closest_diameter(orig_dbl_b1 * alpha_dbl_flat)
         dbl_b2_scaled = self.__closest_diameter(orig_dbl_b2 * alpha_dbl_flat)
         nbl_b2_scaled = np.maximum(
@@ -562,18 +572,18 @@ class Quality(QualityBase):
         Abl_b1 = (np.pi * dbl_b1_scaled**2) / 4
         Abl_b2 = (np.pi * dbl_b2_scaled**2) / 4
 
-        # Compute rhol_q for all combinations
+        # Compute rhol_q for all combinations and sections
         rhol_bot_q = (2 * Abl_b1 + nbl_b2_scaled * Abl_b2) / Ag
-        error = np.abs(rhol_bot_q - target_rhol_bot)
+        error = np.sum(
+            np.abs(rhol_bot_q - target_rhol_bot) / original_rhol_bot,
+            axis=0
+        )
 
-        # Find best configuration
+        # Find best configuration and apply it to all sections
         best_idx = np.argmin(error)
-        beam.dbl_b1_q[0] = dbl_b1_scaled[best_idx]
-        beam.dbl_b2_q[0] = dbl_b2_scaled[best_idx]
-        beam.nbl_b2_q[0] = nbl_b2_scaled[best_idx]
-        beam.dbl_b1_q[2] = dbl_b1_scaled[best_idx]
-        beam.dbl_b2_q[2] = dbl_b2_scaled[best_idx]
-        beam.nbl_b2_q[2] = nbl_b2_scaled[best_idx]
+        beam.dbl_b1_q[:] = dbl_b1_scaled[:, best_idx]
+        beam.dbl_b2_q[:] = dbl_b2_scaled[:, best_idx]
+        beam.nbl_b2_q[:] = nbl_b2_scaled[:, best_idx]
 
     @staticmethod
     def __closest_diameter(values):

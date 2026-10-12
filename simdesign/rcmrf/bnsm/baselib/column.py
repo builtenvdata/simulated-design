@@ -19,6 +19,7 @@ from ...bdim.baselib.column import ColumnBase as ColumnDesign
 from ....utils.units import MPa, mm
 from ....utils.misc import PRECISION, round_list
 from ....utils.rcsection import get_moments
+from ....utils.tags import sub_tag
 
 
 class ColumnBase(ABC):
@@ -278,47 +279,47 @@ class ColumnBase(ABC):
     @property
     def mz_mat_tag(self) -> int:
         """Uniaxial material tag for the flexural hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def my_mat_tag(self) -> int:
         """Uniaxial material tag for the flexural hinge about local-y (My)."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def vy_mat_tag_(self) -> int:
         """Pinching4 material tag for the shear hinge in local-y (Vy)."""
-        return int(str(self.design.line.tag) + '994')
+        return sub_tag(self.design.line.tag, 94)
 
     @property
     def vy_mat_tag(self) -> int:
         """MinMax material tag for the shear hinge in local-y (Vy)."""
-        return int(str(self.design.line.tag) + '995')
+        return sub_tag(self.design.line.tag, 95)
 
     @property
     def vz_mat_tag_(self) -> int:
         """Pinching4 material tag for the shear hinge in local-z (Vz)."""
-        return int(str(self.design.line.tag) + '996')
+        return sub_tag(self.design.line.tag, 96)
 
     @property
     def vz_mat_tag(self) -> int:
         """MinMax material tag for the shear hinge in local-z (Vz)."""
-        return int(str(self.design.line.tag) + '997')
+        return sub_tag(self.design.line.tag, 97)
 
     @property
     def elastic_sec_tag(self) -> int:
         """Section tag for the elastic (interior) section."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def inelastic_sec_tag(self) -> int:
         """Section tag for the inelastic aggregated section."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def interior_sec_tag(self) -> int:
         """Section tag for the interior section with shear springs."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def int_tag(self) -> int:

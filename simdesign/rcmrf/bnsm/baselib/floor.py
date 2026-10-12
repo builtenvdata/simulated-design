@@ -13,6 +13,7 @@ from .node import Node
 
 # Imports from utils library
 from ....utils.misc import PRECISION
+from ....utils.tags import diaphragm_node_tag
 
 
 class FloorDiaphragmBase(ABC):
@@ -76,7 +77,7 @@ class FloorDiaphragmBase(ABC):
         # Center of mass
         cm = np.round(sum_mass_moment / sum_mass, PRECISION)
         # Initialize the retained node for floor diaphragms
-        tag = 90000 + self.floor * 1000
+        tag = diaphragm_node_tag(self.floor)
         self.rnode = self.NodeClass(tag, cm)
 
     def add_to_ops(self) -> None:

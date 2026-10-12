@@ -12,6 +12,9 @@ from ..baselib.constants import (
     RIGID_SEC, LINEAR_TRANSF_X, LINEAR_TRANSF_Y, LINEAR_TRANSF_Z
 )
 
+# Imports from utils library
+from ....utils.tags import node_tag
+
 
 class StairsJoint(StairsJointBase):
     """Stairs joint implementation for the ``CP03`` model.
@@ -91,25 +94,25 @@ class StairsJoint(StairsJointBase):
         if self.design.bottom_column:  # bottom
             coords = ref_coords.copy()
             coords[2] -= self.h / 2
-            self.bottom_node = Node(ref_tag + 20000, coords)
+            self.bottom_node = Node(node_tag(ref_tag, 'bottom'), coords)
         else:
             self.bottom_node = None
         if self.design.right_beam:  # right
             coords = ref_coords.copy()
             coords[0] += self.bx / 2
-            self.right_node = Node(ref_tag + 30000, coords)
+            self.right_node = Node(node_tag(ref_tag, 'right'), coords)
         else:
             self.right_node = None
         if self.design.left_beam:  # left
             coords = ref_coords.copy()
             coords[0] -= self.bx / 2
-            self.left_node = Node(ref_tag + 50000, coords)
+            self.left_node = Node(node_tag(ref_tag, 'left'), coords)
         else:
             self.left_node = None
         if self.design.top_column:  # top
             coords = ref_coords.copy()
             coords[2] += self.h / 2
-            self.top_node = Node(ref_tag + 70000, coords)
+            self.top_node = Node(node_tag(ref_tag, 'top'), coords)
         else:
             self.top_node = None
 
@@ -329,19 +332,19 @@ class FloorJoint(FloorJointBase, StairsJoint):
             self.floor_node = self.center_node
         else:
             # Initialize the new node to account for joint flexibility
-            self.floor_node = Node(ref_point.tag + 10000,
+            self.floor_node = Node(node_tag(ref_point.tag, 'floor'),
                                    ref_point.coordinates)
         # Initialize rigid offsets (in Y) nodes
         if self.design.front_beam:  # front
             coords = ref_point.coordinates.copy()
             coords[1] += self.by / 2
-            self.front_node = Node(ref_point.tag + 40000, coords)
+            self.front_node = Node(node_tag(ref_point.tag, 'front'), coords)
         else:
             self.front_node = None
         if self.design.rear_beam:  # rear
             coords = ref_point.coordinates.copy()
             coords[1] -= self.by / 2
-            self.rear_node = Node(ref_point.tag + 60000, coords)
+            self.rear_node = Node(node_tag(ref_point.tag, 'rear'), coords)
         else:
             self.rear_node = None
         # Axial force on the joint

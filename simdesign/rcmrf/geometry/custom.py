@@ -8,10 +8,13 @@ workbook and builds a complete frame model via the base geometry framework.
 # Imports from installed packages
 import pandas as pd
 from pathlib import Path
-from typing import Union
+from typing import List, Union
 
 # Imports from geometry library
 from .base import GeometryBase, Point, SystemGridData
+
+# Imports from utils library
+from ...utils.tags import TYPE_UNIT
 
 
 # TODO: Use pydantic to set schema for CustomGeometry
@@ -62,6 +65,32 @@ class CustomGeometry(GeometryBase):
         """
         return self.__str
 
+    @staticmethod
+    def _check_tags(tags: List[int], name: str) -> None:
+        """Check that the tags read from the workbook can be used.
+
+        Parameters
+        ----------
+        tags : List[int]
+            Tags read from the workbook.
+        name : str
+            Name of the objects, used in the error message.
+
+        Raises
+        ------
+        ValueError
+            If the tags are not unique or not in ``[0, 10**7)``, which is
+            required by the node and sub-object tag encoding (see
+            :mod:`simdesign.utils.tags`).
+        """
+        if len(set(tags)) != len(tags):
+            raise ValueError(f"Duplicate {name} tags in the workbook.")
+        invalid = [tag for tag in tags if not 0 <= tag < TYPE_UNIT]
+        if invalid:
+            raise ValueError(
+                f"{name.capitalize()} tags must be in [0, {TYPE_UNIT}); "
+                f"invalid tags: {invalid}.")
+
     def _initialise_points(self) -> None:
         """
         Read point data from the Excel workbook and populate ``self.points``.
@@ -73,6 +102,7 @@ class CustomGeometry(GeometryBase):
         """
         # Get the data from excel sheet containing points tags and coordinates
         df = pd.read_excel(self.xlsx_path, sheet_name=self.POINTS_SHEET)
+        self._check_tags(df['tag'].astype(int).tolist(), 'point')
         # Set the grid coordinates
         unique_xs: list = (df['x-coord'].unique()).tolist()
         unique_ys: list = (df['y-coord'].unique()).tolist()
@@ -101,6 +131,7 @@ class CustomGeometry(GeometryBase):
         """
         # Get the data from excel sheet containing lines connectivity
         df = pd.read_excel(self.xlsx_path, sheet_name=self.LINES_SHEET)
+        self._check_tags(df['tag'].astype(int).tolist(), 'line')
         df = df.where(pd.notna(df), None)
         # Start creating lines
         for _, row in df.iterrows():
@@ -123,6 +154,7 @@ class CustomGeometry(GeometryBase):
         """
         # Dataframe containing rectangles of floor slabs
         df = pd.read_excel(self.xlsx_path, sheet_name=self.RECTANGLES_SHEET)
+        self._check_tags(df['tag'].astype(int).tolist(), 'rectangle')
         df = df.where(pd.notna(df), None)
         # Go through rectangle shapes
         for _, row in df.iterrows():

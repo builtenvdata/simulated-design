@@ -20,6 +20,7 @@ from ...bdim.baselib.beam import Array3
 from ....utils.units import MPa, mm
 from ....utils.misc import PRECISION, round_list
 from ....utils.rcsection import get_moments
+from ....utils.tags import sub_tag
 
 
 class BeamBase(ABC):
@@ -331,27 +332,27 @@ class BeamBase(ABC):
     @property
     def mz_i_mat_tag(self) -> int:
         """Material tag for the *i-end* flexural hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def mz_j_mat_tag(self) -> int:
         """Material tag for the *j-end* flexural hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def elastic_sec_tag(self) -> int:
         """Section tag for the elastic (interior) section."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def inelastic_sec_i_tag(self) -> int:
         """Section tag for the inelastic (hinge) section at i-end."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def inelastic_sec_j_tag(self) -> int:
         """Section tag for the inelastic (hinge) section at j-end."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def int_tag(self) -> int:

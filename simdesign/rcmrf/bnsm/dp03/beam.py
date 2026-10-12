@@ -13,6 +13,7 @@ from ..baselib.beam import BeamBase
 from ....utils.units import MPa, mm
 from ....utils.misc import round_list
 from ....utils.rcsection import get_mander_confinement, build_beam_rebar_layout
+from ....utils.tags import sub_tag
 
 
 class Beam(BeamBase):
@@ -66,39 +67,39 @@ class Beam(BeamBase):
     @property
     def steel_mat_tag_(self) -> int:
         """Steel material tag."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def steel_mat_tag(self) -> int:
         """MinMax material tag for the steel fibers. Used to simulate
         bar buckling or rupture."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def uconf_conc_mat_tag(self) -> int:
         """Material tag for the unconfined concrete fibers."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def conf_conc_mat_tag_i(self) -> int:
         """Material tag for the confined concrete fibers at the *i-end*."""
-        return int(str(self.design.line.tag) + '994')
+        return sub_tag(self.design.line.tag, 94)
 
     @property
     def conf_conc_mat_tag_j(self) -> int:
         """Material tag for the confined concrete fibers at the *j-end*."""
-        return int(str(self.design.line.tag) + '995')
+        return sub_tag(self.design.line.tag, 95)
 
     @property
     def conf_conc_mat_tag_m(self) -> int:
         """Material tag for the confined concrete fibers at the *mid-section*.
         """
-        return int(str(self.design.line.tag) + '996')
+        return sub_tag(self.design.line.tag, 96)
 
     @property
     def inelastic_sec_m_tag(self) -> int:
         """Section tag for the inelastic middle (interior) section."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain

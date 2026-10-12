@@ -19,6 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # Imports from utils library
 from ...utils.misc import PRECISION, round_list
 from ...utils.mesh import Point, Line as BasicLine, Rectangle as BasicRectangle
+from ...utils.tags import stairs_point_tag, set_line_code, set_rectangle_code
 
 
 class Line(BasicLine):
@@ -1633,7 +1634,7 @@ class GeometryBase(ABC):
                 coords_mid = round_list(coords_mid.tolist())
                 # create the mid Point
                 grid = [i, j, k - 0.5]
-                tag = top_point.tag + 1000
+                tag = stairs_point_tag(top_point.tag)
                 mid_point = Point(grid, coords_mid, tag)
                 self.points.append(mid_point)
                 stairs_mid_points.append(mid_point)
@@ -1644,8 +1645,8 @@ class GeometryBase(ABC):
                 # Create lower and upper vertical Lines (column)
                 lower_line_points = [bot_point, mid_point]
                 upper_line_points = [mid_point, top_point]
-                lower_line_tag = old_line.tag + 1000
-                upper_line_tag = old_line.tag + 2000
+                lower_line_tag = set_line_code(old_line.tag, 'Z_lower')
+                upper_line_tag = set_line_code(old_line.tag, 'Z_upper')
                 lower_line = self.add_new_line(
                     lower_line_points, lower_line_tag, component='Column')
                 upper_line = self.add_new_line(
@@ -1673,7 +1674,7 @@ class GeometryBase(ABC):
                 stairs_lines.append(vert_line)
 
             # Adding horizontal staircase line along -x at the mid storey
-            tag = upper_line_tag + 1000
+            tag = set_line_code(upper_line_tag, 'X_stairs')
             mid_hor_line = self.add_new_line(stairs_mid_points, tag, 'Beam')
             mid_hor_line.stairs = True
             stairs_lines.append(mid_hor_line)
@@ -1692,11 +1693,13 @@ class GeometryBase(ABC):
                 # Remove the old infill rectangle
                 self.rectangles.remove(rect)
                 # Add new infills
+                bot_tag = set_rectangle_code(rectangle.tag, 'lower')
                 bot_rect = self.add_new_rectangle(
-                    bot_infill_points, rectangle.tag + 1000, 'Infill', inf_str)
+                    bot_infill_points, bot_tag, 'Infill', inf_str)
                 bot_rect.stairs = True
+                top_tag = set_rectangle_code(rectangle.tag, 'upper')
                 top_rect = self.add_new_rectangle(
-                    top_infill_points, rectangle.tag + 2000, 'Infill', inf_str)
+                    top_infill_points, top_tag, 'Infill', inf_str)
                 top_rect.stairs = True
             # update grid system data
             if k - 0.5 not in self.system_grid_data.z.ids:  # if num stairs > 1

@@ -13,6 +13,7 @@ from ..baselib.column import ColumnBase, ColumnDesign
 from ....utils.units import MPa
 from ....utils.misc import round_list
 from ....utils.rcsection import get_moments
+from ....utils.tags import sub_tag
 
 
 class Column(ColumnBase):
@@ -48,12 +49,12 @@ class Column(ColumnBase):
     @property
     def mz_mat_tag_(self) -> int:
         """Pinching4 material tag for the flexural hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def my_mat_tag_(self) -> int:
         """Pinching4 material tag for the flexural hinge about local-y (My)."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     def __init__(
         self, design: ColumnDesign, bondslip_factor: float,

@@ -16,6 +16,7 @@ from ...bdim.baselib.infill import InfillBase as InfillDesign
 # Imports from utils library
 from ....utils.units import mm, MPa
 from ....utils.misc import PRECISION, round_list
+from ....utils.tags import sub_tag
 
 
 # Infill property mapper (Parameters from Hak et al. 2012)
@@ -91,6 +92,11 @@ class InfillBase(ABC):
     design: InfillDesign
     strut1_nodes: List[Node]
     strut2_nodes: List[Node]
+
+    @property
+    def mat_tag(self) -> int:
+        """Uniaxial material tag of the diagonal struts."""
+        return sub_tag(self.design.rectangle.tag, 0)
 
     def __init__(self, design: InfillDesign,
                  strut1_nodes: List[Node],
@@ -204,14 +210,14 @@ class InfillBase(ABC):
 
         Notes
         -----
-        Element tags are derived from the infill `rectangle.tag` and are
-        intended to be unique within the model. The material tag is set to
-        `rectangle.tag`.
+        Element and material tags are derived from the infill
+        `rectangle.tag` (see :func:`~simdesign.utils.tags.sub_tag`) and are
+        intended to be unique within the model.
         """
-        mat_tag = self.design.rectangle.tag
+        mat_tag = self.mat_tag
         mat_inputs, area = self._get_mat_inputs()
-        ele1_tag = int(str(self.design.rectangle.tag) + '001')
-        ele2_tag = int(str(self.design.rectangle.tag) + '002')
+        ele1_tag = sub_tag(self.design.rectangle.tag, 1)
+        ele2_tag = sub_tag(self.design.rectangle.tag, 2)
         ele1_nodes = [self.strut1_nodes[0].tag, self.strut1_nodes[1].tag]
         ele2_nodes = [self.strut2_nodes[0].tag, self.strut2_nodes[1].tag]
         strut1_inputs = ['Truss', ele1_tag] + ele1_nodes + [area, mat_tag]
@@ -324,6 +330,6 @@ class InfillBase(ABC):
         epsc0 = -0.0013  # from Hak et al. 2012, Figure 12b
         epscu = -0.0045  # from Hak et al. 2012, Figure 12b
         mat_inputs = round_list([fpc, epsc0, fpcu, epscu], PRECISION)
-        mat_inputs = ['Concrete01', self.design.rectangle.tag] + mat_inputs
+        mat_inputs = ['Concrete01', self.mat_tag] + mat_inputs
 
         return mat_inputs, Aw

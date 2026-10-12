@@ -26,6 +26,7 @@ from .constants import RIGID_MAT
 # Imports from utils library
 from ....utils.misc import PRECISION, round_list
 from ....utils.units import MPa
+from ....utils.tags import node_tag, sub_tag
 
 
 class JointBase(ABC):
@@ -265,7 +266,7 @@ class FloorJointBase(StairsJointBase):
         int
             Material tag for the joint hinge about global-z (Mz).
         """
-        return int(300000 + self.center_node.tag)
+        return sub_tag(self.center_node.tag, 30)
 
     @property
     def my_tag(self) -> int:
@@ -276,7 +277,7 @@ class FloorJointBase(StairsJointBase):
         int
             Material tag for the joint hinge about global-y (My).
         """
-        return int(400000 + self.center_node.tag)
+        return sub_tag(self.center_node.tag, 40)
 
     @property
     def sec_tag(self) -> int:
@@ -359,7 +360,7 @@ class FloorJointBase(StairsJointBase):
         else:
             # Initialize the new node to account for joint flexibility
             self.floor_node = Node(
-                self.design.elastic_node.tag + 10000,
+                node_tag(self.design.elastic_node.tag, 'floor'),
                 self.design.elastic_node.coordinates
             )
         # Axial force on the joint

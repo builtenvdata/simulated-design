@@ -15,6 +15,7 @@ from ....utils.misc import round_list
 from ....utils.rcsection import (
     get_mander_confinement, build_column_rebar_layout
 )
+from ....utils.tags import sub_tag
 
 
 class Column(ColumnBase):
@@ -69,28 +70,28 @@ class Column(ColumnBase):
     @property
     def steel_mat_tag_(self) -> int:
         """Steel material tag."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def steel_mat_tag(self) -> int:
         """MinMax material tag for the steel fibers. Used to simulate
         bar buckling or rupture."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def uconf_conc_mat_tag(self) -> int:
         """Material tag for the unconfined concrete fibers."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def conf_conc_mat_tag(self) -> int:
         """Material tag for the confined concrete fibers."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     @property
     def inelastic_fiber_sec_tag(self) -> int:
         """Section tag for the inelastic fiber section."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     def add_to_ops(self) -> None:
         """Adds column components to the OpenSees domain

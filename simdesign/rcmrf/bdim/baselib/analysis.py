@@ -19,6 +19,7 @@ from ...geometry.base import GeometryBase
 # Imports from utils library
 from ....utils.misc import PRECISION
 from ....utils.units import grav_acc
+from ....utils.tags import diaphragm_node_tag
 
 
 class ElasticModelBase(ABC):
@@ -387,7 +388,7 @@ class ElasticModelBase(ABC):
             # Find centre of (CM)
             cm = np.round(sum_mass_moment / sum_mass, 2)
             # Floor retained node tag
-            rnode = int(90000 + 1000 * i)
+            rnode = diaphragm_node_tag(i + 1)
             # Rigid diaphragm node tags
             floor_nodes = [rnode] + cnodes
             # Recreate the retained nodes with new CM

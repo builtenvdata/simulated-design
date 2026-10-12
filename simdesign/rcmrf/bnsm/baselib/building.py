@@ -25,6 +25,7 @@ from ...bdim.baselib.building import BuildingBase as BuildingDesign
 # Imports from utils library
 from ....utils.misc import make_dir
 from ....utils import plotter as pl
+from ....utils.tags import sub_tag
 
 
 class BuildingBase(ABC):
@@ -2453,8 +2454,8 @@ class BuildingBase(ABC):
         infills = []
         if self.include_infills:
             for infill in self.infills:
-                s1 = int(str(infill.design.rectangle.tag) + '001')
-                s2 = int(str(infill.design.rectangle.tag) + '002')
+                s1 = sub_tag(infill.design.rectangle.tag, 1)
+                s2 = sub_tag(infill.design.rectangle.tag, 2)
                 infills.append(s1)
                 infills.append(s2)
         groups = [

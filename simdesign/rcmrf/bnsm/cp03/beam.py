@@ -12,6 +12,7 @@ from ..baselib.constants import RIGID_MAT, LINEAR_TRANSF_X, LINEAR_TRANSF_Y
 
 # Imports from utils library
 from ....utils.misc import round_list
+from ....utils.tags import element_end_node_tag
 
 
 class Beam(BeamBase):
@@ -87,14 +88,14 @@ class Beam(BeamBase):
         """Initialize the *i-end* elastic element node.
         """
         coords = self.hinge_node_i.coordinates.copy()
-        tag = int(self.hinge_node_i.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_i.tag)
         self.ele_node_i = Node(tag, coords)
 
     def set_ele_node_j(self) -> None:
         """Initialize the *j-end* elastic element node.
         """
         coords = self.hinge_node_j.coordinates.copy()
-        tag = int(self.hinge_node_j.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_j.tag)
         self.ele_node_j = Node(tag, coords)
 
     def add_to_ops(self) -> None:

@@ -13,6 +13,7 @@ from ..baselib.beam import BeamBase
 from ....utils.units import MPa
 from ....utils.misc import round_list
 from ....utils.rcsection import get_moments
+from ....utils.tags import sub_tag
 
 
 class Beam(BeamBase):
@@ -49,23 +50,23 @@ class Beam(BeamBase):
     def mz_i_mat_tag_(self) -> int:
         """Pinching4 material tag for the *i-end* flexural hinge about local-z
         (Mz)."""
-        return int(str(self.design.line.tag) + '990')
+        return sub_tag(self.design.line.tag, 90)
 
     @property
     def mz_i_mat_tag(self) -> int:
         """MinMax Material tag for the *i-end* hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '991')
+        return sub_tag(self.design.line.tag, 91)
 
     @property
     def mz_j_mat_tag_(self) -> int:
         """Pinching4 material tag for the *J-end* flexural hinge about local-z
         (Mz)."""
-        return int(str(self.design.line.tag) + '992')
+        return sub_tag(self.design.line.tag, 92)
 
     @property
     def mz_j_mat_tag(self) -> int:
         """MinMax Material tag for the *J-end* hinge about local-z (Mz)."""
-        return int(str(self.design.line.tag) + '993')
+        return sub_tag(self.design.line.tag, 93)
 
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain

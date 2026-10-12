@@ -85,7 +85,7 @@ class Infill(InfillBase):
         gF1, gF2, gF3, gF4, gFLim = 0.0, 0.0, 0.0, 0.0, 0.0
         gE, dmgType = 0.0, "energy"
         mat_inputs = [
-            'Pinching4', self.design.rectangle.tag,
+            'Pinching4', self.mat_tag,
             ePf1, ePd1, ePf2, ePd2, ePf3, ePd3, ePf4, ePd4,
             eNf1, eNd1, eNf2, eNd2, eNf3, eNd3, eNf4, eNd4,
             rDispP, fFoceP, uForceP,
@@ -105,7 +105,7 @@ class Infill(InfillBase):
         # damage2 = 0.0
         # beta = 0.5
         # mat_inputs = [
-        #     'Hysteretic', self.design.rectangle.tag,
+        #     'Hysteretic', self.mat_tag,
         #     ePf1, ePd1, ePf2, ePd2, ePf3, ePd3,
         #     eNf1, eNd1, eNf2, eNd2, eNf3, eNd3,
         #     pinchX, pinchY, damage1, damage2, beta

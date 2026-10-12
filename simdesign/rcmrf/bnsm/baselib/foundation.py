@@ -13,6 +13,9 @@ from .node import Node
 # Imports from bdim base library
 from ...bdim.baselib.joint import JointBase as JointDesign
 
+# Imports from utils library
+from ....utils.tags import node_tag
+
 
 class FoundationBase(ABC):
     """Abstract Base Class for foundation implementations in BNSM layer.
@@ -56,7 +59,7 @@ class FoundationBase(ABC):
         mass : float
             Total mass assigned to support joint.
         """
-        tag = self.design.elastic_node.tag + 70000
+        tag = node_tag(self.design.elastic_node.tag, 'foundation')
         coordinates = self.design.elastic_node.coordinates
         masses = [mass, mass, mass, 0.0, 0.0, 0.0]
         self.foundation_node = Node(tag, coordinates, masses)

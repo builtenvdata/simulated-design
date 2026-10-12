@@ -14,6 +14,7 @@ from ..baselib.constants import PDELTA_TRANSF_Z
 
 # Imports from utils library
 from ....utils.misc import round_list
+from ....utils.tags import element_end_node_tag
 
 
 class Column(ColumnCP01):
@@ -85,14 +86,14 @@ class Column(ColumnCP01):
         """Initialize and set ele_node_i based on hinge_node_i.
         """
         coords = self.hinge_node_i.coordinates.copy()
-        tag = int(self.hinge_node_i.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_i.tag)
         self.ele_node_i = Node(tag, coords)
 
     def set_ele_node_j(self) -> None:
         """Initialize and set ele_node_j based on hinge_node_j.
         """
         coords = self.hinge_node_j.coordinates.copy()
-        tag = int(self.hinge_node_j.tag + 100000)
+        tag = element_end_node_tag(self.hinge_node_j.tag)
         self.ele_node_j = Node(tag, coords)
 
     def add_to_ops(self) -> None:

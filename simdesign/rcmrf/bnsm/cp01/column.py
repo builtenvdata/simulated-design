@@ -11,7 +11,13 @@ from ..baselib.column import ColumnBase, HYSTERETIC_PARAMETERS
 
 # Imports from utils library
 from ....utils import rcsection as rc
-from ....utils.misc import round_list
+from ....utils.misc import round_list, PRECISION
+from ....utils.tags import sub_tag
+
+STIFF_INTERIOR_FACTOR = 1e3
+"""Factor on the moments of inertia of the elastic interior sections of the
+``CP01`` and ``CP02`` members. The springs then carry the whole flexural
+flexibility of the member, as calibrated."""
 
 
 class Column(ColumnBase):
@@ -25,7 +31,10 @@ class Column(ColumnBase):
 
     End-hinge flexural behaviour about the local z-axis (Mz) is defined using a
     uniaxial ``Hysteretic`` material, expressed in terms of bending moment vs.
-    plastic rotation.
+    chord rotation of the whole member (the yield rotation includes the
+    elastic deformations). The elastic interior is therefore nearly rigid in
+    flexure (``STIFF_INTERIOR_FACTOR``), and the springs carry the whole
+    flexural flexibility.
 
     If there is no capacity design, degrading shear springs are
     defined using the uniaxial ``LimitState`` material coupled with a
@@ -38,6 +47,17 @@ class Column(ColumnBase):
     :class:`~simdesign.rcmrf.bnsm.baselib.column.ColumnBase`
         Base column definition extended by this class.
     """
+
+    @property
+    def p_mat_tag(self) -> int:
+        """Elastic material tag for the axial response (P) of the hinges."""
+        return sub_tag(self.design.line.tag, 98)
+
+    @property
+    def t_mat_tag(self) -> int:
+        """Elastic material tag for the torsional response (T) of the
+        hinges."""
+        return sub_tag(self.design.line.tag, 99)
 
     def add_to_ops(self) -> None:
         """Adds column components to the OpenSees domain
@@ -53,6 +73,8 @@ class Column(ColumnBase):
         # Create the section materials
         ops.uniaxialMaterial(*self._get_rot_hinge_mat_inputs('x'))
         ops.uniaxialMaterial(*self._get_rot_hinge_mat_inputs('y'))
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
             vz_mat, vz_curve = self._get_shear_hinge_mat_inputs('x')
@@ -63,7 +85,7 @@ class Column(ColumnBase):
 
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
-        ops.section(*self._get_inelastic_sec_inputs())
+        ops.section(*self._get_hinge_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -105,6 +127,12 @@ class Column(ColumnBase):
         )
         content.append(f"ops.uniaxialMaterial({mz_mat_inputs})")
         content.append(f"ops.uniaxialMaterial({my_mat_inputs})")
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in mat_inputs
+            )
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
 
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
@@ -138,7 +166,7 @@ class Column(ColumnBase):
         )
         inelastic_sec_inputs = ', '.join(
             repr(item) if isinstance(item, str) else str(item)
-            for item in self._get_inelastic_sec_inputs()
+            for item in self._get_hinge_sec_inputs()
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
@@ -189,6 +217,9 @@ class Column(ColumnBase):
             f"{item}" for item in self._get_rot_hinge_mat_inputs('y'))
         content.append(f"uniaxialMaterial {mz_mat_inputs}")
         content.append(f"uniaxialMaterial {my_mat_inputs}")
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
 
         if not self.capacity_design:
             vy_mat, vy_curve = self._get_shear_hinge_mat_inputs('y')
@@ -207,7 +238,7 @@ class Column(ColumnBase):
         elastic_sec_inputs = ' '.join(
             f"{item}" for item in self._get_elastic_sec_inputs())
         inelastic_sec_inputs = ' '.join(
-            f"{item}" for item in self._get_inelastic_sec_inputs())
+            f"{item}" for item in self._get_hinge_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
 
@@ -224,6 +255,68 @@ class Column(ColumnBase):
         content.append(f"element {ele_inputs}")
 
         return content
+
+    def _get_hinge_elastic_mat_inputs(
+        self
+    ) -> List[List[str | float | int]]:
+        """Retrieves the elastic material inputs of the hinge sections.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the elastic axial (EA) and torsional (GJ) materials.
+
+        Notes
+        -----
+        ``ConcentratedPlasticity`` gives each hinge section a weight of one
+        length unit and removes the same length from the elastic interior.
+        The hinge sections therefore carry the elastic axial and torsional
+        flexibility of that length. With rigid materials, the axial stiffness
+        becomes EA/(L-2), which is negative for clear lengths below 2 m.
+        """
+        return [
+            round_list(['Elastic', self.p_mat_tag,
+                        self.Ecm_q * self.design.Ag]),
+            round_list(['Elastic', self.t_mat_tag,
+                        self.Gcm_q * self.design.J])
+        ]
+
+    def _get_hinge_sec_inputs(self) -> List[str | int]:
+        """Retrieves inputs for the aggregated hinge section.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for the aggregated hinge section, with elastic
+            axial (P) and torsional (T) materials.
+        """
+        sec_inputs = self._get_inelastic_sec_inputs()
+        sec_inputs[2], sec_inputs[12] = self.p_mat_tag, self.t_mat_tag
+
+        return sec_inputs
+
+    def _get_elastic_sec_inputs(self) -> List[str | float | int]:
+        """Retrieves elastic column section inputs.
+
+        Returns
+        -------
+        List[str | float | int]
+            List of elastic column section inputs.
+
+        Notes
+        -----
+        The moments of inertia are multiplied by ``STIFF_INTERIOR_FACTOR``.
+        The backbone rotations are chord rotations of the whole member, so
+        the springs carry the whole flexural flexibility and the interior is
+        nearly rigid in flexure. ``ConcentratedPlasticity`` removes one length
+        unit of the interior flexibility at each end, which then is
+        negligible.
+        """
+        sec_inputs = super()._get_elastic_sec_inputs()
+        sec_inputs[4] = round(sec_inputs[4] * STIFF_INTERIOR_FACTOR, PRECISION)
+        sec_inputs[5] = round(sec_inputs[5] * STIFF_INTERIOR_FACTOR, PRECISION)
+
+        return sec_inputs
 
     def _get_int_inputs(self) -> List[str | float]:
         """Retrieves column integration inputs.

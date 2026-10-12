@@ -7,6 +7,7 @@ from typing import Literal, List, Tuple
 
 # Imports from bnsm cp01 library
 from ..cp01.column import Column as ColumnCP01, HYSTERETIC_PARAMETERS
+from ..cp01.column import STIFF_INTERIOR_FACTOR
 
 # Imports from bnsm base library
 from ..baselib.node import Node
@@ -31,6 +32,11 @@ class Column(ColumnCP01):
     All other translational and rotational degrees of freedom across the
     hinge are constrained to behave rigidly using rigid materials, so the
     hinge represents concentrated flexural nonlinearity.
+
+    The hinge backbone rotations are chord rotations of the whole member
+    (the yield rotation includes the elastic deformations), so the elastic
+    member is nearly rigid in flexure (``STIFF_INTERIOR_FACTOR``) and the
+    hinges carry the whole flexural flexibility.
 
     Attributes
     ----------
@@ -292,6 +298,11 @@ class Column(ColumnCP01):
         -------
         List[float]
             List of elastic column element inputs.
+
+        Notes
+        -----
+        The moments of inertia are multiplied by ``STIFF_INTERIOR_FACTOR``,
+        since the hinges carry the whole flexural flexibility.
         """
         # Cracked section properties
         if self.cracked:
@@ -300,6 +311,8 @@ class Column(ColumnCP01):
         else:
             Iz = self.design.Ix
             Iy = self.design.Iy
+        # Nearly rigid in flexure
+        Iz, Iy = Iz * STIFF_INTERIOR_FACTOR, Iy * STIFF_INTERIOR_FACTOR
         # List of elasticBeamColumn element inputs
         ele_inputs = round_list([
             'elasticBeamColumn', self.design.line.tag,

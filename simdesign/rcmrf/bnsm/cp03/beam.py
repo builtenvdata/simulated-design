@@ -9,6 +9,7 @@ from typing import Tuple, List
 from ..baselib.beam import BeamBase, HYSTERETIC_PARAMETERS
 from ..baselib.node import Node
 from ..baselib.constants import RIGID_MAT, LINEAR_TRANSF_X, LINEAR_TRANSF_Y
+from ..cp01.column import STIFF_INTERIOR_FACTOR
 
 # Imports from utils library
 from ....utils.misc import round_list
@@ -29,6 +30,12 @@ class Beam(BeamBase):
     All other translational and rotational degrees of freedom across the
     hinge are constrained to behave rigidly using rigid materials, so the
     hinge represents concentrated flexural nonlinearity.
+
+    The hinge backbone rotations are chord rotations of the whole member
+    (the yield rotation includes the elastic deformations), so the elastic
+    member is nearly rigid in flexure about local-z
+    (``STIFF_INTERIOR_FACTOR``) and the hinges carry the whole flexural
+    flexibility.
 
     Attributes
     ----------
@@ -307,12 +314,21 @@ class Beam(BeamBase):
         -------
         List[str | float | int]
             List of elastic beam element inputs.
+
+        Notes
+        -----
+        The moment of inertia about local-z (Iz) is multiplied by
+        ``STIFF_INTERIOR_FACTOR``, since the hinges carry the whole flexural
+        flexibility. The weak-axis flexure (Iy) has no hinge and keeps its
+        elastic stiffness.
         """
         # Check if cracked section is being used or not
         if self.cracked:
             Iz = self._Iz_eff
         else:
             Iz = self.design.Iz
+        # Nearly rigid in flexure about local-z
+        Iz = Iz * STIFF_INTERIOR_FACTOR
 
         # List of elasticBeamColumn element inputs
         ele_inputs = [

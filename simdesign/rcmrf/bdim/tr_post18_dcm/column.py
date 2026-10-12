@@ -343,8 +343,8 @@ class Column(ColumnBase):
         Ashy_sbh_req = 0
         for force in self.design_forces_overstrength_adjusted:
             # Design forces
-            Ve_x = max(force.Vx1, force.Vx9)
-            Ve_y = max(force.Vy1, force.Vy9)
+            Ve_x = max(abs(force.Vx1), abs(force.Vx9))
+            Ve_y = max(abs(force.Vy1), abs(force.Vy9))
             Nd = max(abs(force.N1), abs(force.N9))
 
             # Shear force resisted by concrete, Eq.8.1 in TS500-2000

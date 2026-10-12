@@ -10,7 +10,7 @@ optional; default values are applied when not specified.
 .. code-block:: python
 
     "bnsm": {
-        "model": "CP03",
+        "model": "CP01",
         "opensees": "py",
 
         "load_factors": {"G": 1.0, "Q": 0.3},
@@ -91,7 +91,7 @@ inherits the same default treatment for the following components:
 Each model below either uses these defaults directly or replaces specific
 components with calibrated alternatives.
 
-**model** (str, default: ``"CP03"``)
+**model** (str, default: ``"CP01"``)
    Identifier of the nonlinear modelling strategy to use. The following
    pre-defined models are currently available, organised by plasticity
    formulation.

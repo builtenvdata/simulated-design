@@ -134,7 +134,7 @@ def generate(
                 "seed": 1993,
             },
             "bnsm": {
-                "model": "CP03",
+                "model": "CP01",
                 "load_factors": {"G": 1.0, "Q": 0.3},
                 "mass_factors": {"G": 1.0, "Q": 0.3},
                 "scheme": "EQL",

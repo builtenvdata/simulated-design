@@ -80,7 +80,7 @@ class BNSM:
         ----------
         model : str | None, optional
             Identifier of the BNSM implementation to instantiate.
-            If not provided, defaults to ``'CP03'``.
+            If not provided, defaults to ``'CP01'``.
         **kwargs
             Keyword arguments forwarded to the constructor (``__init__``) of
             the selected model implementation. Therefore, the valid set of
@@ -112,7 +112,7 @@ class BNSM:
             BNSM implementations whose constructor parameters define the
             accepted ``**kwargs`` for the corresponding ``model`` value.
         """
-        model = kwargs.get('model') or 'CP03'
+        model = kwargs.get('model') or 'CP01'
         # Check if the model in kwargs is valid
         if model not in MODELLERS.keys():
             valid_options = ", ".join(MODELLERS.keys())

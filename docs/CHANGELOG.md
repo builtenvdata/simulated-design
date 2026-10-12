@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Default BNSM model is CP01 instead of CP03.
 - CP01-CP03 elastic members are nearly rigid in flexure (`STIFF_INTERIOR_FACTOR`), so the hinges carry the whole member flexibility.
 - CP01 and CP02 hinge sections have elastic axial and torsional materials (and elastic weak-axis flexure in beams) instead of rigid ones.
 - CP03 hinges use the full EN 1998-3 yield rotation θy instead of θy/10.

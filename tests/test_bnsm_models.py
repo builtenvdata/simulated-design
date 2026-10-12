@@ -122,6 +122,13 @@ def test_invalid_boolean_input_raises(designs):
                    include_infills='maybe')
 
 
+def test_default_model_is_cp01(designs):
+    """Without a model name, BNSM builds the CP01 model."""
+    from simdesign.rcmrf.bnsm.cp01.building import Building as BuildingCP01
+    bnsm = rcmrf.BNSM(design=designs['eu_cdl'])
+    assert type(bnsm) is BuildingCP01
+
+
 def test_invalid_model_raises(designs):
     """An unknown model name raises an error."""
     with pytest.raises(ValueError):

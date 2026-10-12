@@ -926,10 +926,10 @@ class BeamBase(ABC):
         Ls = self.clear_length / 2
         # Smallest diameter of the longitudinal reinforcement
         dbl = np.minimum(
-            self.design.dbl_t1,
+            self.design.dbl_t1_q,
             np.minimum(
-                self.design.dbl_t2,
-                np.minimum(self.design.dbl_b1, self.design.dbl_b2),
+                self.design.dbl_t2_q,
+                np.minimum(self.design.dbl_b1_q, self.design.dbl_b2_q),
             ),
         )
         return rc.get_lp_priestley_2007(Ls, self.design.fsyl_q, dbl)

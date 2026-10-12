@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).parents[1]))
 
 from simdesign.utils.rcsection import (  # noqa
     do_simplified_section_analysis, get_my_phiy_panagiotakos_fardis2001,
+    get_kent_park_confinement,
     get_yield_rot_eurocode8, get_capping_mom_plastic_rot_haselton2016,
     get_residual_mom_post_capping_rot_haselton2016, get_lp_priestley_2007,
     get_shear_cracking_sezen_moehle2004, get_shear_strength_priestley1994,
@@ -756,3 +757,27 @@ def test_shear_residual_zimos2015() -> None:
     assert Vr == pytest.approx([150.0, 60.0], rel=1e-12)
     assert gamma_tpp == pytest.approx([0.05, 0.08], rel=1e-12)
     assert np.ndim(get_shear_residual_zimos2015(300.0, 10.0, 0.05)[0]) == 0
+
+
+def test_kent_park_confinement() -> None:
+    """Hand calculation of the modified Kent and Park model (Scott et al.,
+    1982) in mm and MPa for a 400 x 400 mm column with 30 mm clear cover,
+    2-leg 8 mm hoops at 150 mm (fy = 400 MPa) and fc = 25 MPa: core
+    400 - 2 (30 + 4) = 332 mm, rho_s = 2 x 2 x 50.27 / (150 x 332) = 0.004037,
+    K = 1 + rho_s fy / fc = 1.0646,
+    eps_50u = (3 + 0.29 x 25) / (145 x 25 - 1000) = 0.003905,
+    eps_50h = 0.75 rho_s sqrt(332 / 150) = 0.004505,
+    eps_cu = 0.8 / Z + 0.002 K with Z = 0.5 / (eps_50u + eps_50h - 0.002 K)."""
+    r = get_kent_park_confinement(25.0, 400.0, 400.0, 30.0, 8.0, 150.0, 2,
+                                  2, 400.0)
+    rho_s = 2 * 2 * np.pi * 4.0**2 / (150 * 332)
+    K = 1 + rho_s * 400 / 25
+    eps_50h = 0.75 * rho_s * np.sqrt(332 / 150)
+    Z = 0.5 / ((3 + 0.29 * 25) / (145 * 25 - 1000) + eps_50h - 0.002 * K)
+    assert r['bc_x'] == pytest.approx(332.0, rel=1e-12)
+    assert r['Ke'] == pytest.approx(K, rel=1e-12)
+    assert r['fcc'] == pytest.approx(25 * K, rel=1e-12)
+    assert r['eps_cc'] == pytest.approx(0.002 * K, rel=1e-12)
+    assert r['eps_cu'] == pytest.approx(0.8 / Z + 0.002 * K, rel=1e-12)
+    # Without rho_s in eps_50h the ultimate strain was 1.79, i.e., ~150x
+    assert 0.01 < r['eps_cu'] < 0.02

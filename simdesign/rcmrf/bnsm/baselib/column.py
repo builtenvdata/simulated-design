@@ -908,9 +908,11 @@ class ColumnBase(ABC):
         Vmax = Vc + Vp + Vs
         V2 = Vmax
 
-        # NOTE: V1 cannot be greater than V2, this is a superficial adjustment.
-        if V1 > V2:  # This may happen even though, rare!
-            V1 = 0.8 * V2  # Assume V1 is 80% of V2
+        # NOTE: V1 is limited to 80% of V2, a superficial adjustment. It keeps
+        # the backbone monotonic: with V1 close to V2, gamm_2 could fall below
+        # gamm_1, and the reduction V2 = 0.9 V2 below could make V2 < V1.
+        if V1 > 0.8 * V2:  # Rare, e.g., squat columns under high axial load
+            V1 = 0.8 * V2
             gamm_1 = V1 / (Gc * (0.8 * Ag))  # Adjust gamm_1 accordingly
 
         # Cracked shear stiffness, shear strains at the maximum shear force

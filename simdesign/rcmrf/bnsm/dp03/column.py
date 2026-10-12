@@ -13,7 +13,8 @@ from ..baselib.column import ColumnBase
 from ....utils.units import MPa, mm
 from ....utils.misc import round_list
 from ....utils.rcsection import (
-    get_mander_confinement, build_column_rebar_layout
+    get_mander_confinement, get_kent_park_confinement,
+    build_column_rebar_layout
 )
 from ....utils.tags import sub_tag
 
@@ -505,9 +506,26 @@ class Column(ColumnBase):
 
         Notes
         -----
-        - Concrete confinement parameters are computed using the Mander model.
-        - For Concrete01, residual (crushing) stress is taken as
-          ``fpcu = 0.2 * fpc``.
+        - For ``Concrete04`` (Popovics curve), the confinement parameters
+          follow the Mander model (Mander et al., 1988).
+        - For ``Concrete01``, which implements the Kent-Scott-Park curve, they
+          follow the modified Kent and Park model (Scott et al., 1982):
+          ``fpc = K fc``, ``epsc0 = 0.002 K``, ``fpcu = 0.2 fpc`` and ``epsU``
+          the strain at which the descending branch reaches ``fpcu``. Mander
+          parameters would give ``Concrete01`` a too small initial stiffness
+          (``2 fpc / epsc0``) and treat the hoop fracture strain as the
+          strain at 20% residual stress.
+
+        References
+        ----------
+        Mander, J. B., Priestley, M. J. N., & Park, R. (1988). Theoretical
+        stress-strain model for confined concrete. Journal of Structural
+        Engineering, 114(8), 1804-1826.
+
+        Scott, B. D., Park, R., & Priestley, M. J. N. (1982). Stress-strain
+        behavior of concrete confined by overlapping hoops at low and high
+        strain rates. Journal of the American Concrete Institute, 79(1),
+        13-27.
         """
         # Materials [MPa]
         fc = self.design.fc_q / MPa
@@ -527,26 +545,28 @@ class Column(ColumnBase):
         dbl_cor = self.design.dbl_cor_q / mm
         dbl_int = self.design.dbl_int_q / mm
 
-        # Get reinforcement layout
-        layout = build_column_rebar_layout(
-            dbl_cor, dbl_int, nbl_int_x, nbl_int_y, dbh, lx, ly, cv
-        )
-        # Determine confinement based on Mander model
-        params = get_mander_confinement(
-            fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
-            legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
-            rein_x=layout['rein_x'], rein_y=layout['rein_y'],
-            rein_d=layout['rein_d']
-        )  # note that strength parameters are in MPa
-
-        # Set concrete01 material parameters
+        # Set concrete01 material parameters (Kent-Scott-Park curve)
         if self.concrete_material == 'Concrete01':
+            params = get_kent_park_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh
+            )  # strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc0 = -params['eps_cc']  # concrete strain at comp. strength
             fpcu = 0.2*fpc  # concrete crushing strength
             epsU = -params['eps_cu']  # concrete strain at crushing strength
             mat_inputs = [fpc, epsc0, fpcu, epsU]
         elif self.concrete_material == 'Concrete04':
+            # Reinforcement layout and confinement by the Mander model
+            layout = build_column_rebar_layout(
+                dbl_cor, dbl_int, nbl_int_x, nbl_int_y, dbh, lx, ly, cv
+            )
+            params = get_mander_confinement(
+                fc=fc, Lx=lx, Ly=ly, cover=cv, db_v=dbh, s=sbh,
+                legs_x=legs_x, legs_y=legs_y, fy_v=fsyh,
+                rein_x=layout['rein_x'], rein_y=layout['rein_y'],
+                rein_d=layout['rein_d']
+            )  # note that strength parameters are in MPa
             fpc = -params['fcc'] * MPa  # concrete compressive strength
             epsc = -params['eps_cc']  # concrete strain at compressive strength
             epscu = -params['eps_cu']  # concrete strain at crushing strength

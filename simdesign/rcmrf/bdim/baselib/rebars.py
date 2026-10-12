@@ -780,7 +780,7 @@ class RebarsBase(ABC):
 
             # Increase num rebars along X to not exceed max spacing limit
             for i in np.where(dist_x > self.col_max_sbl)[0].tolist():
-                while dist_x[i] > self.col_max_sbl[i]:
+                while dist_x[i] > self.col_max_sbl:
                     nbl_2x[i] += 1
                     dist_x[i] = (bx[i] - (nbl_1x * dbl_1 + nbl_2x[i] * dbl_2
                                           + 2 * self.col_cover + 2 * dbh)
@@ -788,7 +788,7 @@ class RebarsBase(ABC):
                     dist_x = np.round(dist_x, PRECISION)
             # Increase num rebars along Y to not exceed max spacing limit
             for i in np.where(dist_y > self.col_max_sbl)[0].tolist():
-                while dist_y[i] > self.col_max_sbl[i]:
+                while dist_y[i] > self.col_max_sbl:
                     nbl_2y[i] += 1
                     dist_y[i] = (by[i] - (nbl_1y * dbl_1 + nbl_2y[i] * dbl_2
                                           + 2 * self.col_cover + 2 * dbh)

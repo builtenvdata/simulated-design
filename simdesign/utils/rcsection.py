@@ -478,7 +478,9 @@ def get_mander_confinement(
     Ly : float
         Section dimension in y-direction (overall depth).
     cover : float
-        Concrete cover to centerline of transverse reinforcement.
+        Clear concrete cover, i.e., to the outside of the transverse
+        reinforcement. The core is measured to the centreline of the
+        transverse reinforcement.
     db_v : float
         Diameter of transverse reinforcement (stirrups/ties).
     s : float
@@ -997,7 +999,9 @@ def get_kent_park_confinement(
     Ly : float
         Section dimension in y-direction (overall depth).
     cover : float
-        Concrete cover to centerline of transverse reinforcement.
+        Clear concrete cover, i.e., to the outside of the transverse
+        reinforcement. The core is measured to the centreline of the
+        transverse reinforcement.
     db_v : float
         Diameter of transverse reinforcement (stirrups/ties).
     s : float
@@ -1089,7 +1093,7 @@ def get_kent_park_confinement(
     # Slope, eqn. 4
     eps_50u = (3 + 0.29 * fc) / (145 * fc - 1000)
     h_ = (bc_x + bc_y) / 2  # assumed
-    eps_50h = 0.75 * (h_ / s)**0.5
+    eps_50h = 0.75 * rho_s * (h_ / s)**0.5  # Scott et al. (1982)
     zm = 0.5 / (eps_50u + eps_50h - eps_cc)
 
     # Ultimate confined concrete strain

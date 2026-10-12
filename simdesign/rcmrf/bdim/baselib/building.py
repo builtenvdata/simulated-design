@@ -328,18 +328,14 @@ class BuildingBase(ABC):
         Returns
         -------
         float | None
-            Slab thickness (depth) considered in the building,
-            if already set in the taxonomy, otherwise, None.
+            Slab thickness (depth) given in the taxonomy, otherwise the
+            building-wide thickness set from the slab estimates (None before
+            the slabs are built).
         """
-        if hasattr(self.taxonomy, 'slab_thickness'):
-            return self.taxonomy.slab_thickness
-        else:
-            return None
-
-    @slab_thickness.setter
-    def slab_thickness(self, new_thickness: str) -> None:
-        """Setter for `slab_thickness`."""
-        self.taxonomy.slab_thickness = new_thickness
+        thickness = getattr(self.taxonomy, 'slab_thickness', None)
+        if thickness is None and getattr(self, 'slabs', None):
+            thickness = self.slabs[0].t
+        return thickness
 
     @property
     def slab_orientation(self) -> Literal[1, 2, 3] | None:
@@ -355,12 +351,6 @@ class BuildingBase(ABC):
             3: Unloading in beams along both directions.
         """
         return getattr(self.taxonomy, 'slab_orientation', None)
-
-    @slab_orientation.setter
-    def slab_orientation(self, new_orientation: Literal[1, 2, 3] | None
-                         ) -> None:
-        """Setter for `slab_orientation`."""
-        self.taxonomy.slab_orientation = new_orientation
 
     @property
     def slab_type(self) -> Literal[1, 2, 3]:
@@ -379,8 +369,18 @@ class BuildingBase(ABC):
 
     @slab_type.setter
     def slab_type(self, new_type: Literal[1, 2, 3]) -> None:
-        """Setter for `slab_type`."""
+        """Setter for `slab_type`.
+
+        Notes
+        -----
+        Used internally by the design algorithm (e.g., `_change_slab_type`).
+        If the slabs are already built, a new value rebuilds the slabs and
+        the beam gravity loads (see :meth:`_rebuild_slabs`).
+        """
+        changed = new_type != self.slab_type
         self.taxonomy.slab_type = new_type
+        if changed and getattr(self, 'slabs', None):
+            self._rebuild_slabs()
 
     @property
     def staircase_slab_depth(self) -> float:
@@ -843,18 +843,20 @@ class BuildingBase(ABC):
     def _initialize_slabs(self) -> None:
         """Initialize building slabs.
         """
+        # Slab thickness given in the taxonomy (None if not given)
+        thickness = getattr(self.taxonomy, 'slab_thickness', None)
         for rectangle in self.geometry.slab_rectangles:
             slab = self.SlabClass(rectangle=rectangle,
                                   typology=self.slab_type,
-                                  thickness=self.slab_thickness,
+                                  thickness=thickness,
                                   orientation=self.slab_orientation)
             slab.roof = rectangle in self.geometry.roof_rectangles
             self.slabs.append(slab)
         # If slab thickness is not provided, set a global thickness value
-        if self.slab_thickness is None:
-            self.slab_thickness = max(slab.t for slab in self.slabs)
+        if thickness is None:
+            thickness = max(slab.t for slab in self.slabs)
             for slab in self.slabs:
-                slab.t = self.slab_thickness
+                slab.t = thickness
         # Set slab loads once the final thickness is known
         for slab in self.slabs:
             slab.set_loads(self.loads.permanent, self.loads.variable)
@@ -1586,6 +1588,22 @@ class BuildingBase(ABC):
             self.slab_type = 1
         elif self.slab_type == 3:
             self.slab_type = 2
+
+    def _rebuild_slabs(self) -> None:
+        """Rebuild the slabs and the beam gravity loads, e.g., after a
+        change of the slab type.
+
+        The slab thickness is recomputed for the new slabs, unless it is given
+        in the taxonomy.
+        """
+        self.slabs = []
+        # Remove the loads transferred from the old slabs
+        for beam in self.beams:
+            beam.slab_wg = []
+            beam.slab_wq = []
+            beam.slab_alpha = []
+        self._initialize_slabs()
+        self._set_beam_gravity_loads()
 
     def _change_column_section(self) -> None:
         """The method used for changing column sections.

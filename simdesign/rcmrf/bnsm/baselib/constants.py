@@ -34,7 +34,12 @@ NSPA_P_TAG = 2
 """Tag for load pattern which associates nspa time-series with the
 nspa point loads."""
 MIN_EIGEN_MODES = 3
-"""Minimum number of modes solved for in the eigenvalue analysis. The
-default ARPACK solver is unreliable for a single eigenvalue (it may return
-meaningless periods), so at least this number of modes is computed, and
-only the requested ones are reported."""
+"""Minimum number of modes solved for in the eigenvalue analysis. For a
+single mode, the default ARPACK solver uses only two Lanczos vectors and may
+not converge, in which case OpenSees returns unset eigenvalues without an
+error. At least this number of modes is computed, and only the requested
+ones are reported."""
+MIN_EIGEN_VALUE = 1e-6
+"""Smallest valid eigenvalue (rad^2/s^2), i.e., periods up to about 6300 s.
+Smaller values are taken as unset eigenvalues of an unconverged solution,
+and the next eigen solver is tried."""

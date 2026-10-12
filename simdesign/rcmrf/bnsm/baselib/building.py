@@ -11,7 +11,8 @@ from pathlib import Path
 
 # Imports from bnsm library
 from .constants import (RIGID_MAT, BIG_VALUE, GRAV_TS_TAG, GRAV_P_TAG,
-                        NSPA_TS_TAG, NSPA_P_TAG, MIN_EIGEN_MODES)
+                        NSPA_TS_TAG, NSPA_P_TAG, MIN_EIGEN_MODES,
+                        MIN_EIGEN_VALUE)
 from .foundation import FoundationBase
 from .joint import StairsJointBase, FloorJointBase
 from .floor import FloorDiaphragmBase
@@ -182,14 +183,14 @@ class BuildingBase(ABC):
         cracked_beam : None | bool | float, optional
             Cracked-section (effective) flexural properties of the elastic
             beam sections: True for My / phi_y of the plastic hinges, or a
-            float as the ratio of effective to gross flexural stiffness. If
-            None or False, gross-section properties are used.
+            float in (0, 1] as the ratio of effective to gross flexural
+            stiffness. If None or False, gross-section properties are used.
             By default None.
         cracked_column : None | bool | float, optional
             Cracked-section (effective) flexural properties of the elastic
             column sections: True for My / phi_y of the plastic hinges, or a
-            float as the ratio of effective to gross flexural stiffness. If
-            None or False, gross-section properties are used.
+            float in (0, 1] as the ratio of effective to gross flexural
+            stiffness. If None or False, gross-section properties are used.
             By default None.
         beam_loads : Literal['auto', 'uniform', 'point'], optional
             How the beam gravity loads are applied. By default 'auto'.
@@ -209,8 +210,9 @@ class BuildingBase(ABC):
         self.dincr = dincr
         self.include_infills = include_infills
         self.cyclic_model = cyclic_model
-        self.cracked_beam = cracked_beam
-        self.cracked_column = cracked_column
+        self.cracked_beam = self._check_cracked('cracked_beam', cracked_beam)
+        self.cracked_column = self._check_cracked(
+            'cracked_column', cracked_column)
         self.beam_loads = beam_loads
         self.foundations = []
         self.floors = []
@@ -226,6 +228,39 @@ class BuildingBase(ABC):
         self._initialize_beams()
         self._initialize_columns()
         self._initialize_infills()
+
+    @staticmethod
+    def _check_cracked(
+        name: str, value: Optional[bool | float]
+    ) -> Optional[bool | float]:
+        """Validates a cracked-section input (`cracked_beam` or
+        `cracked_column`).
+
+        Parameters
+        ----------
+        name : str
+            Name of the input.
+        value : None | bool | float
+            Input value.
+
+        Returns
+        -------
+        None | bool | float
+            The value, with numbers converted to float.
+
+        Raises
+        ------
+        ValueError
+            If the value is not None, a bool or a number in (0, 1].
+        """
+        if value is None or isinstance(value, (bool, np.bool_)):
+            return None if value is None else bool(value)
+        if isinstance(value, (int, float, np.integer, np.floating)) and (
+                0.0 < value <= 1.0):
+            return float(value)
+        raise ValueError(
+            f"Invalid value for '{name}': {value!r}. "
+            "Use None, a bool or a float in (0, 1].")
 
     @property
     def beam_load_type(self) -> Literal['uniform', 'point']:
@@ -574,9 +609,11 @@ class BuildingBase(ABC):
         Notes
         -----
         At least ``MIN_EIGEN_MODES`` modes are solved for, because the
-        default ARPACK solver is unreliable for a single eigenvalue (it may
-        return meaningless periods such as 1e157 s or 0.009 s). The modal
-        properties file written to `out_dir` contains all solved modes.
+        default ARPACK solver may not converge for a single eigenvalue and
+        then returns unset values (e.g. periods of 1e157 s). Eigenvalues
+        below ``MIN_EIGEN_VALUE`` are taken as unset, and the next solver is
+        tried. The modal properties file written to `out_dir` contains all
+        solved modes.
 
         TODO
         ----
@@ -592,8 +629,9 @@ class BuildingBase(ABC):
         for s in list_solvers:
             try:
                 eigen_values = ops.eigen(s, num_solve)
-                # All the eigenvalues must be positive and finite
-                ok = all(0.0 < value < 1e+300 for value in eigen_values)
+                # All the eigenvalues must be set (not tiny) and finite
+                ok = all(MIN_EIGEN_VALUE < value < 1e+300
+                         for value in eigen_values)
                 if ok:
                     break
             except BaseException as e:
@@ -1488,8 +1526,8 @@ class BuildingBase(ABC):
                        "single eigenvalue)")
         content.append(f"eigen_values = ops.eigen(max(num_modes, "
                        f"{MIN_EIGEN_MODES}))")
-        content.append("if not all(0.0 < value < 1e+300 for value in "
-                       "eigen_values):")
+        content.append(f"if not all({MIN_EIGEN_VALUE} < value < 1e+300 "
+                       "for value in eigen_values):")
         content.append("    raise RuntimeError(f'Invalid eigenvalues: "
                        "{eigen_values}')")
         # Add lines for looping through eigenvectors and saving them
@@ -2125,7 +2163,8 @@ class BuildingBase(ABC):
         content.append(f"set eigenVals [eigen [expr {{max($numModes, "
                        f"{MIN_EIGEN_MODES})}}]]")
         content.append("foreach lambda $eigenVals {")
-        content.append("    if {$lambda <= 0.0 || $lambda > 1e+300} {")
+        content.append(f"    if {{$lambda <= {MIN_EIGEN_VALUE} || "
+                       "$lambda > 1e+300} {")
         content.append('        error "Invalid eigenvalues: $eigenVals"')
         content.append("    }")
         content.append("}")

@@ -13,6 +13,9 @@ All model implementations inherit from ``BuildingBase`` and define
 specific modelling strategies.
 """
 
+# Imports from installed packages
+import warnings
+
 from .baselib import BuildingBase
 from .cp01 import CP01
 from .cp02 import CP02
@@ -117,4 +120,10 @@ class BNSM:
         bnsm = MODELLERS.get(model)
         # Instantiate and return the appropriate class
         filtered_args = filter_args(bnsm.__init__, kwargs)
+        # Warn about the inputs not used by the selected model
+        for name in kwargs:
+            if name != 'model' and name not in filtered_args:
+                warnings.warn(
+                    f"Unknown input '{name}' is ignored by model {model}.",
+                    UserWarning)
         return bnsm(**filtered_args)

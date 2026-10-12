@@ -270,6 +270,45 @@ def round_list(input_list: List[Any],
     ]
 
 
+_TRUE_STRINGS = ("true", "1", "yes", "on")
+_FALSE_STRINGS = ("false", "0", "no", "off")
+
+
+def _to_bool(name: str, value: Any) -> bool:
+    """Convert an input value to bool.
+
+    Parameters
+    ----------
+    name : str
+        Name of the parameter, used in the error message.
+    value : Any
+        Input value: a bool, an integer 0 or 1 (including NumPy types), or a
+        string such as 'true', 'false', 'yes', 'no', '1', '0' (any case).
+
+    Returns
+    -------
+    bool
+        Converted value.
+
+    Raises
+    ------
+    ValueError
+        If the value cannot be interpreted as a bool.
+    """
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)) and value in (0, 1):
+        return bool(value)
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _TRUE_STRINGS:
+            return True
+        if text in _FALSE_STRINGS:
+            return False
+    raise ValueError(
+        f"Cannot interpret {value!r} as a bool for '{name}'.")
+
+
 def filter_args(method: Callable, data: Mapping[str, Any]) -> Dict[str, Any]:
     """Filter and convert input values so they match the signature of a method.
 
@@ -320,10 +359,7 @@ def filter_args(method: Callable, data: Mapping[str, Any]) -> Dict[str, Any]:
 
         # Handle bool explicitly
         if annotation is bool:
-            try:
-                filtered_data[name] = str(raw_value).lower() == "true"
-            except Exception:
-                filtered_data[name] = raw_value
+            filtered_data[name] = _to_bool(name, raw_value)
 
         # Handle integers
         elif annotation is int:

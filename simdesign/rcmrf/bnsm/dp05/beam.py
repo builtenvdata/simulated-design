@@ -3,7 +3,7 @@ the BNSM layer.
 """
 # Imports from installed packages
 import openseespy.opensees as ops
-from typing import List
+from typing import List, Optional
 
 # Imports from bnsm library
 from ..dp03.beam import Beam as BeamDP03
@@ -26,11 +26,14 @@ class Beam(BeamDP03):
     yield, although the joint nodes are constrained by the rigid floor
     diaphragm. The beam then carries no axial force.
 
+    The mid-storey stairs beams have no release (see
+    :meth:`~simdesign.rcmrf.bnsm.dp05.building.Building._initialize_beams`).
+
     Attributes
     ----------
-    release_node : Node
+    release_node : Node | None
         Beam-side joint node at the *j-end*, constrained by the floor
-        diaphragm.
+        diaphragm. None if the beam has no release.
 
     See Also
     --------
@@ -38,7 +41,7 @@ class Beam(BeamDP03):
         Beam definition extended by this class.
     """
 
-    release_node: Node
+    release_node: Optional[Node] = None
 
     @property
     def release_ele_tag(self) -> int:
@@ -69,8 +72,9 @@ class Beam(BeamDP03):
         """Adds beam components to the OpenSees domain (i.e, auxiliary node,
         axial release, fiber sections and beam element).
         """
-        self.ele_node_j.add_to_ops()
-        ops.element(*self._get_release_ele_inputs())
+        if self.release_node is not None:
+            self.ele_node_j.add_to_ops()
+            ops.element(*self._get_release_ele_inputs())
         super().add_to_ops()
 
     def to_py(self) -> List[str]:
@@ -84,6 +88,8 @@ class Beam(BeamDP03):
             List of Python commands for constructing the components of beam
             object in OpenSees.
         """
+        if self.release_node is None:
+            return super().to_py()
         release_inputs = ', '.join(
             repr(item) if isinstance(item, str) else str(item)
             for item in self._get_release_ele_inputs()
@@ -104,6 +110,8 @@ class Beam(BeamDP03):
             List of Tcl commands for constructing the components of beam
             object in OpenSees.
         """
+        if self.release_node is None:
+            return super().to_tcl()
         release_inputs = ' '.join(
             f'{item}' for item in self._get_release_ele_inputs())
         content = ['# Create the auxiliary node and the axial release']

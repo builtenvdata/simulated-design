@@ -64,11 +64,19 @@ class Building(BuildingBase):
 
     def _initialize_beams(self) -> None:
         """Initialize beam models, with the axial release at the *j-end* of
-        each beam.
+        each beam, except the mid-storey stairs beams.
+
+        Notes
+        -----
+        The release lets the beams elongate under the rigid floor diaphragm.
+        The stairs beams connect mid-storey nodes, which are not constrained
+        by a diaphragm, and they are the only axial tie between the stairs
+        columns, so they have no release.
         """
         super()._initialize_beams()
         for beam in self.beams:
-            beam.set_axial_release()
+            if not beam.design.line.stairs:
+                beam.set_axial_release()
 
     def _find_beam_by_design(self, design: BeamDesign) -> Optional[Beam]:
         """Finds the beam model by the given design.

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-12
+
 ### Added
 
 - `DP05` BNSM model: DP03 with an axial release at the end of each beam, so the fiber-section beams can elongate under the rigid diaphragm.
@@ -172,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   randomization, BDIM simulated design for European and Turkish design codes,
   and BNSM nonlinear model generation for OpenSees.
 
-[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/builtenvdata/simulated-design/compare/v1.0.1...v1.1.0
+[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/builtenvdata/simulated-design/compare/v.1.1.0...v1.2.0
+[1.1.0]: https://github.com/builtenvdata/simulated-design/compare/v1.0.1...v.1.1.0
 [1.0.1]: https://github.com/builtenvdata/simulated-design/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/builtenvdata/simulated-design/releases/tag/v1.0.0

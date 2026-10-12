@@ -579,17 +579,14 @@ class BuildingBase(ABC):
         for s in list_solvers:
             try:
                 eigen_values = ops.eigen(s, num_modes)
-                for i in range(num_modes):
-                    if eigen_values[i] < 0 or eigen_values[i] > 1e+300:
-                        ok = False
-                    else:
-                        ok = True
+                # All the eigenvalues must be positive and finite
+                ok = all(0.0 < value < 1e+300 for value in eigen_values)
                 if ok:
                     break
             except BaseException as e:
                 print(f"Using {s[1:]} as solver... received an error: {e}")
         if not ok:
-            raise UserWarning(
+            raise RuntimeError(
                 "Could not complete the eigenvalue analysis, "
                 + "something is wrong...\n"
                 + "Try to reduce number of modes to determine..."
@@ -1467,7 +1464,11 @@ class BuildingBase(ABC):
         # Add lines for performing eigenvalue analysis
         content.append("")
         content.append("# Perform eigen value analysis")
-        content.append("ops.eigen(num_modes)")
+        content.append("eigen_values = ops.eigen(num_modes)")
+        content.append("if not all(0.0 < value < 1e+300 for value in "
+                       "eigen_values):")
+        content.append("    raise RuntimeError(f'Invalid eigenvalues: "
+                       "{eigen_values}')")
         # Add lines for looping through eigenvectors and saving them
         content.append("# Save eigen vectors for retained floor nodes")
         content.append(f"nodes = [{nodes}]")
@@ -2093,6 +2094,11 @@ class BuildingBase(ABC):
         content.append("")
         content.append("# Perform eigenvalue analysis")
         content.append("set eigenVals [eigen $numModes]")
+        content.append("foreach lambda $eigenVals {")
+        content.append("    if {$lambda <= 0.0 || $lambda > 1e+300} {")
+        content.append('        error "Invalid eigenvalues: $eigenVals"')
+        content.append("    }")
+        content.append("}")
         # Add lines for looping through eigenvectors and saving them
         content.append("# Save eigen vectors for retained floor nodes")
         content.append(f'set nodes [list {nodes}]')

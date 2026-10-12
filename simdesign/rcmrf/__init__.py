@@ -46,7 +46,9 @@ def generate(
     inputs : Dict[Literal['bcim', 'bnsm'], Dict]
         Contains input parameters required for data generation.
         These will replace the defaults obtained for the specified
-        `design_class`.
+        `design_class`. The ``'opensees'`` entry of ``'bnsm'`` selects the
+        exported models, ``'py'`` (OpenSeesPy, default) or ``'tcl'``
+        (OpenSees Tcl). The given dictionaries are not modified.
     outdir : str | Path, optional
         Path to the user-defined output directory.
         If None, set to `Path.cwd() / 'Outputs'`. by default None.
@@ -67,6 +69,8 @@ def generate(
     ------
     KeyError
         `inputs['bcim']['design_class']` is not specified.
+    ValueError
+        `inputs['bnsm']['opensees']` is neither 'py' nor 'tcl'.
 
     Examples
     --------
@@ -146,13 +150,13 @@ def generate(
     if not bcim_inputs or not bcim_inputs.get('design_class'):
         raise KeyError('design_class in bcim is not specified!')
 
-    # Get bnsm settings
-    bnsm_inputs = inputs.get('bnsm')
-    lang = 'py'
-    if bnsm_inputs is None:
-        bnsm_inputs = {}
-    elif bnsm_inputs.get('opensees'):
-        lang = bnsm_inputs.pop('opensees')
+    # Get bnsm settings (a copy, the caller's inputs are not modified)
+    bnsm_inputs = dict(inputs.get('bnsm') or {})
+    lang = str(bnsm_inputs.pop('opensees', 'py') or 'py').strip().lower()
+    if lang not in ('py', 'tcl'):
+        raise ValueError(
+            f"Invalid opensees option: {lang!r}. Valid options are: "
+            "'py', 'tcl'.")
 
     # Create output directory
     if outdir is None:

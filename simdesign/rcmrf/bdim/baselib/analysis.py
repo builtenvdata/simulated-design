@@ -367,6 +367,8 @@ class ElasticModelBase(ABC):
             masses_g, masses_q = np.array(self._get_nodal_masses())
             masses = masses_g + masses_q
 
+        # Ground level, floor heights are measured from it
+        z0 = min(self.geometry.system_grid_data.z.ordinates)
         rnodes = []
         floor_weights = []
         floor_heights = []
@@ -409,7 +411,7 @@ class ElasticModelBase(ABC):
             floor_lx.append(lx)
             floor_ly.append(ly)
             floor_weights.append(sum_mass[0] * grav_acc)
-            floor_heights.append(cm[2])
+            floor_heights.append(round(cm[2] - z0, PRECISION))
 
         return (rnodes, np.array(floor_weights), np.array(floor_heights),
                 np.array(floor_lx), np.array(floor_ly))

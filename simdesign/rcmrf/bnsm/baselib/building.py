@@ -938,11 +938,14 @@ class BuildingBase(ABC):
             mode1 = int(inds[0] + 1)
         else:  # Just build the model
             self.build()
+        # Base level, floor heights are measured from it
+        base_level = min(ops.nodeCoord(foundation.foundation_node.tag, 3)
+                         for foundation in self.foundations)
         for floor in self.floors:
             node = floor.rnode.tag
             nodes.append(node)
             masses.append(sum(floor.masses))
-            heights.append(ops.nodeCoord(node, 3))
+            heights.append(ops.nodeCoord(node, 3) - base_level)
             if self.scheme == 'FMP':
                 modal_disps.append(ops.nodeEigenvector(node, mode1, ctrl_dof))
         # Convert these lists to arrays for performing array operations

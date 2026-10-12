@@ -340,7 +340,8 @@ class Column(ColumnBase):
             # Design forces
             Vd_x = max(abs(force.Vx1), abs(force.Vx9))
             Vd_y = max(abs(force.Vy1), abs(force.Vy9))
-            Nd = max(abs(force.N1), abs(force.N9))
+            # Compressive axial force only (tension is taken as zero)
+            Nd = max(0.0, -min(force.N1, force.N9))
             niu = Nd / (self.Ag * self.fck)
 
             # Shear force due to gravity loads

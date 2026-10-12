@@ -345,7 +345,8 @@ class Column(ColumnBase):
             # Design forces
             Ve_x = max(abs(force.Vx1), abs(force.Vx9))
             Ve_y = max(abs(force.Vy1), abs(force.Vy9))
-            Nd = max(abs(force.N1), abs(force.N9))
+            # Compressive axial force only (tension is taken as zero)
+            Nd = max(0.0, -min(force.N1, force.N9))
 
             # Shear force resisted by concrete, Eq.8.1 in TS500-2000
             Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * \

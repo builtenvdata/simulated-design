@@ -355,6 +355,10 @@ class Column(ColumnCP01):
             _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc,
             pinchx, pinchy, damage1, damage2, beta
          ) = self._get_rot_hinge_props(axis)
+        # Exclude the shear distortion term from the yield rotation when the
+        # shear deformations are modelled explicitly by the shear springs
+        if not self.capacity_design:
+            theta_y -= self._get_shear_yield_rotation(axis)
 
         # Elastic stiffness modification factor
         n_factor = 10  # n=10 is used in Ibarra and Krawinkler (2005)

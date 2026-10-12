@@ -1158,6 +1158,27 @@ class ColumnBase(ABC):
 
         return Lp
 
+    def _get_shear_yield_rotation(self, axis: Literal['x', 'y']) -> float:
+        """Computes the shear distortion term of the yield chord rotation.
+
+        Parameters
+        ----------
+        axis : Literal['x', 'y']
+            Local bending axis considered for the calculations.
+
+        Returns
+        -------
+        float
+            Second term of the yield chord rotation in EN 1998-3:2005
+            Equation A.10b, i.e., the average shear distortion of the shear
+            span at flexural yielding (Panagiotakos and Fardis, 2001).
+        """
+        # Section height parallel to the shear force
+        h = self.design.by if axis == 'x' else self.design.bx
+        # Shear span, assuming equal to 50% of the free length of the element
+        Ls = self.design.H / 2
+        return 0.0014 * (1 + 1.5 * h / Ls)
+
     def _get_rot_hinge_props(self, axis: Literal['x', 'y']) -> List[float]:
         """Compute backbone and cyclic degradation parameters defining the
         behaviour of the rotational plastic hinge about specified local axis.
@@ -1392,7 +1413,7 @@ class ColumnBase(ABC):
         )
         # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
         theta_y1 = phi_y * ((Ls + (av * z)) / 3)
-        theta_y2 = 0.0014 * (1 + 1.5 * h / Ls)
+        theta_y2 = self._get_shear_yield_rotation(axis)
         theta_y3 = 0.125 * phi_y * dbl_cor * (fsyl_mpa / (fc_mpa**0.50))
         theta_y = theta_y1 + theta_y2 + (self.bondslip_factor * theta_y3)
 

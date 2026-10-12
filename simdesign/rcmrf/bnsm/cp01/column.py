@@ -271,6 +271,10 @@ class Column(ColumnBase):
             _, My, Mc, Mr, theta_y, theta_cap_pl, theta_pc,
             pinchx, pinchy, damage1, damage2, beta
          ) = self._get_rot_hinge_props(axis)
+        # Exclude the shear distortion term from the yield rotation when the
+        # shear deformations are modelled explicitly by the shear springs
+        if not self.capacity_design:
+            theta_y -= self._get_shear_yield_rotation(axis)
 
         # Rotation values for monotonic loading
         theta_1 = theta_y
@@ -409,8 +413,13 @@ class Column(ColumnBase):
         )
         # Convert from MPa units to based units
         Vn *= MN
+        # Number of shear springs in series along the member; the same hinge
+        # section (with the shear springs) is used at both ends
+        n_springs = 2
         # Shear-spring elastic slope - LeBorgne and Ghannoum (2014) - Eqn. 1
-        k_el = (5 / 6) * (self.Gcm_q * Ag / Ln)
+        # NOTE: The member stiffness is multiplied by the number of springs
+        # so that springs in series give the member shear stiffness.
+        k_el = n_springs * (5 / 6) * (self.Gcm_q * Ag / Ln)
         # Degrading slope of the shear-drift spring backbone
         # Shoraka and Elwood (2013) - Eqn. 20
         k_deg = (
@@ -432,7 +441,9 @@ class Column(ColumnBase):
         x3, y3 = mu_y2 * theta_y, k2 * Vn  # the third point TODO: verify
         # Floating point value for the slope of the third branch in the
         # post-failure backbone, assumed to be negative
-        Kdeg = -k_deg
+        # NOTE: The member slope is multiplied by the number of springs so
+        # that springs in series give the member degrading slope.
+        Kdeg = -n_springs * k_deg
         # Floating point value for the residual force capacity of the
         # post-failure backbone
         Fres = 0.05  # should be a small value - shear failure

@@ -2566,7 +2566,7 @@ class BuildingBase(ABC):
                 j_dict['right_beam_y'].append(jnt.front_beam.line.tag)
             else:
                 j_dict['right_beam_y'].append(None)
-            j_dict['fcm [MPa]'].append(joint_model)
+            j_dict['fcm [MPa]'].append(jnt.fcm / MPa)
             j_dict['model_type_q'].append(joint_model)
         # Convert joints dictionary to Pandas DataFrame
         joints = pd.DataFrame(j_dict)

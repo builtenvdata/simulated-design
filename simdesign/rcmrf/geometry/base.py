@@ -661,7 +661,10 @@ class GeometryBase(ABC):
         """
         mid_floor_points = []
         for line in self.stairs_lines_x1:
-            mid_floor_points.extend(line.points)
+            for point in line.points:
+                # Adjacent staircases along x share a mid-storey point
+                if point not in mid_floor_points:
+                    mid_floor_points.append(point)
         return mid_floor_points
 
     @property
@@ -1671,8 +1674,22 @@ class GeometryBase(ABC):
                 coords_bot = np.array(bot_point.coordinates)
                 coords_mid = (coords_top + coords_bot) / 2
                 coords_mid = round_list(coords_mid.tolist())
-                # create the mid Point
                 grid = [i, j, k - 0.5]
+                mid_point = self.find_point_by_grid_ids(grid)
+                if mid_point:
+                    # The vertical line was already divided by an adjacent
+                    # staircase along x, use its mid point and lines
+                    stairs_mid_points.append(mid_point)
+                    lower_line_points = [bot_point, mid_point]
+                    upper_line_points = [mid_point, top_point]
+                    lower_line = self.find_line_by_points(lower_line_points)
+                    upper_line = self.find_line_by_points(upper_line_points)
+                    stairs_lines.extend([lower_line, upper_line])
+                    infill_points.extend([bot_point, top_point])
+                    bot_infill_points.extend(lower_line_points)
+                    top_infill_points.extend(upper_line_points)
+                    continue
+                # create the mid Point
                 if self.encoded_tags:
                     tag = point_tag_from_grid(grid)
                 else:

@@ -103,11 +103,11 @@ def generate(
                     "sigma_y": 0.35,
                 },
                 "steel": {
-                    "tag": ["S400", "S500"],
+                    "grade": ["S400", "S500"],
                     "probability": [0.10, 0.90],
                 },
                 "concrete": {
-                    "tag": ["C20/25", "C25/30", "C30/37", "C35/45"],
+                    "grade": ["C20/25", "C25/30", "C30/37", "C35/45"],
                     "probability": [0.30, 0.45, 0.20, 0.05],
                 },
                 "ground_storey_height": {
@@ -119,8 +119,8 @@ def generate(
                 "slab_typology": {
                     "ss1_prob_given_ss1_or_hs": 0.50,
                     "ss2_prob_given_ss2_or_hs": 0.65,
-                    "upper_lim_for_min_ss_span_length": 6.0,
-                    "upper_lim_for_max_ss2_span_ratio": 2.0,
+                    "max_ss_short_span": 6.0,
+                    "max_ss2_aspect_ratio": 2.0,
                     "staircase_slab_depth": 0.15,
                     "floor_slab_thickness": 0.15,
                 },

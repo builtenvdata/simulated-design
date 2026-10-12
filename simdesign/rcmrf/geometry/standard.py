@@ -464,10 +464,9 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k - 1, 'YZ')
                 is_exterior = (i == 0 or i == self._num_bays_x)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True
 
             # 2nd side wall in YZ
@@ -484,10 +483,9 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k, 'YZ')
                 is_exterior = (i == 0 or i == self._num_bays_x)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True
 
             # 1st side wall in XZ
@@ -504,8 +502,7 @@ class StandardGeometry(GeometryBase):
             ]
             inf = self.find_rectangle_by_points(points)
             if inf is None:
-                tag = encode_rectangle_tag(i, j, k, 'XZ')
                 is_exterior = (j == 0 or j == self._num_bays_y)
                 typology = get_typology(is_exterior)
-                inf = self.add_new_rectangle(points, tag, "Infill", typology)
+                inf = self.add_new_rectangle(points, None, "Infill", typology)
             inf.stairs = True

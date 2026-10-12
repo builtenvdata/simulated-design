@@ -6,6 +6,7 @@ classes :class:`Line` and :class:`Rectangle`, and grid-data helpers
 """
 # Imports from installed packages
 from abc import ABC, abstractmethod
+from collections import Counter
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -19,7 +20,9 @@ from mpl_toolkits.mplot3d import Axes3D
 # Imports from utils library
 from ...utils.misc import PRECISION, round_list
 from ...utils.mesh import Point, Line as BasicLine, Rectangle as BasicRectangle
-from ...utils.tags import stairs_point_tag, set_line_code, set_rectangle_code
+from ...utils.tags import (
+    point_tag_from_grid, line_tag_from_grids, rectangle_tag_from_grids
+)
 
 
 class Line(BasicLine):
@@ -298,6 +301,11 @@ class GeometryBase(ABC):
     ALLOWED_RECTANGLE_UNIT_NORMAL_VECTORS : list
         Allowed unit normal vectors for rectangles.
         Default is ([0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0])
+    encoded_tags : bool
+        ``True`` if the tags of points, lines and rectangles follow the tag
+        encoding of :mod:`simdesign.utils.tags`. New objects are then tagged
+        from their grid indices; otherwise they take the maximum tag plus one.
+        Default is ``True``.
 
     Notes
     -----
@@ -323,6 +331,7 @@ class GeometryBase(ABC):
     POINTS_SHEET: str = "Points"
     LINES_SHEET: str = "Lines"
     RECTANGLES_SHEET: str = "Rectangles"
+    encoded_tags: bool = True
     ALLOWED_LINE_UNIT_VECTORS: Tuple[List[float]] = (
         [1.0, 0.0, 0.0],  # X
         [0.0, 1.0, 0.0],  # Y
@@ -1585,7 +1594,6 @@ class GeometryBase(ABC):
                             # Create the rectangle if it does not exist
                             if rectangle is None:
                                 rectangle = self.add_new_rectangle(points)
-                                self.rectangles.append(rectangle)
                             rectangle.component = 'Stairs'
         # Set the system grid data using the new point coordinates
         self.system_grid_data.update_data(self.points)
@@ -1634,7 +1642,10 @@ class GeometryBase(ABC):
                 coords_mid = round_list(coords_mid.tolist())
                 # create the mid Point
                 grid = [i, j, k - 0.5]
-                tag = stairs_point_tag(top_point.tag)
+                if self.encoded_tags:
+                    tag = point_tag_from_grid(grid)
+                else:
+                    tag = max(self.point_tags) + 1
                 mid_point = Point(grid, coords_mid, tag)
                 self.points.append(mid_point)
                 stairs_mid_points.append(mid_point)
@@ -1645,12 +1656,10 @@ class GeometryBase(ABC):
                 # Create lower and upper vertical Lines (column)
                 lower_line_points = [bot_point, mid_point]
                 upper_line_points = [mid_point, top_point]
-                lower_line_tag = set_line_code(old_line.tag, 'Z_lower')
-                upper_line_tag = set_line_code(old_line.tag, 'Z_upper')
                 lower_line = self.add_new_line(
-                    lower_line_points, lower_line_tag, component='Column')
+                    lower_line_points, component='Column')
                 upper_line = self.add_new_line(
-                    upper_line_points, upper_line_tag, component='Column')
+                    upper_line_points, component='Column')
                 lower_line.stairs = True
                 upper_line.stairs = True
                 stairs_lines.extend([lower_line, upper_line])
@@ -1674,8 +1683,8 @@ class GeometryBase(ABC):
                 stairs_lines.append(vert_line)
 
             # Adding horizontal staircase line along -x at the mid storey
-            tag = set_line_code(upper_line_tag, 'X_stairs')
-            mid_hor_line = self.add_new_line(stairs_mid_points, tag, 'Beam')
+            mid_hor_line = self.add_new_line(
+                stairs_mid_points, component='Beam')
             mid_hor_line.stairs = True
             stairs_lines.append(mid_hor_line)
 
@@ -1693,13 +1702,11 @@ class GeometryBase(ABC):
                 # Remove the old infill rectangle
                 self.rectangles.remove(rect)
                 # Add new infills
-                bot_tag = set_rectangle_code(rectangle.tag, 'lower')
                 bot_rect = self.add_new_rectangle(
-                    bot_infill_points, bot_tag, 'Infill', inf_str)
+                    bot_infill_points, None, 'Infill', inf_str)
                 bot_rect.stairs = True
-                top_tag = set_rectangle_code(rectangle.tag, 'upper')
                 top_rect = self.add_new_rectangle(
-                    top_infill_points, top_tag, 'Infill', inf_str)
+                    top_infill_points, None, 'Infill', inf_str)
                 top_rect.stairs = True
             # update grid system data
             if k - 0.5 not in self.system_grid_data.z.ids:  # if num stairs > 1
@@ -1971,8 +1978,8 @@ class GeometryBase(ABC):
         coordinates : List[float]
             The coordinates [x, y, z] of the new point.
         tag : Optional[int], optional
-            The tag to assign to the new point. If None or if the provided tag
-            already exists, a new tag is automatically assigned,
+            The tag to assign to the new point. If None, the tag is encoded
+            from the grid indices of the point (see ``encoded_tags``),
             by default None.
 
         Returns
@@ -1982,36 +1989,45 @@ class GeometryBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame,
-          the method automatically assigns a new tag by incrementing the
-          maximum tag value found in the frame.
+        - If the provided tag already exists in the frame, or if the tag is
+          None and the tags are not encoded, the method assigns a new tag by
+          incrementing the maximum tag value found in the frame.
         - The method also updates the system grid data based on the newly
           added point and updates the grid IDs of existing points accordingly.
+        - If the tags are encoded and the new point adds a grid line, the grid
+          IDs of the existing points change, and all points, lines and
+          rectangles are renumbered (see :meth:`retag`).
         """
         point = self.find_point_by_coordinates(coordinates)
         if point:
             warnings.warn("The point already exits", UserWarning)
         else:
-            # Set the tag
-            if tag is None or self.find_point_by_tag(tag):
-                tag = max(self.point_tags) + 1
             # Set the grid ids
             x, y, z = coordinates
+            new_grid_line = False
             # For x
             if x in self.system_grid_data.x.ordinates:
                 x_id = self.system_grid_data.x.id_by_ord(x)
             else:
                 x_id = max(self.system_grid_data.x.ids) + 1
+                new_grid_line = True
             # For y
             if y in self.system_grid_data.y.ordinates:
                 y_id = self.system_grid_data.y.id_by_ord(y)
             else:
                 y_id = max(self.system_grid_data.y.ids) + 1
+                new_grid_line = True
             # For z
             if z in self.system_grid_data.z.ordinates:
                 z_id = self.system_grid_data.z.id_by_ord(z)
             else:
                 z_id = max(self.system_grid_data.z.ids) + 1
+                new_grid_line = True
+            # Set the tag
+            encoded_tag = None
+            if self.encoded_tags and not new_grid_line:
+                encoded_tag = point_tag_from_grid([x_id, y_id, z_id])
+            tag = self._assign_tag(tag, encoded_tag, self.point_tags, 'point')
             # Create the point
             point = Point([x_id, y_id, z_id], coordinates, tag)
             self.points.append(point)
@@ -2019,8 +2035,91 @@ class GeometryBase(ABC):
             self.system_grid_data.update_data(self.points)
             # Update points grid ids
             self.system_grid_data.update_points_grid_ids(self.points)
+            # Renumber the objects if their grid ids have changed
+            if self.encoded_tags and new_grid_line:
+                warnings.warn(
+                    "The new point adds a grid line. Points, lines and "
+                    "rectangles are renumbered.", UserWarning)
+                self.retag()
         # Return the added or found point
         return point
+
+    @staticmethod
+    def _assign_tag(tag: Optional[int], encoded_tag: Optional[int],
+                    used_tags: List[int], name: str) -> int:
+        """Assign the tag of a new point, line or rectangle.
+
+        Parameters
+        ----------
+        tag : Optional[int]
+            The tag provided by the user, if any.
+        encoded_tag : Optional[int]
+            The tag encoded from the grid indices, if the tags are encoded.
+        used_tags : List[int]
+            The tags of the existing objects of the same type.
+        name : str
+            Name of the object type, used in the warning message.
+
+        Returns
+        -------
+        int
+            The provided tag, else the encoded tag, else the maximum tag plus
+            one. The maximum tag plus one is also used, with a warning, if the
+            tag is already used.
+        """
+        if tag is None:
+            tag = encoded_tag
+        new_tag = max(used_tags, default=-1) + 1
+        if tag is None:
+            return new_tag
+        if tag in used_tags:
+            warnings.warn(
+                f"The {name} tag {tag} is already used; tag {new_tag} is "
+                "assigned instead.", UserWarning)
+            return new_tag
+        return tag
+
+    def retag(self) -> Dict[str, Dict[int, int]]:
+        """Renumber the points, lines and rectangles with the tag encoding.
+
+        The tags are encoded from the current grid indices (see
+        :mod:`simdesign.utils.tags`), and ``encoded_tags`` is set to ``True``.
+
+        Returns
+        -------
+        Dict[str, Dict[int, int]]
+            New tags keyed by object type ('points', 'lines', 'rectangles')
+            and by old tag.
+
+        Raises
+        ------
+        ValueError
+            If two objects of the same type share the same grid location.
+        """
+        new_tags = {
+            'points': [(point, point_tag_from_grid(point.grid_ids))
+                       for point in self.points],
+            'lines': [(line, line_tag_from_grids(
+                [point.grid_ids for point in line.points]))
+                for line in self.lines],
+            'rectangles': [(rect, rectangle_tag_from_grids(
+                [point.grid_ids for point in rect.points]))
+                for rect in self.rectangles],
+        }
+        for name, pairs in new_tags.items():
+            counts = Counter(tag for _, tag in pairs)
+            duplicates = [tag for tag, count in counts.items() if count > 1]
+            if duplicates:
+                raise ValueError(
+                    f"Cannot renumber the {name}: some of them share the same "
+                    f"grid location (tags {duplicates}).")
+        mapping = {name: {obj.tag: tag for obj, tag in pairs}
+                   for name, pairs in new_tags.items()}
+        for pairs in new_tags.values():
+            for obj, tag in pairs:
+                obj.tag = tag
+        self.encoded_tags = True
+        return mapping
 
     def add_new_line(
         self, points: List[Point], tag: Optional[int] = None,
@@ -2038,8 +2137,8 @@ class GeometryBase(ABC):
         points : List[Point]
             The list of points that define the new line.
         tag : Optional[int], optional
-            The tag to assign to the new line. If None or if the provided tag
-            already exists, a new tag is automatically assigned,
+            The tag to assign to the new line. If None, the tag is encoded
+            from the grid indices of the points (see ``encoded_tags``),
             by default None.
         component : Optional[Literal['Beam', 'Column']]
             Type of component whose axis is represented by the line geometry;
@@ -2055,20 +2154,22 @@ class GeometryBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame,
-          the method automatically assigns a new tag by incrementing the
-          maximum tag value found in the frame.
+        - If the provided tag already exists in the frame, or if the tag is
+          None and the tags are not encoded, the method assigns a new tag by
+          incrementing the maximum tag value found in the frame.
         - The method also ensures that the points defining the line are sorted
           in ascending order of their x and y coordinates for consistency.
         """
-        # Set the tag
-        if tag is None or self.find_line_by_tag(tag):
-            tag = max(self.line_tags) + 1
         # Find the line
         line = self.find_line_by_points(points)
         if line:  # Already exist
             warnings.warn("The line already exits", UserWarning)
         else:  # Create the new line
+            encoded_tag = None
+            if self.encoded_tags and tag is None:
+                encoded_tag = line_tag_from_grids(
+                    [point.grid_ids for point in points])
+            tag = self._assign_tag(tag, encoded_tag, self.line_tags, 'line')
             line = Line(points, tag, orientation, component)
             self.lines.append(line)
         # Return the new line or the found one
@@ -2091,9 +2192,9 @@ class GeometryBase(ABC):
         points : List[Point]
             The list of four points that define the rectangle.
         tag : Optional[int], optional
-            The tag to assign to the new rectangle. If None or if the provided
-            tag already exists, a new tag is automatically assigned,
-            by default None.
+            The tag to assign to the new rectangle. If None, the tag is
+            encoded from the grid indices of the points (see
+            ``encoded_tags``), by default None.
         component : Optional[Literal['Slab', 'Stairs', 'Infill']]
             The type of structural component which is represented by the
             rectangle. By default None.
@@ -2107,21 +2208,24 @@ class GeometryBase(ABC):
 
         Notes
         -----
-        - If the provided tag is None or if it already exists in the frame,
-          the method automatically assigns a new tag by incrementing the
-          maximum tag value found in the frame.
+        - If the provided tag already exists in the frame, or if the tag is
+          None and the tags are not encoded, the method assigns a new tag by
+          incrementing the maximum tag value found in the frame.
         - The method also ensures that the lines defining the rectangle are
           created if they do not exist, and the rectangle points are sorted to
           maintain consistency.
         """
-        # Set the tag
-        if tag is None or self.find_rectangle_by_tag(tag):
-            tag = max(self.rectangle_tags) + 1
         # Find the rectangle
         rectangle = self.find_rectangle_by_points(points)
         if rectangle:  # Already exists in the frame
             warnings.warn("The rectangle already exits", UserWarning)
         else:  # Create the new one
+            encoded_tag = None
+            if self.encoded_tags and tag is None:
+                encoded_tag = rectangle_tag_from_grids(
+                    [point.grid_ids for point in points])
+            tag = self._assign_tag(
+                tag, encoded_tag, self.rectangle_tags, 'rectangle')
             rectangle = Rectangle(points, None, tag, component, strength)
             line1_points = [rectangle.points[0], rectangle.points[1]]
             line2_points = [rectangle.points[1], rectangle.points[2]]

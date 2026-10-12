@@ -17,6 +17,11 @@ that grids with up to 99 bays in each direction and 99 storeys are supported.
   ``LINE_CODES``), anchored at the minimum grid indices.
 - Rectangles: ``tag = code * 10**6 + i * 10**4 + j * 10**2 + k`` (see
   ``RECTANGLE_CODES``), anchored at the minimum grid indices.
+- Lines and rectangles with a stair mid-level point are anchored at the floor
+  level below it, and take the stair codes ('Z_lower', 'Z_upper', 'X_stairs',
+  'lower', 'upper'). The tags of points, lines and rectangles can be derived
+  from their grid indices with :func:`point_tag_from_grid`,
+  :func:`line_tag_from_grids` and :func:`rectangle_tag_from_grids`.
 - Sub-objects (materials, sections, infill struts, ...):
   ``tag = owner_tag * 100 + local_id``.
 
@@ -32,7 +37,8 @@ Examples
 (0, 1, 0, 3, 1, 2)
 """
 # Imports from installed packages
-from typing import Literal, Tuple
+from math import ceil, floor
+from typing import Literal, Sequence, Tuple
 
 FACTOR = 100
 """Positional base per grid index (two digits per index)."""
@@ -195,24 +201,6 @@ def decode_line_tag(tag: int) -> Tuple[int, int, int, str]:
     return (*_decode_grid(tag), types.get(tag // LEVEL_UNIT, '?'))
 
 
-def set_line_code(tag: int, line_type: str) -> int:
-    """Replace the type code of a line tag, keeping its grid indices.
-
-    Parameters
-    ----------
-    tag : int
-        Line tag.
-    line_type : str
-        Key of ``LINE_CODES``.
-
-    Returns
-    -------
-    int
-        Line tag with the new type code.
-    """
-    return _check_tag(LINE_CODES[line_type] * LEVEL_UNIT + tag % LEVEL_UNIT)
-
-
 def encode_rectangle_tag(i: int, j: int, k: int, plane: str) -> int:
     """Encode the anchor grid indices and the type of a rectangle into a tag.
 
@@ -249,22 +237,109 @@ def decode_rectangle_tag(tag: int) -> Tuple[int, int, int, str]:
     return (*_decode_grid(tag), planes.get(tag // LEVEL_UNIT, '?'))
 
 
-def set_rectangle_code(tag: int, plane: str) -> int:
-    """Replace the type code of a rectangle tag, keeping its grid indices.
+def _is_mid_level(k: float) -> bool:
+    """Check if a z grid index is at a stair mid-level (ends with .5)."""
+    return k % 1 != 0
+
+
+def point_tag_from_grid(grid_ids: Sequence[float]) -> int:
+    """Tag of a point from its grid indices.
 
     Parameters
     ----------
-    tag : int
-        Rectangle tag.
-    plane : str
-        Key of ``RECTANGLE_CODES``.
+    grid_ids : Sequence[float]
+        Grid indices ``(i, j, k)`` of the point. Stair mid-level points have
+        ``k`` ending with .5.
 
     Returns
     -------
     int
-        Rectangle tag with the new type code.
+        Point tag. Stair mid-level points take the level flag ``S = 1`` and
+        the grid indices of the point above them.
     """
-    return _check_tag(RECTANGLE_CODES[plane] * LEVEL_UNIT + tag % LEVEL_UNIT)
+    i, j, k = grid_ids
+    if _is_mid_level(k):
+        return stairs_point_tag(encode_point_tag(int(i), int(j), ceil(k)))
+    return encode_point_tag(int(i), int(j), int(k))
+
+
+def line_tag_from_grids(grids: Sequence[Sequence[float]]) -> int:
+    """Tag of a line from the grid indices of its end points.
+
+    Parameters
+    ----------
+    grids : Sequence[Sequence[float]]
+        Grid indices ``(i, j, k)`` of the two end points.
+
+    Returns
+    -------
+    int
+        Line tag anchored at the minimum grid indices, rounded down. Columns
+        split by a stair landing take the 'Z_lower' and 'Z_upper' codes, and
+        beams at a stair mid-level take the 'X_stairs' code.
+
+    Raises
+    ------
+    ValueError
+        If the line is not parallel to the X, Y or Z axis, or if a beam at a
+        stair mid-level is not parallel to the X axis.
+    """
+    grid1, grid2 = grids
+    axes = [n for n in range(3) if grid1[n] != grid2[n]]
+    if len(axes) != 1:
+        raise ValueError(
+            f"The line between grid points {list(grid1)} and {list(grid2)} "
+            "is not parallel to the X, Y or Z axis.")
+    i, j, k = (floor(min(a, b)) for a, b in zip(grid1, grid2))
+    line_type = 'XYZ'[axes[0]]
+    if line_type == 'Z':
+        top = grid1 if grid1[2] > grid2[2] else grid2
+        bottom = grid2 if top is grid1 else grid1
+        if _is_mid_level(top[2]):
+            line_type = 'Z_lower'
+        elif _is_mid_level(bottom[2]):
+            line_type = 'Z_upper'
+    elif _is_mid_level(grid1[2]):
+        if line_type != 'X':
+            raise ValueError(
+                "Beams at a stair mid-level must be parallel to the X axis.")
+        line_type = 'X_stairs'
+    return encode_line_tag(i, j, k, line_type)
+
+
+def rectangle_tag_from_grids(grids: Sequence[Sequence[float]]) -> int:
+    """Tag of a rectangle from the grid indices of its corner points.
+
+    Parameters
+    ----------
+    grids : Sequence[Sequence[float]]
+        Grid indices ``(i, j, k)`` of the four corner points.
+
+    Returns
+    -------
+    int
+        Rectangle tag anchored at the minimum grid indices, rounded down.
+        Infills split by a stair landing take the 'lower' and 'upper' codes.
+
+    Raises
+    ------
+    ValueError
+        If the rectangle is not parallel to the XY, XZ or YZ plane, or if a
+        slab (XY) is at a stair mid-level.
+    """
+    axes = [n for n in range(3) if len({grid[n] for grid in grids}) == 1]
+    if len(axes) != 1:
+        raise ValueError(
+            f"The rectangle with grid points {[list(g) for g in grids]} is "
+            "not parallel to the XY, XZ or YZ plane.")
+    i, j, k = (floor(min(grid[n] for grid in grids)) for n in range(3))
+    plane = {0: 'YZ', 1: 'XZ', 2: 'XY'}[axes[0]]
+    levels = [grid[2] for grid in grids]
+    if any(_is_mid_level(level) for level in levels):
+        if plane == 'XY':
+            raise ValueError("Slabs cannot be at a stair mid-level.")
+        plane = 'upper' if _is_mid_level(min(levels)) else 'lower'
+    return encode_rectangle_tag(i, j, k, plane)
 
 
 def node_tag(point_tag: int, node_type: Literal[

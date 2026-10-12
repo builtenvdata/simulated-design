@@ -89,7 +89,23 @@ class Rectangle(BasicRectangle):
         Lines composing the rectangle boundary.
     stairs : bool
         ``True`` if the rectangle is part of the staircase system.
+    CANONICAL_NORMALS : Tuple[Tuple[float, float, float], ...]
+        Unit normal vectors defining the winding of the corner points, for
+        rectangles in the XY, XZ and YZ planes, respectively.
+
+    Notes
+    -----
+    The corner points are wound so that the unit normal vector follows
+    ``CANONICAL_NORMALS``, whatever their input order. The order of the
+    points and lines, on which the slab, stairs and infill definitions rely
+    (e.g., ``lines[1]`` and ``lines[3]`` are the beams of an infill), then
+    depends only on the geometry.
     """
+    CANONICAL_NORMALS: Tuple[Tuple[float, float, float], ...] = (
+        (0.0, 0.0, -1.0),  # XY
+        (0.0, 1.0, 0.0),   # XZ
+        (-1.0, 0.0, 0.0),  # YZ
+    )
     component: Optional[Literal['Slab', 'Stairs', 'Infill']] = None
     typology: Optional[Literal['Weak', 'Medium', 'Strong']] = None
     lines: Optional[List[Line | List[Line] | None]] = None
@@ -119,8 +135,23 @@ class Rectangle(BasicRectangle):
             Infill typology in terms of strength, by default None
         """
         super().__init__(points, lines, tag)
+        self._set_canonical_winding()
         self.component = component
         self.typology = typology
+
+    def _set_canonical_winding(self) -> None:
+        """Reverse the winding of the corner points if the unit normal vector
+        is opposite to the canonical one (see ``CANONICAL_NORMALS``).
+
+        The first point (minimum x, y, z) is kept, and the lines are sorted
+        to match the new order of the points.
+        """
+        normal = self.unit_normal_vector
+        for canonical in self.CANONICAL_NORMALS:
+            if np.allclose(normal, -np.array(canonical)):
+                self.points = [self.points[0]] + self.points[:0:-1]
+                self.sort_lines()
+                break
 
 
 class GridData:

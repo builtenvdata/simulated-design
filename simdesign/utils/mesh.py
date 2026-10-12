@@ -601,6 +601,14 @@ class Rectangle(Parallelogram):
             raise ValueError(
                 "Parallelogram does not have equal opposite sides."
                 "It cannot be a Rectangle.")
+        # Check for a right angle (sufficient for a parallelogram)
+        v1 = self.vertices[1] - self.vertices[0]
+        v3 = self.vertices[3] - self.vertices[0]
+        cosine = np.dot(v1, v3) / (np.linalg.norm(v1) * np.linalg.norm(v3))
+        if not np.isclose(cosine, 0.0, atol=1e-6):
+            raise ValueError(
+                "Parallelogram does not have right angles."
+                "It cannot be a Rectangle.")
 
 
 class Square(Rectangle):

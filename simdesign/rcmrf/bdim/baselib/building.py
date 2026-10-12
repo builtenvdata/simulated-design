@@ -10,6 +10,7 @@ import numpy as np
 from math import ceil
 from pathlib import Path
 import pandas as pd
+import warnings
 
 # Imports from bdim base library
 from .analysis import ElasticModelBase
@@ -2469,7 +2470,11 @@ class BuildingBase(ABC):
             # Set average column axial forces to be used in hinge calculations.
             self._set_expected_axial_forces_on_column_hinges()
         else:
-            Warning('No design solution is found.')
+            num_storeys = len(self.geometry.floor_level_points)
+            warnings.warn(
+                f"No design solution is found for the {self.design_class} "
+                f"building (beta={self.beta}, {num_storeys} storeys) after "
+                f"{counter} iterations.", UserWarning)
 
     def to_csv(self, directory: Union[str, Path]) -> None:
         """Save the generated BDIM data into the specified directory.

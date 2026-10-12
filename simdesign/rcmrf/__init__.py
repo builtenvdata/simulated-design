@@ -217,6 +217,8 @@ def generate(
             bdim.append(bdim_)
             bnsm.append(bnsm_)
         else:
+            print(f"No design solution is found; building {i + 1} is "
+                  "skipped.")
             bdim.append(None)
             bnsm.append(None)
     # Save bcim information

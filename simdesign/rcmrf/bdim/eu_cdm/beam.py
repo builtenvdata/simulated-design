@@ -19,14 +19,14 @@ ECONOMIC_MU_EB: float = 0.25
 ECONOMIC_MU_WB: float = 0.25
 """Maximum mu value considered for the economic wide beam design."""
 TAU_C_VECT = np.array(
-    [0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15]) * MPa
+    [0.5, 0.6, 0.65, 0.75, 0.85, 0.90, 1.00, 1.10, 1.15])
 """Vector of allowable shear stresses that carried by the concrete or
-vector of the design shear strength values of concrete."""
-TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]) * MPa
+vector of the design shear strength values of concrete (in MPa)."""
+TAU_MAX_VECT = np.array([2.4, 3.2, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
 """Vector of allowable shear stresses that can be carried by
-the beam section."""
-FCK_VECT = np.array([12, 16, 20, 25, 30, 35, 40, 45, 50]) * MPa
-"""Vector of characteristic concrete compressive strength values."""
+the beam section (in MPa)."""
+FCK_VECT = np.array([12, 16, 20, 25, 30, 35, 40, 45, 50])
+"""Vector of characteristic concrete compressive strength values (MPa)."""
 
 
 class Beam(BeamBase):
@@ -117,7 +117,7 @@ class Beam(BeamBase):
             mu_max = ECONOMIC_MU_EB
 
         # Allowable shear stress that can be carried by the beam
-        tau_max = np.interp(self.concrete.fck, FCK_VECT, TAU_MAX_VECT)
+        tau_max = np.interp(self.concrete.fck, FCK_VECT, TAU_MAX_VECT) * MPa
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h
@@ -220,7 +220,7 @@ class Beam(BeamBase):
         Reinforcement is computed at three sections: start, mid, and end.
         """
         # Allowable shear stress that can be carried by the beam
-        tau_c = np.interp(self.concrete.fck, FCK_VECT, TAU_C_VECT)
+        tau_c = np.interp(self.concrete.fck, FCK_VECT, TAU_C_VECT) * MPa
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
         d = 0.9 * self.h

@@ -303,8 +303,9 @@ class GeometryBase(ABC):
         List of lines in the frame.
     rectangles : List[Rectangle]
         List of rectangles in the frame.
-    stairs_lines : List[List[Line]]
-        List of lines representing stairs in the frame.
+    stairs_lines : List[List[Line | List[Line]]]
+        List of lines representing stairs in the frame, per staircase (see
+        the ``stairs_lines_*`` properties); z3 and z4 are lists of lines.
     system_grid_data : SystemGridData
         Grid data for the entire frame.
     stairs_width_x : float
@@ -354,7 +355,7 @@ class GeometryBase(ABC):
     points: List[Point]
     lines: List[Line]
     rectangles: List[Rectangle]
-    stairs_lines: List[List[Line]]
+    stairs_lines: List[List[Line | List[Line]]]
     system_grid_data: SystemGridData
     stairs_width_x: float
     stairs_width_y: float
@@ -917,36 +918,38 @@ class GeometryBase(ABC):
         return [lines[3] for lines in self.stairs_lines]
 
     @property
-    def stairs_lines_z3(self) -> List[Line]:
-        """Vertical lines connected to the start of the floor-level beam (x2).
+    def stairs_lines_z3(self) -> List[List[Line]]:
+        """Vertical lines on the side of the staircase opposite to the
+        mid-storey beam (x1), at the start of that side.
 
         Returns
         -------
-        List[Line]
-            List of stairs z3 lines.
+        List[List[Line]]
+            List of stairs z3 lines, per staircase.
 
         Notes
         -----
-        It is connected to the start point of upper horizontal line along
-        x-axis (x2), which represents the supporting beam at the floor level,
-        is inserted.
+        The column is not divided by its own staircase. It contains one line,
+        or the lower and upper halves if an adjacent staircase along y divides
+        it.
         """
         return [lines[4] for lines in self.stairs_lines]
 
     @property
-    def stairs_lines_z4(self) -> List[Line]:
-        """Vertical lines connected to the end of the floor-level beam (x2).
+    def stairs_lines_z4(self) -> List[List[Line]]:
+        """Vertical lines on the side of the staircase opposite to the
+        mid-storey beam (x1), at the end of that side.
 
         Returns
         -------
-        List[Line]
-            List of stairs z4 lines.
+        List[List[Line]]
+            List of stairs z4 lines, per staircase.
 
         Notes
         -----
-        It is connected to the end point of upper horizontal line along
-        x-axis (x2), which represents the supporting beam at the floor level,
-        is inserted.
+        The column is not divided by its own staircase. It contains one line,
+        or the lower and upper halves if an adjacent staircase along y divides
+        it.
         """
         return [lines[5] for lines in self.stairs_lines]
 
@@ -1722,13 +1725,9 @@ class GeometryBase(ABC):
                         idx = rect.lines.index(old_line)
                         rect.lines[idx] = [lower_line, upper_line]
 
-            # Add supporting vertical lines which are not divided
-            for top_point in rectangle.points[1:3]:
-                i, j, k = top_point.grid_ids
-                bot_point = self.find_point_by_grid_ids([i, j, k - 1])
-                vert_line_points = [bot_point, top_point]
-                vert_line = self.find_line_by_points(vert_line_points)
-                stairs_lines.append(vert_line)
+            # Supporting vertical lines which are not divided (z3, z4), set
+            # after all staircases are added
+            stairs_lines.extend([[], []])
 
             # Adding horizontal staircase line along -x at the mid storey
             mid_hor_line = self.add_new_line(
@@ -1760,6 +1759,22 @@ class GeometryBase(ABC):
             if k - 0.5 not in self.system_grid_data.z.ids:  # if num stairs > 1
                 self.system_grid_data.z.ids.append(k - 0.5)
                 self.system_grid_data.z.ordinates.append(coords_mid[-1])
+
+        # Supporting vertical lines which are not divided by their staircase
+        # (z3, z4). An adjacent staircase along y may divide them.
+        for rectangle, stairs_lines in zip(self.stairs_rectangles,
+                                           self.stairs_lines):
+            for slot, top_point in zip((4, 5), rectangle.points[1:3]):
+                i, j, k = top_point.grid_ids
+                bot_point = self.find_point_by_grid_ids([i, j, k - 1])
+                mid_point = self.find_point_by_grid_ids([i, j, k - 0.5])
+                if mid_point:
+                    stairs_lines[slot] = [
+                        self.find_line_by_points([bot_point, mid_point]),
+                        self.find_line_by_points([mid_point, top_point])]
+                else:
+                    stairs_lines[slot] = [
+                        self.find_line_by_points([bot_point, top_point])]
 
         # Sort 'ID' list and get the permutation indices
         sorted_indices = sorted(

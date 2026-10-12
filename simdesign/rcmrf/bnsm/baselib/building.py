@@ -470,10 +470,6 @@ class BuildingBase(ABC):
         # Add columns to ops domain (column elements)
         for column in self.columns:
             column.add_to_ops()
-        # Add infills to ops domain (diagonal struts)
-        if self.include_infills:
-            for infill in self.infills:
-                infill.add_to_ops()
 
         # Add gravity time-series and load pattern to ops domain
         ops.timeSeries('Linear', GRAV_TS_TAG)
@@ -500,6 +496,11 @@ class BuildingBase(ABC):
                 "invalid for subsequent analyses.")
         ops.loadConst('-time', 0.0)
         ops.wipeAnalysis()
+
+        # Add infills to ops domain (diagonal struts) after gravity
+        if self.include_infills:
+            for infill in self.infills:
+                infill.add_to_ops()
 
     def do_modal(
         self, num_modes: int = 3, out_dir: Optional[str | Path] = None,
@@ -1107,11 +1108,11 @@ class BuildingBase(ABC):
             "add_beams()",
             "# Define components of columns",
             "add_columns()",
-            "# Define components of infills",
-            "if infills:",
-            "    add_infills()",
             "# Perform static analysis under gravity loads",
             "do_gravity()",
+            "# Define components of infills (after gravity, unstressed)",
+            "if infills:",
+            "    add_infills()",
             ""
         ]
 
@@ -1839,12 +1840,12 @@ class BuildingBase(ABC):
             "source beams.tcl",
             "# Define components of columns",
             "source columns.tcl",
-            "# Define components of infills",
+            "# Perform static analysis under gravity loads",
+            "source gravity.tcl",
+            "# Define components of infills (after gravity, unstressed)",
             "if {$::infills} {",
             "    source infills.tcl",
             "}",
-            "# Perform static analysis under gravity loads",
-            "source gravity.tcl",
             ""
         ]
 

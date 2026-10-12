@@ -68,10 +68,15 @@ class BeamBase(ABC):
         specified with respect to the global coordinate system.
     cyclic_model : bool
         If True, the model parameters will be adjusted for cyclic analysis.
-    cracked_section : bool
-        If True, the elastic sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
+    cracked_section : Literal['section', 'fardis'] | float | None
+        Cracked-section (effective) flexural properties of the elastic
+        sections: ``'section'`` from a moment-curvature section analysis,
+        ``'fardis'`` as ``EIeff = My / phi_y`` with the yield moment and
+        curvature of Panagiotakos and Fardis (2001) used by the plastic
+        hinges, or a float as the ratio of effective to gross flexural
+        stiffness. If None, gross-section properties are used.
+        The class attribute holds the method consistent with the plastic
+        hinges or end sections, used for the BNSM option ``'auto'``.
     _Iz_eff : float
         Effective beam moment of inertia around local-z.
 
@@ -132,7 +137,7 @@ class BeamBase(ABC):
     ele_load: float
     load_type: Literal['uniform', 'point']
     jnt_offsets: List[float]
-    cracked_section: bool
+    cracked_section: Literal['section', 'fardis'] | float | None = 'fardis'
     cyclic_model: bool
     _Iz_eff: float
 
@@ -372,7 +377,8 @@ class BeamBase(ABC):
     def __init__(
         self, design: BeamDesign, bondslip_factor: float,
         load_factors: Dict[Literal['G', 'Q'], float],
-        cyclic_model: bool = False, cracked_section: bool = False,
+        cyclic_model: bool = False,
+        cracked_section: Literal['section', 'fardis'] | float | None = None,
         load_type: Literal['uniform', 'point'] = 'point'
     ) -> None:
         """Initialize the Beam object.
@@ -389,19 +395,20 @@ class BeamBase(ABC):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_section : bool, optional
-            If True, the elastic sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_section : Literal['section', 'fardis'] | float | None, optional
+            Cracked-section (effective) flexural properties of the elastic
+            sections: 'section' from a moment-curvature section analysis,
+            'fardis' as My / phi_y of the plastic hinges (Panagiotakos and
+            Fardis, 2001), or a float as the ratio of effective to gross
+            flexural stiffness. If None, gross-section properties are used.
+            By default None. The class attribute ``cracked_section`` holds
+            the method consistent with the plastic hinges or end sections of
+            the element, which is used for the BNSM option 'auto'.
         load_type : Literal['uniform', 'point'], optional
             How the gravity load is applied: 'uniform' as a uniformly
             distributed element load, 'point' as equivalent point loads at the
             element ends. By default 'point'.
         """
-        if load_type not in ('uniform', 'point'):
-            raise ValueError(
-                f"Invalid beam load type: {load_type!r}. Valid options are: "
-                "'uniform', 'point'.")
         self.design = design
         self.bondslip_factor = bondslip_factor
         self.cyclic_model = cyclic_model
@@ -785,9 +792,9 @@ class BeamBase(ABC):
         """
         # Plastic hinge properties
         (
-            phiy_neg, My_neg, Mc_neg, Mr_neg,
+            _, My_neg, Mc_neg, Mr_neg,
             theta_y_neg, theta_cap_pl_neg, theta_pc_neg,
-            phiy_pos, My_pos, Mc_pos, Mr_pos,
+            _, My_pos, Mc_pos, Mr_pos,
             theta_y_pos, theta_cap_pl_pos, theta_pc_pos,
             pinchx, pinchy, damage1, damage2, beta,
         ) = self._get_rot_hinge_props()
@@ -803,14 +810,22 @@ class BeamBase(ABC):
         # theta_cap_pl needs to be factored by 0.7
         # theta_pc needs to be factored by 0.5
 
-        # Curvature values for monotonic loading
+        # Curvature values for monotonic loading. The elastic interior gives
+        # the flexural yield rotation My·Ls/(3·EI); the hinge carries the rest
+        # of θy (tension shift, shear and bond-slip) over Lp, so that the
+        # member reaches θy when the hinge yields. If the interior alone
+        # exceeds θy, the hinge keeps the interior stiffness.
         Lp = self._get_plastic_hinge_length()
-        phi_1_neg = phiy_neg
-        phi_2_neg = (theta_2_neg - theta_1_neg) / Lp + phiy_neg
-        phi_3_neg = (theta_3_neg - theta_1_neg) / Lp + phiy_neg
-        phi_1_pos = phiy_pos
-        phi_2_pos = (theta_2_pos - theta_1_pos) / Lp + phiy_pos
-        phi_3_pos = (theta_3_pos - theta_1_pos) / Lp + phiy_pos
+        ls = self.design.L / 2  # Shear span, as in _get_rot_hinge_props
+        EI = self.Ecm_q * self._get_elastic_sec_inputs()[4]  # interior EI
+        dtheta_neg = np.maximum(theta_y_neg - My_neg * ls / (3 * EI), 0.0)
+        dtheta_pos = np.maximum(theta_y_pos - My_pos * ls / (3 * EI), 0.0)
+        phi_1_neg = My_neg / EI + dtheta_neg / Lp
+        phi_2_neg = (theta_2_neg - theta_1_neg) / Lp + phi_1_neg
+        phi_3_neg = (theta_3_neg - theta_1_neg) / Lp + phi_1_neg
+        phi_1_pos = My_pos / EI + dtheta_pos / Lp
+        phi_2_pos = (theta_2_pos - theta_1_pos) / Lp + phi_1_pos
+        phi_3_pos = (theta_3_pos - theta_1_pos) / Lp + phi_1_pos
 
         # Material inputs
         mat_inputs_i = [
@@ -1192,12 +1207,35 @@ class BeamBase(ABC):
           (t2, t1, b1, b2) and sorted by depth from the top fiber.
         - This implementation currently uses only the i-end section
         - Axial load is neglected in the moment-curvature calculation.
+        - If ``cracked_section`` is ``'fardis'``, ``EIeff = My / phi_y`` uses
+          instead the yield moment and curvature of the plastic hinges
+          (Panagiotakos and Fardis, 2001), averaged over both end sections
+          and bending directions.
 
         See Also
         --------
         `get_moments`: Computes cracking/yield moments and associated curvature
         quantities for a layered reinforced-concrete section.
+
+        References
+        ----------
+        Panagiotakos, T. B., & Fardis, M. N. (2001).
+        Deformations of reinforced concrete members at yielding and ultimate.
+        Structural Journal, 98(2), 135-148.
         """
+        if isinstance(self.cracked_section, float):
+            # User-defined ratio of effective to gross flexural stiffness
+            self._Iz_eff = self.cracked_section * self.design.Iz
+            return
+        if self.cracked_section == 'fardis':
+            props = self._get_rot_hinge_props()
+            phiy_neg, My_neg, phiy_pos, My_pos = (
+                props[0], props[1], props[7], props[8])
+            EIeffs = [My_neg[k] / phiy_neg[k] for k in (0, -1)] + [
+                My_pos[k] / phiy_pos[k] for k in (0, -1)]
+            self._Iz_eff = float(np.mean(EIeffs) / self.Ecm_q)
+            return
+
         # Section properties
         h = self.design.h
         b = self.design.b

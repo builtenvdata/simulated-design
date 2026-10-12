@@ -29,6 +29,10 @@ class Column(ColumnBase):
         Column definition extended by this class.
     """
 
+    cracked_section = 'section'
+    """Cracked-section method consistent with the end sections based
+    on section analysis, used for the BNSM option 'auto'."""
+
     @property
     def Ecm_q(self) -> float:
         """
@@ -59,7 +63,8 @@ class Column(ColumnBase):
     def __init__(
         self, design: ColumnDesign, bondslip_factor: float,
         capacity_design: bool, load_factors: Dict[Literal['G', 'Q'], float],
-        cyclic_model: bool = False, cracked_section: bool = False
+        cyclic_model: bool = False,
+        cracked_section: Literal['section', 'fardis'] | float | None = None
     ) -> None:
         """Initialize the Column object.
 
@@ -76,10 +81,13 @@ class Column(ColumnBase):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_section : bool, optional
-            If True, the elastic sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_section : Literal['section', 'fardis'] | float | None, optional
+            Cracked-section (effective) flexural properties of the elastic
+            sections: 'section' from the moment-curvature section analysis
+            of the plastic hinges, 'fardis' as My / phi_y of Panagiotakos and
+            Fardis (2001), or a float as the ratio of effective to gross
+            flexural stiffness. If None, gross-section properties are used.
+            By default None.
 
         Notes
         -----
@@ -516,8 +524,17 @@ class Column(ColumnBase):
             self._cx = cy
 
         # Save effective moment inertia for elastic section
-        EIeff = My / phi_y
+        if self.cracked_section == 'fardis':
+            # Yield moment and curvature of Panagiotakos and Fardis (2001)
+            props = self._get_rot_hinge_props(axis)
+            EIeff = props[1] / props[0]
+        else:
+            EIeff = My / phi_y
         Ieff = EIeff / Ec
+        if isinstance(self.cracked_section, float):
+            # User-defined ratio of effective to gross flexural stiffness
+            Ig = self.design.Ix if axis == 'x' else self.design.Iy
+            Ieff = self.cracked_section * Ig
         if axis == 'x':
             self._Ix_eff = Ieff
         elif axis == 'y':

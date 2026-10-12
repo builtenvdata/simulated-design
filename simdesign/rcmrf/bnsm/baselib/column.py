@@ -70,10 +70,15 @@ class ColumnBase(ABC):
     jnt_offsets : List[float]
         Rigid joint offset values (dx_i, dy_i, dz_i, dx_j, dy_j, dz_j),
         specified with respect to the global coordinate system.
-    cracked_section : bool
-        If True, the elastic sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
+    cracked_section : Literal['section', 'fardis'] | float | None
+        Cracked-section (effective) flexural properties of the elastic
+        sections: ``'section'`` from a moment-curvature section analysis,
+        ``'fardis'`` as ``EIeff = My / phi_y`` with the yield moment and
+        curvature of Panagiotakos and Fardis (2001) used by the plastic
+        hinges, or a float as the ratio of effective to gross flexural
+        stiffness. If None, gross-section properties are used.
+        The class attribute holds the method consistent with the plastic
+        hinges or end sections, used for the BNSM option ``'auto'``.
     cyclic_model : bool
         If True, the model parameters will be adjusted for cyclic analysis.
     _cy : float
@@ -119,7 +124,7 @@ class ColumnBase(ABC):
     ele_node_j: Node
     ele_load: float
     jnt_offsets: List[float]
-    cracked_section: bool
+    cracked_section: Literal['section', 'fardis'] | float | None = 'fardis'
     cyclic_model: bool
     _cy: float
     _cx: float
@@ -334,7 +339,8 @@ class ColumnBase(ABC):
     def __init__(
         self, design: ColumnDesign, bondslip_factor: float,
         capacity_design: bool, load_factors: Dict[Literal['G', 'Q'], float],
-        cyclic_model: bool = False, cracked_section: bool = False
+        cyclic_model: bool = False,
+        cracked_section: Literal['section', 'fardis'] | float | None = None
     ) -> None:
         """Initialize the Column object.
 
@@ -351,10 +357,15 @@ class ColumnBase(ABC):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_section : bool, optional
-            If True, the elastic sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_section : Literal['section', 'fardis'] | float | None, optional
+            Cracked-section (effective) flexural properties of the elastic
+            sections: 'section' from a moment-curvature section analysis,
+            'fardis' as My / phi_y of the plastic hinges (Panagiotakos and
+            Fardis, 2001), or a float as the ratio of effective to gross
+            flexural stiffness. If None, gross-section properties are used.
+            By default None. The class attribute ``cracked_section`` holds
+            the method consistent with the plastic hinges or end sections of
+            the element, which is used for the BNSM option 'auto'.
         """
         self.design = design
         self.bondslip_factor = bondslip_factor
@@ -781,6 +792,17 @@ class ColumnBase(ABC):
 
         Collins, M. P., & Mitchell, D. (1997).
         *Prestressed concrete structures*. Prentice Hall.
+
+        Panagiotakos, T. B., & Fardis, M. N. (2001).
+        Deformations of reinforced concrete members at yielding and ultimate.
+        Structural Journal, 98(2), 135-148.
+
+        Notes
+        -----
+        If ``cracked_section`` is ``'fardis'``, ``EIeff = My / phi_y`` uses
+        the yield moment and curvature of the plastic hinges (Panagiotakos
+        and Fardis, 2001); the section analysis is still run for the neutral
+        axis depth.
         """
         if axis == 'x':
             # Section height
@@ -852,8 +874,16 @@ class ColumnBase(ABC):
             self._cx = cy
 
         # Save effective moment inertia for elastic section
+        if self.cracked_section == 'fardis':
+            # Yield moment and curvature of the plastic hinges
+            props = self._get_rot_hinge_props(axis)
+            phi_y, My = props[0], props[1]
         EIeff = My / phi_y
         Ieff = EIeff / Ec
+        if isinstance(self.cracked_section, float):
+            # User-defined ratio of effective to gross flexural stiffness
+            Ig = self.design.Ix if axis == 'x' else self.design.Iy
+            Ieff = self.cracked_section * Ig
         if axis == 'x':
             self._Ix_eff = Ieff
         elif axis == 'y':
@@ -1161,9 +1191,17 @@ class ColumnBase(ABC):
         theta_2 = theta_y + theta_cap_pl
         theta_3 = theta_y + theta_cap_pl + theta_pc
 
-        # Curvature values for monotonic loading
+        # Curvature values for monotonic loading. The elastic interior gives
+        # the flexural yield rotation My·Ls/(3·EI); the hinge carries the rest
+        # of θy (tension shift, shear and bond-slip) over Lp, so that the
+        # member reaches θy when the hinge yields. If the interior alone
+        # exceeds θy, the hinge keeps the interior stiffness.
         Lp = self._get_plastic_hinge_length()
-        phi_1 = phi_y
+        Ls = self.design.H / 2  # Shear span, as in _get_rot_hinge_props
+        sec_inputs = self._get_elastic_sec_inputs()
+        EI = self.Ecm_q * (sec_inputs[4] if axis == 'x' else sec_inputs[5])
+        dtheta = max(theta_y - My * Ls / (3 * EI), 0.0)
+        phi_1 = My / EI + dtheta / Lp
         phi_2 = (theta_2 - theta_1) / Lp + phi_1
         phi_3 = (theta_3 - theta_1) / Lp + phi_1
 

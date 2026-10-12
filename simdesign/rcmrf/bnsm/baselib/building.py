@@ -91,14 +91,16 @@ class BuildingBase(ABC):
         Flag to check whether include infills in the frame model or not.
     cyclic_model : bool
         If True, the model parameters will be adjusted for cyclic analysis.
-    cracked_beam : bool
-        If True, the elastic beam sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
-    cracked_column : bool
-        If True, the elastic column sections uses cracked-section
-        (effective) flexural properties. If False, gross-section
-        properties are used.
+    cracked_beam : Literal['section', 'fardis', 'auto'] | float | None
+        Cracked-section (effective) flexural properties of the elastic
+        beam sections ('section', 'fardis', 'auto', or the ratio of
+        effective to gross stiffness), or None for gross-section
+        properties.
+    cracked_column : Literal['section', 'fardis', 'auto'] | float | None
+        Cracked-section (effective) flexural properties of the elastic
+        column sections ('section', 'fardis', 'auto', or the ratio of
+        effective to gross stiffness), or None for gross-section
+        properties.
     beam_loads : Literal['auto', 'uniform', 'point']
         How the beam gravity loads are applied: 'uniform' element loads,
         'point' loads at the beam element ends, or 'auto' ('point' if the
@@ -127,8 +129,8 @@ class BuildingBase(ABC):
     dincr: float
     include_infills: bool
     cyclic_model: bool
-    cracked_beam: bool
-    cracked_column: bool
+    cracked_beam: Literal['section', 'fardis', 'auto'] | float | None
+    cracked_column: Literal['section', 'fardis', 'auto'] | float | None
     beam_loads: Literal['auto', 'uniform', 'point']
 
     def __init__(
@@ -138,7 +140,10 @@ class BuildingBase(ABC):
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
         max_drift: float = 0.05, dincr: float = 0.001,
         include_infills: bool = True, cyclic_model: bool = False,
-        cracked_beam: bool = False, cracked_column: bool = False,
+        cracked_beam: (
+            Literal['section', 'fardis', 'auto'] | float | None) = None,
+        cracked_column: (
+            Literal['section', 'fardis', 'auto'] | float | None) = None,
         beam_loads: Literal['auto', 'uniform', 'point'] = 'auto'
     ) -> None:
         """Initialize BNSM object.
@@ -176,14 +181,24 @@ class BuildingBase(ABC):
         cyclic_model : bool, optional
             If True, the model parameters will be adjusted for cyclic analysis.
             By default False.
-        cracked_beam : bool, optional
-            If True, the elastic beam sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
-        cracked_column : bool, optional
-            If True, the elastic column sections uses cracked-section
-            (effective) flexural properties. If False, gross-section
-            properties are used. By default False.
+        cracked_beam : str | float | None, optional
+            Cracked-section (effective) flexural properties of the elastic
+            beam sections: 'section' from a moment-curvature section
+            analysis, 'fardis' as My / phi_y of the plastic hinges
+            (Panagiotakos and Fardis, 2001), 'auto' for the method
+            consistent with the hinges or end sections of each element,
+            or a float as the ratio of effective to gross flexural
+            stiffness. If None, gross-section properties are used.
+            By default None.
+        cracked_column : str | float | None, optional
+            Cracked-section (effective) flexural properties of the elastic
+            column sections: 'section' from a moment-curvature section
+            analysis, 'fardis' as My / phi_y of the plastic hinges
+            (Panagiotakos and Fardis, 2001), 'auto' for the method
+            consistent with the hinges or end sections of each element,
+            or a float as the ratio of effective to gross flexural
+            stiffness. If None, gross-section properties are used.
+            By default None.
         beam_loads : Literal['auto', 'uniform', 'point'], optional
             How the beam gravity loads are applied. By default 'auto'.
             - 'uniform' : Uniformly distributed element loads, with the
@@ -194,10 +209,6 @@ class BuildingBase(ABC):
             - 'auto' : 'point' if the beam-column joints are modelled as
             inelastic, 'uniform' otherwise.
         """
-        if beam_loads not in ('auto', 'uniform', 'point'):
-            raise ValueError(
-                f"Invalid beam_loads option: {beam_loads!r}. Valid options "
-                "are: 'auto', 'uniform', 'point'.")
         self.design = design
         self.load_factors = load_factors
         self.mass_sources = mass_factors
@@ -246,9 +257,13 @@ class BuildingBase(ABC):
         """
         # Initialize the beam models
         bondslip_fact = self.design.quality.model.bondslip_factor
+        # Cracked-section option, 'auto' for the method of the beams
+        cracked = self.cracked_beam
+        if cracked == 'auto':
+            cracked = self.BeamClass.cracked_section
         self.beams = [
             self.BeamClass(beam, bondslip_fact, self.load_factors,
-                           self.cyclic_model, self.cracked_beam,
+                           self.cyclic_model, cracked,
                            self.beam_load_type)
             for beam in self.design.beams
             ]
@@ -309,10 +324,14 @@ class BuildingBase(ABC):
             capacity_des = False
 
         # Initialize columns
+        # Cracked-section option, 'auto' for the method of the columns
+        cracked = self.cracked_column
+        if cracked == 'auto':
+            cracked = self.ColumnClass.cracked_section
         self.columns = [
             self.ColumnClass(
                 column, bondslip_fact, capacity_des, self.load_factors,
-                self.cyclic_model, self.cracked_column
+                self.cyclic_model, cracked
             )
             for column in self.design.columns
         ]

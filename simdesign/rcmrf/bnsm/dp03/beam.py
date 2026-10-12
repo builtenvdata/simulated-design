@@ -46,6 +46,9 @@ class Beam(BeamBase):
     """
     concrete_material: Literal['Concrete01', 'Concrete04'] = 'Concrete04'
     interior_section: Literal['Elastic', 'Inelastic'] = 'Inelastic'
+    cracked_section = 'section'
+    """Cracked-section method consistent with the end sections based
+    on section analysis, used for the BNSM option 'auto'."""
 
     @property
     def Ecm_q(self) -> float:

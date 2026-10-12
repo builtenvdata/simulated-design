@@ -394,6 +394,14 @@ class BeamBase(ABC):
         """Geometric transformation tag used by OpenSees."""
         return self.design.line.tag
 
+    @property
+    def clear_length(self) -> float:
+        """Length of the deformable element, without the rigid joint
+        offsets."""
+        start = np.array(self.ele_node_i.coordinates) + self.jnt_offsets[:3]
+        end = np.array(self.ele_node_j.coordinates) + self.jnt_offsets[3:]
+        return float(np.linalg.norm(end - start))
+
     def __init__(
         self, design: BeamDesign, bondslip_factor: float,
         load_factors: Dict[Literal['G', 'Q'], float],
@@ -895,7 +903,7 @@ class BeamBase(ABC):
         phi_y : Array3
             Yield curvature of the hinge sections.
         """
-        ls = self.design.L / 2  # Shear span, as in _get_rot_hinge_props
+        ls = self.clear_length / 2  # Shear span, as in _get_rot_hinge_props
         EIeff = self.Ecm_q * self._get_elastic_sec_inputs()[4]
         dtheta = np.maximum(theta_y - My * ls / (3 * EIeff), 0.0)
         phiy = My / EIeff + dtheta / Lp
@@ -915,7 +923,7 @@ class BeamBase(ABC):
         *Displacement-based seismic design of structures*. IUSS Press.
         """
         # Shear span, assuming equal to 50% of the free length of the element
-        Ls = self.design.line.length / 2
+        Ls = self.clear_length / 2
         # Smallest diameter of the longitudinal reinforcement
         dbl = np.minimum(
             self.design.dbl_t1,
@@ -1014,7 +1022,7 @@ class BeamBase(ABC):
         Brussels, Belgium
         """
         h = self.design.h
-        ln = self.design.L
+        ln = self.clear_length  # Clear length, without the joint offsets
         fc = self.design.fc_q
         fsyl = self.design.fsyl_q
         b = self.design.b

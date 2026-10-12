@@ -45,7 +45,7 @@ class Beam(BeamCP01):
         capacity of ductile reinforced concrete members.
         """
         h = self.design.h
-        ln = self.design.L
+        ln = self.clear_length  # Clear length, without the joint offsets
         fc_mpa = self.design.fc_q / MPa
         fsyl_mpa = self.design.fsyl_q / MPa
         dbh = self.design.dbh_q

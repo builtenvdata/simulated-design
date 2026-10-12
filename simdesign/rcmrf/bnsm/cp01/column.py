@@ -469,8 +469,8 @@ class Column(ColumnBase):
 
         # Horizontal (stirrup) reinforcement diameter
         dbh = self.design.dbh_q
-        # Nominal length of column
-        Ln = self.design.H
+        # Clear length of column, without the rigid joint offsets
+        Ln = self.clear_length
         # Stirrup spacing
         sbh = self.design.sbh_q
         # Shear span, assuming equal to 50% of the free length of the element

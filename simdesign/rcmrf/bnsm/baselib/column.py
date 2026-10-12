@@ -352,6 +352,14 @@ class ColumnBase(ABC):
         """Geometric transformation tag used by OpenSees."""
         return self.design.line.tag
 
+    @property
+    def clear_length(self) -> float:
+        """Length of the deformable element, without the rigid joint
+        offsets."""
+        start = np.array(self.ele_node_i.coordinates) + self.jnt_offsets[:3]
+        end = np.array(self.ele_node_j.coordinates) + self.jnt_offsets[3:]
+        return float(np.linalg.norm(end - start))
+
     def __init__(
         self, design: ColumnDesign, bondslip_factor: float,
         capacity_design: bool, load_factors: Dict[Literal['G', 'Q'], float],
@@ -887,8 +895,8 @@ class ColumnBase(ABC):
         Av = nbh * np.pi * (dbh**2) / 4
         # Distance between top concrete fiber and bottom tension steel
         d = h - (cover + dbh + dbl_int/2)
-        # Nominal length of column
-        Ln = self.design.H
+        # Clear length of column, without the rigid joint offsets
+        Ln = self.clear_length
         # Shear span, assuming equal to 50% of the free length of the element
         Ls = Ln / 2  # NOTE: Could be varied with intensity of loading, but ok.
         # Compressive axial load (+) - Positive in compression
@@ -1111,8 +1119,8 @@ class ColumnBase(ABC):
         fc = self.design.fc_q
         # Longitudinal steel yield strength in base units
         fsyl = self.design.fsyl_q
-        # Nominal length of column
-        Ln = self.design.H
+        # Clear length of column, without the rigid joint offsets
+        Ln = self.clear_length
         # Stirrup spacing
         sbh = self.design.sbh_q
         # Longitudinal reinforcement ratio
@@ -1187,7 +1195,7 @@ class ColumnBase(ABC):
             Yield curvature of the plastic hinge sections.
         """
         sec_inputs = self._get_elastic_sec_inputs()
-        ls = self.design.H / 2  # Shear span, as in _get_backbone
+        ls = self.clear_length / 2  # Shear span, as in _get_backbone
         EIeff = self.Ecm_q * (sec_inputs[4] if axis == 'x' else sec_inputs[5])
         dtheta = max(theta_y - My * ls / (3 * EIeff), 0.0)
         phi_y = My / EIeff + dtheta / Lp
@@ -1207,7 +1215,7 @@ class ColumnBase(ABC):
         *Displacement-based seismic design of structures*. IUSS Press.
         """
         # Shear span, assuming equal to 50% of the free length of the element
-        Ls = self.design.line.length / 2
+        Ls = self.clear_length / 2
         return rc.get_lp_priestley_2007(
             Ls, self.design.fsyl_q, self.design.dbl_int_q)
 

@@ -59,7 +59,7 @@ class Column(ColumnCP01):
         # Shear span to effective depth ratio
         dd = (h - self.design.cover_q - self.design.dbh_q
               - 0.5 * self.design.dbl_cor_q)
-        Ls = self.design.H / 2
+        Ls = self.clear_length / 2
         rSsD = Ls / dd
         # Yield moment
         My = self._get_rot_hinge_props(axis)[1]
@@ -126,8 +126,8 @@ class Column(ColumnCP01):
         niu = Nu / (self.design.Ag * fc)
         # Distance from top fiber to bottom rebars
         dd = h - cover - dbh - 0.5 * dbl_cor
-        # Nominal length of column
-        Ln = self.design.H
+        # Clear length of column, without the rigid joint offsets
+        Ln = self.clear_length
         # Shear span, assuming equal to 50% of the free length of the element
         Ls = Ln / 2
         # Shear span to effective depth ratio

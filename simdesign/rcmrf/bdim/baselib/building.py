@@ -2013,20 +2013,25 @@ class BuildingBase(ABC):
                 # Sum of the moment of resistances of the joint columns
                 sum_mrdc_i = get_sum_mrdc_at_joint(joint_i)
                 sum_mrdc_j = get_sum_mrdc_at_joint(joint_j)
-                # The beam moment of resistances at both ends
+                # The beam moment of resistances at both ends. The beam is
+                # the right (front) beam at joint i, so its sagging moment
+                # belongs to the negative sum and its hogging moment to the
+                # positive sum of the joint (same sway direction).
                 Mpi_pos = gamma_rd * beam.mrd_pos[0] * min(
-                    1.0, sum_mrdc_i / sum_mrdb_i_pos)
-                Mpi_neg = gamma_rd * beam.mrd_neg[0] * min(
                     1.0, sum_mrdc_i / sum_mrdb_i_neg)
+                Mpi_neg = gamma_rd * beam.mrd_neg[0] * min(
+                    1.0, sum_mrdc_i / sum_mrdb_i_pos)
                 Mpj_pos = gamma_rd * beam.mrd_pos[-1] * min(
                     1.0, sum_mrdc_j / sum_mrdb_j_pos)
                 Mpj_neg = gamma_rd * beam.mrd_neg[-1] * min(
                     1.0, sum_mrdc_j / sum_mrdb_j_neg)
-                # Capacity design shear forces at both ends
-                Ved_i_pos = Vd + (Mpi_pos + Mpj_neg) / beam_lc
-                Ved_i_neg = Vd - (Mpi_neg + Mpj_pos) / beam_lc
-                Ved_j_pos = Vd + (Mpj_pos + Mpi_neg) / beam_lc
-                Ved_j_neg = Vd - (Mpj_neg + Mpi_pos) / beam_lc
+                # Capacity design shear forces at both ends. Hogging at i
+                # with sagging at j adds to the gravity shear at i, sagging
+                # at i with hogging at j adds to the gravity shear at j.
+                Ved_i_pos = Vd + (Mpi_neg + Mpj_pos) / beam_lc
+                Ved_i_neg = Vd - (Mpi_pos + Mpj_neg) / beam_lc
+                Ved_j_pos = Vd + (Mpi_pos + Mpj_neg) / beam_lc
+                Ved_j_neg = Vd - (Mpi_neg + Mpj_pos) / beam_lc
                 # Set the forces and append
                 forces = beam.design_forces[-1] - beam.design_forces[-1]
                 forces.case = 'seismic'
@@ -2352,11 +2357,12 @@ class BuildingBase(ABC):
                     1.0, sum_mrdb_x_pos_j / sum_mrdc_y_j)
                 Mpj_y_neg = gamma_rd * mrdy_j * min(
                     1.0, sum_mrdb_x_neg_j / sum_mrdc_y_j)
-                # Capacity design shear forces at both ends
-                Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
-                Vdx_neg = (Mpi_y_neg + Mpj_y_pos) / col_lcx
-                Vdy_pos = (Mpi_x_pos + Mpj_x_neg) / col_lcy
-                Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
+                # Capacity design shear forces at both ends. The moments at
+                # both column ends are from the same sway direction.
+                Vdx_pos = (Mpi_y_pos + Mpj_y_pos) / col_lcx
+                Vdx_neg = (Mpi_y_neg + Mpj_y_neg) / col_lcx
+                Vdy_pos = (Mpi_x_pos + Mpj_x_pos) / col_lcy
+                Vdy_neg = (Mpi_x_neg + Mpj_x_neg) / col_lcy
                 # Set the forces and append
                 forces.Vx1 = max(Vdx_pos, Vdx_neg)
                 forces.Vx9 = max(Vdx_pos, Vdx_neg)

@@ -330,11 +330,11 @@ class Building(BuildingBase):
                 Mpj_y_pos = gamma_rd * mrdy_j
                 Mpj_y_neg = gamma_rd * mrdy_j
 
-                # Capacity design shear forces at both ends
-                Vdx_pos = (Mpi_y_pos + Mpj_y_neg) / col_lcx
-                Vdx_neg = (Mpi_y_neg + Mpj_y_pos) / col_lcx
-                Vdy_pos = (Mpi_x_pos + Mpj_x_neg) / col_lcy
-                Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
+                # Capacity design shear forces at both ends (same sway)
+                Vdx_pos = (Mpi_y_pos + Mpj_y_pos) / col_lcx
+                Vdx_neg = (Mpi_y_neg + Mpj_y_neg) / col_lcx
+                Vdy_pos = (Mpi_x_pos + Mpj_x_pos) / col_lcy
+                Vdy_neg = (Mpi_x_neg + Mpj_x_neg) / col_lcy
 
                 # Set the capacity design shear forces
                 Vcap_x = max(Vcap_x, Vdx_pos, Vdx_neg)
@@ -433,11 +433,13 @@ class Building(BuildingBase):
             Mpj_pos = gamma_rd * beam.mrd_pos[-1]
             Mpj_neg = gamma_rd * beam.mrd_neg[-1]
 
-            # Capacity design shear forces at both ends
-            Ved_i_pos = Vdy_i + (Mpi_pos + Mpj_neg) / beam_lc
-            Ved_i_neg = Vdy_i - (Mpi_neg + Mpj_pos) / beam_lc
-            Ved_j_pos = Vdy_j + (Mpj_pos + Mpi_neg) / beam_lc
-            Ved_j_neg = Vdy_j - (Mpj_neg + Mpi_pos) / beam_lc
+            # Capacity design shear forces at both ends. Hogging at i with
+            # sagging at j adds to the gravity shear at i, sagging at i with
+            # hogging at j adds to the gravity shear at j.
+            Ved_i_pos = Vdy_i + (Mpi_neg + Mpj_pos) / beam_lc
+            Ved_i_neg = Vdy_i - (Mpi_pos + Mpj_neg) / beam_lc
+            Ved_j_pos = Vdy_j + (Mpi_pos + Mpj_neg) / beam_lc
+            Ved_j_neg = Vdy_j - (Mpi_neg + Mpj_pos) / beam_lc
             Ve1 = max(Ved_i_pos, abs(Ved_i_neg))
             Ve9 = max(Ved_j_pos, abs(Ved_j_neg))
 

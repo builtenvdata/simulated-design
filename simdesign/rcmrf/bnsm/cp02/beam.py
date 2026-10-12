@@ -40,9 +40,9 @@ class Beam(BeamCP01):
 
         References
         ---------
-        Hasanoglu, S. and O'Reilly G. J. (2026). A hysteretic energy-based
-        framework for seismic fragility assessment of ductile reinforced
-        concrete frame buildings
+        Hasanoglu, S. and O'Reilly G. J. (2027). Calibration of cyclic
+        backbone parameters for numerical modelling and hysteretic energy
+        capacity of ductile reinforced concrete members.
         """
         h = self.design.h
         ln = self.design.L

@@ -4,7 +4,7 @@
 This package provides an alternative concentrated plasticity (CP)
 modelling strategy within the Building Nonlinear Structural Model (BNSM).
 It extends the CP01, by adopting energy-based hysteretic plastic hinge models
-for beams and columns, following the work of Hasanoglu and O'Reilly (2026).
+for beams and columns, following the work of Hasanoglu and O'Reilly (2027).
 
 The classes defined here inherit from the abstract modelling interfaces
 in `bnsm.baselib` and extend the CP01 implementations where required,
@@ -16,11 +16,11 @@ providing instantiable component implementations.
   Concentrated plasticity with end hinges.
   Plastic hinge moment-rotation behaviour is defined using
   an energy-based HystereticSM material formulation
-  (Hasanoglu  and O’Reilly, 2026), replacing the default CP01 hinge model.
+  (Hasanoglu  and O’Reilly, 2027), replacing the default CP01 hinge model.
 
 - Column:
   Concentrated plasticity with energy-based rotational hinge
-  formulation (Hasanoglu  and O’Reilly, 2026).
+  formulation (Hasanoglu  and O’Reilly, 2027).
   Shear and axial interaction behaviour follow CP01.
 
 - Joints:
@@ -44,9 +44,9 @@ providing instantiable component implementations.
 
 **References**
 
-Hasanoglu, S. and O'Reilly G. J. (2026). A hysteretic energy–based
-framework for seismic fragility assessment of ductile reinforced
-concrete frame buildings
+Hasanoglu, S. and O'Reilly G. J. (2027). Calibration of cyclic backbone
+parameters for numerical modelling and hysteretic energy capacity of
+ductile reinforced concrete members.
 """
 
 from .building import Building as CP02

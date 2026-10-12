@@ -3,6 +3,7 @@ within the BDIM layer.
 """
 # Imports from installed packages
 from abc import ABC
+from copy import copy
 from dataclasses import dataclass
 from typing import List, Type, Literal, Dict, Tuple, Optional, Union
 import numpy as np
@@ -102,7 +103,8 @@ class BuildingBase(ABC):
     Attributes
     ----------
     taxonomy : TaxonomyData
-        Building taxonomy data.
+        Building taxonomy data. A copy of the given taxonomy, which holds the
+        current design values (e.g., material grades).
     beams : List[~simdesign.rcmrf.bdim.baselib.beam.BeamBase]
         List of beam instances.
     columns : List[~simdesign.rcmrf.bdim.baselib.column.ColumnBase]
@@ -130,6 +132,12 @@ class BuildingBase(ABC):
     quality : QualityBase
         Quality instance used to adjust properties of structural
         elements.
+    _restore_concrete : ConcreteBase
+        Initial concrete material, restored by the iterative design algorithm
+        when the beam type or column section is changed.
+    _restore_steel : SteelBase
+        Initial steel material, restored by the iterative design algorithm
+        when the beam type or column section is changed.
     ColumnClass : Type[~simdesign.rcmrf.bnsm.baselib.column.ColumnBase]
         Column class used to instantiate column objects.
     BeamClass : Type[~simdesign.rcmrf.bnsm.baselib.beam.BeamBase]
@@ -184,6 +192,8 @@ class BuildingBase(ABC):
     materials: MaterialsBase
     rebars: RebarsBase
     quality: QualityBase
+    _restore_concrete: ConcreteBase
+    _restore_steel: SteelBase
     ColumnClass: Type[ColumnBase]
     BeamClass: Type[BeamBase]
     JointClass: Type[JointBase]
@@ -730,9 +740,11 @@ class BuildingBase(ABC):
         Parameters
         ----------
         taxonomy : TaxonomyData
-            Taxonomy data required for performing simulated-designs.
+            Taxonomy data required for performing simulated-designs. It is
+            copied, so that the design changes (e.g., material grades) do not
+            modify the given object.
         """
-        self.taxonomy = taxonomy
+        self.taxonomy = copy(taxonomy)
         self.beams = []
         self.columns = []
         self.joints = []
@@ -1580,10 +1592,14 @@ class BuildingBase(ABC):
 
     def _restore_materials(self) -> None:
         """Restore beam and column materials to initial."""
-        self._initialize_materials()
+        self.concrete = self._restore_concrete
+        self.steel = self._restore_steel
+        self._update_element_materials()
 
     def _set_restore_point(self) -> None:
-        """Sets the restore point for beams and columns."""
+        """Sets the restore point for materials, beams and columns."""
+        self._restore_concrete = self.concrete
+        self._restore_steel = self.steel
         for column in self.columns:
             column.set_restore_point()
         for beam in self.beams:

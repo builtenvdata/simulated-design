@@ -11,7 +11,9 @@ from pathlib import Path
 
 # Imports from bnsm library
 from .constants import (RIGID_MAT, BIG_VALUE, GRAV_TS_TAG, GRAV_P_TAG,
-                        NSPA_TS_TAG, NSPA_P_TAG, MIN_EIGEN_MODES,
+                        NSPA_TS_TAG, NSPA_P_TAG, NSPA_EQUILIBRIUM_TOL,
+                        NSPA_MAX_STIFFNESS_RATIO,
+                        MIN_EIGEN_MODES,
                         MIN_EIGEN_VALUE)
 from .foundation import FoundationBase
 from .joint import StairsJointBase, FloorJointBase
@@ -744,6 +746,8 @@ class BuildingBase(ABC):
         # Add lateral nspa loads to ops domain
         for node, load_values in zip(nodes, loads):
             ops.load(node, *load_values)
+        # Total lateral load of the pattern (load factor of 1)
+        total_load = abs(sum(values[ctrl_dof - 1] for values in loads))
 
         # Set foundation and floor nodes
         supports = [found.foundation_node.tag for found in self.foundations]
@@ -796,6 +800,7 @@ class BuildingBase(ABC):
         ok = 0
         cont = True
         relaxed = False
+        init_stiffness = np.inf  # initial stiffness, set after the 1st step
 
         while ok == 0 and cont:
             if relaxed:  # keep the last algorithm, reset the tolerance
@@ -851,32 +856,38 @@ class BuildingBase(ABC):
             ]
             current_base_shear = abs(sum(current_reactions))
 
+            # Stop if a step is accepted out of equilibrium, i.e., the base
+            # shear differs from the applied load. This can happen with the
+            # relaxed tolerances, and the analysis would continue from an
+            # invalid committed state (e.g., unrealistic base shear spikes).
+            applied_load = abs(ops.getLoadFactor(NSPA_P_TAG)) * total_load
+            if ok == 0 and abs(current_base_shear - applied_load) > (
+                    NSPA_EQUILIBRIUM_TOL * max(applied_load, 1.0)):
+                ok = -1
+
             # Check the base shear limits
             within_limits = (current_base_shear < shear_lim and
                              current_base_shear >= 0.6 * max(base_shear))
             # Set continue flag
             cont = within_limits and current_ctrl_disp < max_disp
 
-            # # Update the flag based on slope
-            # if (
-            #     len(base_shear) > 1
-            #     and ok == 0
-            #     and not capacity_design  # This issue will not occur
-            #     and not fiber_sections  # This issue will not occur
-            # ):
-            #     dV_cur = current_base_shear - base_shear[-1]
-            #     dU_cur = current_ctrl_disp - ctrl_disp[-1]
-            #     dV_prev = base_shear[-1] - base_shear[-2]
-            #     dU_prev = ctrl_disp[-1] - ctrl_disp[-2]
+            # Stop if the tangent stiffness of the step clearly exceeds the
+            # initial stiffness, which a valid pushover curve never does. Such
+            # a jump indicates a degenerate element state (unrealistic spikes).
+            if ok == 0 and len(base_shear) > 1:
+                dU = abs(current_ctrl_disp - ctrl_disp[-1])
+                dV = current_base_shear - base_shear[-1]
+                if dV > NSPA_MAX_STIFFNESS_RATIO * init_stiffness * dU:
+                    ok = -1
 
-            #     if dV_cur > 0:
-            #         slope_cur = abs(dV_cur / dU_cur)
-            #         slope_prev = abs(dV_prev / dU_prev)
-            #         # Slope should generally decrease for increasing shear
-            #         cont = (slope_cur < 2 * slope_prev) and cont
+            # Initial stiffness, from the first step
+            if ok == 0 and len(base_shear) == 1 and current_ctrl_disp != 0:
+                init_stiffness = current_base_shear / abs(current_ctrl_disp)
 
-            # Append the results, including the step reaching max_disp
-            if ok == 0 and within_limits:
+            # Append the results, including the step reaching max_disp and
+            # a converged step where the base shear drops below 60% of the
+            # maximum (sudden loss of strength, which ends the analysis)
+            if ok == 0 and current_base_shear < shear_lim:
                 ctrl_disp.append(current_ctrl_disp)
                 base_shear.append(current_base_shear)
                 storey_displacements.append(

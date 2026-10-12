@@ -33,6 +33,12 @@ and nspa loads."""
 NSPA_P_TAG = 2
 """Tag for load pattern which associates nspa time-series with the
 nspa point loads."""
+NSPA_EQUILIBRIUM_TOL = 0.01
+"""Largest relative difference between the base shear (sum of the support
+reactions) and the applied lateral load accepted in a pushover step."""
+NSPA_MAX_STIFFNESS_RATIO = 1.5
+"""Largest ratio of the tangent stiffness of a pushover step (base shear over
+control displacement increment) to the initial stiffness accepted."""
 MIN_EIGEN_MODES = 3
 """Minimum number of modes solved for in the eigenvalue analysis. For a
 single mode, the default ARPACK solver uses only two Lanczos vectors and may

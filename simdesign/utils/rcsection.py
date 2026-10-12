@@ -160,7 +160,9 @@ def do_simplified_section_analysis(
     # Parabolic concrete stress-strain relationship, f = fc (2r - r^2) with
     # r = e / e_c, in Collins & Mitchell 1997
     n_c = 0.8 + fc / (17.0 * MPa)  # Eqn 3-4
-    e_c = (fc / Ec) * (n_c / (n_c - 1.0))  # Eqn 3-5
+    e_c = (fc / Ec) * (n_c / (n_c - 1.0)) if n_c > 1.0 else np.inf  # Eqn 3-5
+    # Eqn 3-5 diverges as n_c -> 1 (fc -> 3.4 MPa) and turns negative below
+    e_c = min(e_c, 0.002)
     e_lim = 2.0 * e_c  # Strain at which the stress drops to zero (crushing)
 
     def conc_force(e: float) -> float:

@@ -178,7 +178,7 @@ def generate(
         # Initialize BDIM
         bdim_ = BDIM(taxonomy)
         # To ensure the reproducibility of BDIM set the seed
-        bdim_.set_seed_for_quality_adjustments(bcim.inputs.seed)
+        bdim_.set_seed_for_quality_adjustments(bcim.inputs.seed + i)
         # Make simumlated design
         bdim_.run_iterative_design_algorithm()
         # Update BCIM in case some properties changed during design

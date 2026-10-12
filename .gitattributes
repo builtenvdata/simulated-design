@@ -1,2 +1,8 @@
 * linguist-vendored
 *.py linguist-vendored=false
+
+# Line endings: LF in the repository and in working folders on every
+# platform (overrides core.autocrlf); Windows batch files keep CRLF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf

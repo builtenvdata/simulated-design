@@ -75,8 +75,8 @@ class Beam(BeamCP01):
         Mu_neg = Mu_Mc * Mc_neg
 
         # Zero moment values in positive and negative directions
-        M0_pos = 0.1 * Mc_pos
-        M0_neg = 0.1 * Mc_neg
+        M0_pos = 0.1 * Mu_pos
+        M0_neg = 0.1 * Mu_neg
 
         # Yield rotation capacities in positive and negative directions
         EI_ratio = np.clip(0.08 * (1.25 ** (10*niu)) * (1.2 ** rSsD), 0.2, 0.8)

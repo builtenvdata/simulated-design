@@ -163,7 +163,7 @@ class Column(ColumnCP01):
         moment_1 = My
         moment_2 = Mc
         moment_3 = Mu
-        moment_4 = 0.1 * Mc
+        moment_4 = 0.1 * Mu
         theta_1 = theta_y
         theta_2 = theta_1 + theta_cap_pl
         theta_3 = theta_2 + theta_pc

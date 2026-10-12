@@ -256,6 +256,10 @@ class FloorJointBase(StairsJointBase):
     floor_node: Node
     flexibility_model: Literal["inelastic", "elastic", "rigid"]
     axial_force: float
+    MAX_SHEAR_STRAIN = 0.1
+    """Shear strain (rad) beyond which the joint moment drops to zero
+    (``MinMax`` material), as in O'Reilly's jointModel.tcl, where the limit
+    is noted as provisional."""
 
     @property
     def mz_tag(self) -> int:
@@ -278,6 +282,39 @@ class FloorJointBase(StairsJointBase):
             Material tag for the joint hinge about global-y (My).
         """
         return sub_tag(self.center_node.tag, 40)
+
+    @property
+    def mz_base_tag(self) -> int:
+        """Tag of the material wrapped by the Mz ``MinMax`` material.
+
+        Returns
+        -------
+        int
+            Tag of the material wrapped by the Mz ``MinMax`` material.
+        """
+        return sub_tag(self.center_node.tag, 31)
+
+    @property
+    def my_base_tag(self) -> int:
+        """Tag of the material wrapped by the My ``MinMax`` material.
+
+        Returns
+        -------
+        int
+            Tag of the material wrapped by the My ``MinMax`` material.
+        """
+        return sub_tag(self.center_node.tag, 41)
+
+    @property
+    def axial_tag(self) -> int:
+        """Material tag for the joint axial spring.
+
+        Returns
+        -------
+        int
+            Material tag for the joint axial spring.
+        """
+        return sub_tag(self.center_node.tag, 50)
 
     @property
     def sec_tag(self) -> int:
@@ -390,9 +427,9 @@ class FloorJointBase(StairsJointBase):
         if self.flexibility_model != 'rigid':
             # Add floor joint node constrained by the floor diaphragm
             self.floor_node.add_to_ops()
-            # Materials defining flexible rotation behaviour
-            ops.uniaxialMaterial(*self._get_mat_inputs('X'))
-            ops.uniaxialMaterial(*self._get_mat_inputs('Y'))
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                ops.uniaxialMaterial(*mat_inputs)
             # Create the new section with flexible rotation behaviour
             ops.section(*self._get_agg_sec_inputs())
             # Create the joint flexibility element
@@ -415,17 +452,13 @@ class FloorJointBase(StairsJointBase):
             # Add floor joint node constrained by the floor diaphragm
             note = ' # Constrained floor node'
             content.append(self.floor_node.to_py() + note)
-            # Materials defining flexible rotation behaviour
-            mz_mat_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_mat_inputs('X')
-            )
-            my_mat_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_mat_inputs('Y')
-            )
-            content.append(f"ops.uniaxialMaterial({mz_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({my_mat_inputs})")
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                mat_inputs = ', '.join(
+                    repr(item) if isinstance(item, str) else str(item)
+                    for item in mat_inputs
+                )
+                content.append(f"ops.uniaxialMaterial({mat_inputs})")
             # Create the new section with flexible rotation behaviour
             sec_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
@@ -458,15 +491,10 @@ class FloorJointBase(StairsJointBase):
             # Add floor joint node constrained by the floor diaphragm
             note = ' # Constrained floor node'
             content.append(self.floor_node.to_tcl() + note)
-            # Materials defining flexible rotation behaviour
-            mz_mat_inputs = ' '.join(
-                f'{item}' for item in self._get_mat_inputs('X')
-            )
-            my_mat_inputs = ' '.join(
-                f'{item}' for item in self._get_mat_inputs('Y')
-            )
-            content.append(f"uniaxialMaterial {mz_mat_inputs}")
-            content.append(f"uniaxialMaterial {my_mat_inputs}")
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                mat_inputs = ' '.join(f'{item}' for item in mat_inputs)
+                content.append(f"uniaxialMaterial {mat_inputs}")
             # Create the new section with flexible rotation behaviour
             sec_inputs = ' '.join(
                 f'{item}' for item in self._get_agg_sec_inputs()
@@ -599,7 +627,7 @@ class FloorJointBase(StairsJointBase):
             else:
                 jnt_type = 'interior'
             # Material tag
-            mat_tag = self.mz_tag
+            mat_tag = self.mz_base_tag
 
         # Flexural material around global Y direction, beams are in global X
         if axis == 'Y':
@@ -625,7 +653,7 @@ class FloorJointBase(StairsJointBase):
             else:
                 jnt_type = 'interior'
             # Material tag
-            mat_tag = self.my_tag
+            mat_tag = self.my_base_tag
 
         # Joint type (location) - Roof case
         if self.design.top_column is None:
@@ -721,6 +749,48 @@ class FloorJointBase(StairsJointBase):
 
         return mat_inputs
 
+    def _get_uniaxial_mat_inputs(self) -> List[List[str | float | int]]:
+        """Gets the inputs for the uniaxial materials of the joint
+        flexibility element, in order of definition.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the materials about global X and Y, of the ``MinMax``
+            materials wrapping them, and of the axial spring.
+
+        Notes
+        -----
+        As in O'Reilly's jointModel.tcl (see
+        https://github.com/gerardjoreilly/Numerical-Modelling-of-GLD-RC-Frames):
+
+        - The rotational materials of both the elastic and the inelastic
+          joint models are wrapped in ``MinMax`` materials, so the joint
+          moment drops to zero once the shear strain exceeds
+          ``MAX_SHEAR_STRAIN``. Otherwise, ``Hysteretic`` keeps the residual
+          moment indefinitely beyond its last point.
+        - The axial spring has the stiffness ``Kspr = 2 Ec Ac / hb``, with
+          the gross column area ``Ac`` and the depth ``hb`` of the deepest
+          beam framing into the joint.
+        """
+        gmax = self.MAX_SHEAR_STRAIN
+        # Depth of the deepest beam framing into the joint
+        hb = max(beam.h for beam in [
+            self.design.left_beam, self.design.right_beam,
+            self.design.front_beam, self.design.rear_beam] if beam)
+        k_axial = 2 * self.design.concrete.Ecm * self.bx * self.by / hb
+        mat_inputs = [
+            self._get_mat_inputs('X'),
+            self._get_mat_inputs('Y'),
+            ['MinMax', self.mz_tag, self.mz_base_tag, '-min', -gmax,
+             '-max', gmax],
+            ['MinMax', self.my_tag, self.my_base_tag, '-min', -gmax,
+             '-max', gmax],
+            round_list(['Elastic', self.axial_tag, k_axial]),
+        ]
+
+        return mat_inputs
+
     def _get_agg_sec_inputs(self) -> List[str | int]:
         """Retrieves aggregation section inputs.
 
@@ -731,7 +801,7 @@ class FloorJointBase(StairsJointBase):
         """
         sec_inputs = [
             'Aggregator', self.sec_tag,
-            RIGID_MAT, 'P', RIGID_MAT, 'Vy', RIGID_MAT, 'Vz',
+            self.axial_tag, 'P', RIGID_MAT, 'Vy', RIGID_MAT, 'Vz',
             self.my_tag, 'My', self.mz_tag, 'Mz', RIGID_MAT, 'T'
         ]
         # Rounding

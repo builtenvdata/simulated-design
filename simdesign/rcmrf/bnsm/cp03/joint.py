@@ -390,9 +390,9 @@ class FloorJoint(FloorJointBase, StairsJoint):
 
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Materials defining flexible rotation behaviour
-            ops.uniaxialMaterial(*self._get_mat_inputs('X'))
-            ops.uniaxialMaterial(*self._get_mat_inputs('Y'))
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                ops.uniaxialMaterial(*mat_inputs)
             # Create the new section with flexible rotation behaviour
             ops.section(*self._get_agg_sec_inputs())
             # Create the joint flexibility element
@@ -436,17 +436,13 @@ class FloorJoint(FloorJointBase, StairsJoint):
         content.append(f"# Joint flexibility model: {self.flexibility_model}")
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Materials defining flexible rotation behaviour
-            mz_mat_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_mat_inputs('X')
-            )
-            my_mat_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_mat_inputs('Y')
-            )
-            content.append(f"ops.uniaxialMaterial({mz_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({my_mat_inputs})")
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                mat_inputs = ', '.join(
+                    repr(item) if isinstance(item, str) else str(item)
+                    for item in mat_inputs
+                )
+                content.append(f"ops.uniaxialMaterial({mat_inputs})")
             # Create the new section with flexible rotation behaviour
             sec_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
@@ -500,15 +496,10 @@ class FloorJoint(FloorJointBase, StairsJoint):
         content.append(f"# Joint flexibility model: {self.flexibility_model}")
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Materials defining flexible rotation behaviour
-            mz_mat_inputs = ' '.join(
-                f'{item}' for item in self._get_mat_inputs('X')
-            )
-            my_mat_inputs = ' '.join(
-                f'{item}' for item in self._get_mat_inputs('Y')
-            )
-            content.append(f"uniaxialMaterial {mz_mat_inputs}")
-            content.append(f"uniaxialMaterial {my_mat_inputs}")
+            # Materials defining joint flexibility (rotation and axial)
+            for mat_inputs in self._get_uniaxial_mat_inputs():
+                mat_inputs = ' '.join(f'{item}' for item in mat_inputs)
+                content.append(f"uniaxialMaterial {mat_inputs}")
             # Create the new section with flexible rotation behaviour
             sec_inputs = ' '.join(
                 f'{item}' for item in self._get_agg_sec_inputs()

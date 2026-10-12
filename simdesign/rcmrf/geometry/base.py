@@ -2342,3 +2342,10 @@ class GeometryBase(ABC):
                         if storey_height:  # z-coord
                             z = k * storey_height
                         point.coordinates = round_list([x, y, z])
+        # Keep the grid ordinates consistent with the point coordinates
+        grid = self.system_grid_data
+        for axis, width in ((grid.x, bay_width_x), (grid.y, bay_width_y),
+                            (grid.z, storey_height)):
+            if width:
+                axis.ordinates = [round(i * width, PRECISION)
+                                  for i in axis.ids]

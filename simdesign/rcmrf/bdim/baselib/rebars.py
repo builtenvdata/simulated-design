@@ -486,19 +486,21 @@ class RebarsBase(ABC):
                 nbl_b2_dict[key] = n
                 bot_Asl_rat_dict[key] = Asl_rat
         else:   # no other rebar options are possible
-            # Using the previous one as lower bar diameter
             i = np.where(self.beam_long_bar_diams == dbl_1)[0][0]
-            dbl_2 = self.beam_long_bar_diams[i - 1]
+            # Using the previous one as lower bar diameter. If dbl_1 is the
+            # smallest diameter, there is none (dbl1 >= dbl2), and only the
+            # solutions with one diameter above are used.
             # NOTE: Alternatively iterate for all lower rebars
             # for db2 in self.long_bar_diams[:i]:
-
-            for m in range(2, max_nbl_1 + 1, 1):
-                n, Asl_rat = get_two_type_long_bar_solution(
-                    Asl_req=Asl_bot, nbl_1=m,
-                    dbl_1=dbl_1, dbl_2=dbl_2)
-                key = f"{m}dbl1{dbl_1}_dbl2{dbl_2}"
-                nbl_b2_dict[key] = n
-                bot_Asl_rat_dict[key] = Asl_rat
+            if i > 0:
+                dbl_2 = self.beam_long_bar_diams[i - 1]
+                for m in range(2, max_nbl_1 + 1, 1):
+                    n, Asl_rat = get_two_type_long_bar_solution(
+                        Asl_req=Asl_bot, nbl_1=m,
+                        dbl_1=dbl_1, dbl_2=dbl_2)
+                    key = f"{m}dbl1{dbl_1}_dbl2{dbl_2}"
+                    nbl_b2_dict[key] = n
+                    bot_Asl_rat_dict[key] = Asl_rat
 
         err_bot = {key: np.sum(rat)
                    for key, rat in bot_Asl_rat_dict.items()}

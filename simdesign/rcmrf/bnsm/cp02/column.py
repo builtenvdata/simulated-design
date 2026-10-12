@@ -159,27 +159,15 @@ class Column(ColumnCP01):
         theta_pu = 0.0023 * (1.96 ** (0.1*fc_mpa)) * (2.74 ** (100*rhoh))
         theta_pu = np.minimum(theta_pu, 4*theta_pc)
 
-        # Rotation values for cyclic loading
-        if self.cyclic_model:
-            moment_1 = My
-            moment_2 = Mc
-            moment_3 = Mu
-            moment_4 = 0.1 * Mc
-            theta_1 = theta_y
-            theta_2 = theta_y + theta_cap_pl
-            theta_3 = theta_y + theta_cap_pl + theta_pc
-            theta_4 = theta_y + theta_cap_pl + theta_pc + theta_pu
-        else:
-            # These modifiers were determined based on the suggested
-            # values in ATC 72-1 report
-            moment_1 = My
-            moment_2 = 1.1 * Mc
-            moment_3 = 1.1 * Mu
-            moment_4 = 0.1 * Mc
-            theta_1 = theta_y
-            theta_2 = theta_y + 1.4*theta_cap_pl
-            theta_3 = theta_y + 1.4*theta_cap_pl + 2*theta_pc
-            theta_4 = theta_y + 1.4*theta_cap_pl + 2*theta_pc + 2*theta_pu
+        # Cyclic backbone (HystereticSM material)
+        moment_1 = My
+        moment_2 = Mc
+        moment_3 = Mu
+        moment_4 = 0.1 * Mc
+        theta_1 = theta_y
+        theta_2 = theta_y + theta_cap_pl
+        theta_3 = theta_y + theta_cap_pl + theta_pc
+        theta_4 = theta_y + theta_cap_pl + theta_pc + theta_pu
 
         # Pinching factor for strain (or deformation) during reloading
         pinchx = 1.0

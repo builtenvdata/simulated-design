@@ -704,8 +704,13 @@ class BuildingBase(ABC):
         support_reactions = [[0] * len(supports)]
         ok = 0
         cont = True
+        relaxed = False
 
         while ok == 0 and cont:
+            if relaxed:  # keep the last algorithm, reset the tolerance
+                relaxed = False
+                ops.test('NormDispIncr', tol_init, 100)
+
             # Index for the current displacement increment
             dincr_idx = dincr_values.index(dincr)
 
@@ -714,10 +719,11 @@ class BuildingBase(ABC):
                 dincr_idx -= 1
                 dincr = dincr_values[dincr_idx]
 
-            # Set current step size and try performing analysis with it
-            ops.integrator(
-                'DisplacementControl', ctrl_node, ctrl_dof, dincr
-            )
+                # Set current step size and try performing analysis with it
+                ops.integrator(
+                    'DisplacementControl', ctrl_node, ctrl_dof, dincr
+                )
+
             ok = ops.analyze(1)
 
             # Try same dincr with alternative algorithms first
@@ -737,6 +743,7 @@ class BuildingBase(ABC):
 
             # If still failing, relax tolerance
             if ok != 0:  # Increase tolerance by factor of 10
+                relaxed = True
                 ok = self._set_nspa_algorithm(
                     10 * tol_init, ctrl_node, ctrl_dof, dincr, iter=100,
                 )
@@ -744,6 +751,7 @@ class BuildingBase(ABC):
                 ok = self._set_nspa_algorithm(
                     100 * tol_init, ctrl_node, ctrl_dof, dincr, iter=200
                 )
+
             # Get the base shear force
             ops.reactions()
             current_ctrl_disp = ops.nodeDisp(ctrl_node, ctrl_dof)

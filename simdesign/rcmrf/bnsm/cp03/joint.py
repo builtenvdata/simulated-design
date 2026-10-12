@@ -55,6 +55,17 @@ class StairsJoint(StairsJointBase):
     top_node: Node | None
     rigid_ele: List[int]
 
+    @property
+    def beam_node(self) -> Node:
+        """Joint node to which the beam rigid offset links are connected.
+
+        Returns
+        -------
+        Node
+            Central joint node (no joint flexibility at mid-storey joints).
+        """
+        return self.center_node
+
     def __init__(self, design: JointDesign, mass: float) -> None:
         """Initialize StairsJoint object.
 
@@ -111,14 +122,14 @@ class StairsJoint(StairsJointBase):
         # Rigid-joint offset elements
         if self.left_node:
             self.left_node.add_to_ops()
-            ele_nodes = [self.left_node.tag, self.center_node.tag]
+            ele_nodes = [self.left_node.tag, self.beam_node.tag]
             ele_tag = self.left_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_X)
             self.rigid_ele.append(ele_tag)
         if self.right_node:
             self.right_node.add_to_ops()
-            ele_nodes = [self.center_node.tag, self.right_node.tag]
+            ele_nodes = [self.beam_node.tag, self.right_node.tag]
             ele_tag = self.right_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_X)
@@ -155,7 +166,7 @@ class StairsJoint(StairsJointBase):
         content.append("# Rigid-joint offset elements")
         if self.left_node:
             content.append(self.left_node.to_py())
-            ele_nodes = f"{self.left_node.tag}, {self.center_node.tag}"
+            ele_nodes = f"{self.left_node.tag}, {self.beam_node.tag}"
             ele_tag = self.left_node.tag
             content.append(
                 f"ops.element('elasticBeamColumn', {ele_tag}, {ele_nodes}, "
@@ -163,7 +174,7 @@ class StairsJoint(StairsJointBase):
             )
         if self.right_node:
             content.append(self.right_node.to_py())
-            ele_nodes = f"{self.center_node.tag}, {self.right_node.tag}"
+            ele_nodes = f"{self.beam_node.tag}, {self.right_node.tag}"
             ele_tag = self.right_node.tag
             content.append(
                 f"ops.element('elasticBeamColumn', {ele_tag}, {ele_nodes}, "
@@ -205,7 +216,7 @@ class StairsJoint(StairsJointBase):
         content.append("# Rigid-joint offset elements")
         if self.left_node:
             content.append(self.left_node.to_tcl())
-            ele_nodes = f"{self.left_node.tag} {self.center_node.tag}"
+            ele_nodes = f"{self.left_node.tag} {self.beam_node.tag}"
             ele_tag = self.left_node.tag
             content.append(
                 f"element elasticBeamColumn {ele_tag} {ele_nodes} "
@@ -213,7 +224,7 @@ class StairsJoint(StairsJointBase):
             )
         if self.right_node:
             content.append(self.right_node.to_tcl())
-            ele_nodes = f"{self.center_node.tag} {self.right_node.tag}"
+            ele_nodes = f"{self.beam_node.tag} {self.right_node.tag}"
             ele_tag = self.right_node.tag
             content.append(
                 f"element elasticBeamColumn {ele_tag} {ele_nodes} "
@@ -248,11 +259,13 @@ class FloorJoint(FloorJointBase, StairsJoint):
 
     - rigid offset modelling (center node + rigid-like offset links), and
     - an optional joint-flexibility element (rigid/elastic/inelastic) between
-      the joint center node and the floor diaphragm-constrained node.
+      the joint center node (column links) and the floor diaphragm-constrained
+      node (beam links), acting as a scissors spring in series between the
+      columns and beams.
 
     In addition to the X- and Z-direction offsets, this class also creates
     front/rear offset nodes along global Y (if the corresponding beams exist)
-    and connects them to the joint center node using rigid-like
+    and connects them to the beam-side joint node using rigid-like
     ``elasticBeamColumn`` elements.
 
     Attributes
@@ -273,6 +286,20 @@ class FloorJoint(FloorJointBase, StairsJoint):
     """
     rear_node: Node | None
     front_node: Node | None
+
+    @property
+    def beam_node(self) -> Node:
+        """Joint node to which the beam rigid offset links are connected.
+
+        Returns
+        -------
+        Node
+            Floor node (center node for rigid joints). Beam links frame into
+            this node while column links frame into the center node, so that
+            the joint flexibility element acts as a scissors spring in series
+            between them (O'Reilly & Sullivan, 2019).
+        """
+        return self.floor_node
 
     def __init__(self, design: JointDesign, mass: float,
                  model: Literal["inelastic", "elastic", "rigid"],
@@ -338,18 +365,21 @@ class FloorJoint(FloorJointBase, StairsJoint):
         """Adds floor joint model objects to the OpenSees domain (i.e, rigid
         joint offsets elements, nodes and joint flexibility element).
         """
+        # Add floor joint node (beam-side node) before the rigid links
+        if self.flexibility_model != 'rigid':
+            self.floor_node.add_to_ops()
         super(FloorJointBase, self).add_to_ops()
         # Rigid-joint offset elements along Y
         if self.rear_node:
             self.rear_node.add_to_ops()
-            ele_nodes = [self.rear_node.tag, self.center_node.tag]
+            ele_nodes = [self.rear_node.tag, self.beam_node.tag]
             ele_tag = self.rear_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Y)
             self.rigid_ele.append(ele_tag)
         if self.front_node:
             self.front_node.add_to_ops()
-            ele_nodes = [self.center_node.tag, self.front_node.tag]
+            ele_nodes = [self.beam_node.tag, self.front_node.tag]
             ele_tag = self.front_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Y)
@@ -357,8 +387,6 @@ class FloorJoint(FloorJointBase, StairsJoint):
 
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Add floor joint node constrained by the floor diaphragm
-            self.floor_node.add_to_ops()
             # Materials defining flexible rotation behaviour
             ops.uniaxialMaterial(*self._get_mat_inputs('X'))
             ops.uniaxialMaterial(*self._get_mat_inputs('Y'))
@@ -379,10 +407,15 @@ class FloorJoint(FloorJointBase, StairsJoint):
             joint in OpenSees.
         """
         content = super(FloorJointBase, self).to_py()
+        # Add floor joint node (beam-side node) before the rigid links,
+        # i.e., right after the central joint node definition
+        if self.flexibility_model != 'rigid':
+            note = ' # Constrained floor node (beam-side joint node)'
+            content.insert(3, self.floor_node.to_py() + note)
         # Rigid-joint offset elements along Y
         if self.rear_node:
             content.append(self.rear_node.to_py())
-            ele_nodes = f"{self.rear_node.tag}, {self.center_node.tag}"
+            ele_nodes = f"{self.rear_node.tag}, {self.beam_node.tag}"
             ele_tag = self.rear_node.tag
             content.append(
                 f"ops.element('elasticBeamColumn', {ele_tag}, {ele_nodes}, "
@@ -390,7 +423,7 @@ class FloorJoint(FloorJointBase, StairsJoint):
             )
         if self.front_node:
             content.append(self.front_node.to_py())
-            ele_nodes = f"{self.center_node.tag}, {self.front_node.tag}"
+            ele_nodes = f"{self.beam_node.tag}, {self.front_node.tag}"
             ele_tag = self.front_node.tag
             content.append(
                 f"ops.element('elasticBeamColumn', {ele_tag}, {ele_nodes}, "
@@ -400,9 +433,6 @@ class FloorJoint(FloorJointBase, StairsJoint):
         content.append(f"# Joint flexibility model: {self.flexibility_model}")
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Add floor joint node constrained by the floor diaphragm
-            note = ' # Constrained floor node'
-            content.append(self.floor_node.to_py() + note)
             # Materials defining flexible rotation behaviour
             mz_mat_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
@@ -441,10 +471,15 @@ class FloorJoint(FloorJointBase, StairsJoint):
             joint in OpenSees.
         """
         content = super(FloorJointBase, self).to_tcl()
+        # Add floor joint node (beam-side node) before the rigid links,
+        # i.e., right after the central joint node definition
+        if self.flexibility_model != 'rigid':
+            note = ' # Constrained floor node (beam-side joint node)'
+            content.insert(3, self.floor_node.to_tcl() + note)
         # Rigid-joint offset elements along Y
         if self.rear_node:
             content.append(self.rear_node.to_tcl())
-            ele_nodes = f"{self.rear_node.tag} {self.center_node.tag}"
+            ele_nodes = f"{self.rear_node.tag} {self.beam_node.tag}"
             ele_tag = self.rear_node.tag
             content.append(
                 f"element elasticBeamColumn {ele_tag} {ele_nodes} "
@@ -452,7 +487,7 @@ class FloorJoint(FloorJointBase, StairsJoint):
             )
         if self.front_node:
             content.append(self.front_node.to_tcl())
-            ele_nodes = f"{self.center_node.tag} {self.front_node.tag}"
+            ele_nodes = f"{self.beam_node.tag} {self.front_node.tag}"
             ele_tag = self.front_node.tag
             content.append(
                 f"element elasticBeamColumn {ele_tag} {ele_nodes} "
@@ -462,9 +497,6 @@ class FloorJoint(FloorJointBase, StairsJoint):
         content.append(f"# Joint flexibility model: {self.flexibility_model}")
         # Add joint flexibility element for no-rigid joint cases
         if self.flexibility_model != 'rigid':
-            # Add floor joint node constrained by the floor diaphragm
-            note = ' # Constrained floor node'
-            content.append(self.floor_node.to_tcl() + note)
             # Materials defining flexible rotation behaviour
             mz_mat_inputs = ' '.join(
                 f'{item}' for item in self._get_mat_inputs('X')

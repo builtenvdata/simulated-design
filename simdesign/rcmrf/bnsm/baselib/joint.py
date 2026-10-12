@@ -237,7 +237,11 @@ class FloorJointBase(StairsJointBase):
     Attributes
     ----------
     floor_node : Node
-        Floor node which is constrained by the floor diaphragm.
+        Beam-side joint node which is constrained by the floor diaphragm.
+        Beams frame into this node while columns frame into the center node,
+        so the joint flexibility element between them acts as a scissors
+        spring (O'Reilly & Sullivan, 2019). Same as center node for rigid
+        joints.
     flexibility_model : Literal['inelastic', 'elastic', 'rigid']
         Joint flexibility model.
     axial_force : float
@@ -326,7 +330,7 @@ class FloorJointBase(StairsJointBase):
         elif self.design.bottom_column is None:
             return self.design.top_column.H
         else:
-            return self.design.top_column.H
+            return (self.design.top_column.H + self.design.bottom_column.H) / 2
 
     def __init__(self, design: JointDesign, mass: float,
                  model: Literal["inelastic", "elastic", "rigid"],

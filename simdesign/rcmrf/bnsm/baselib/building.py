@@ -213,31 +213,35 @@ class BuildingBase(ABC):
                            self.cyclic_model, self.cracked_beam)
             for beam in self.design.beams
             ]
-        # Initialize beam nodes at floor levels
+        # Initialize beam nodes at floor levels. Beams frame into the
+        # beam-side joint node (floor_node) and columns into center_node, so
+        # that the joint flexibility element acts as a scissors spring in
+        # series between them (O'Reilly & Sullivan, 2019). For rigid joints
+        # floor_node is center_node.
         for joint in self.floor_joints:
             if joint.design.left_beam:
                 design = joint.design.left_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_j = joint.center_node
+                    beam.ele_node_j = joint.floor_node
                     beam.jnt_offsets[3] -= joint.bx / 2
             if joint.design.right_beam:
                 design = joint.design.right_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_i = joint.center_node
+                    beam.ele_node_i = joint.floor_node
                     beam.jnt_offsets[0] += joint.bx / 2
             if joint.design.rear_beam:
                 design = joint.design.rear_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_j = joint.center_node
+                    beam.ele_node_j = joint.floor_node
                     beam.jnt_offsets[4] -= joint.by / 2
             if joint.design.front_beam:
                 design = joint.design.front_beam
                 beam = self._find_beam_by_design(design)
                 if beam:
-                    beam.ele_node_i = joint.center_node
+                    beam.ele_node_i = joint.floor_node
                     beam.jnt_offsets[1] += joint.by / 2
         # Initialize beam nodes at mid-storeys (stairs beams)
         for joint in self.stairs_joints:
@@ -488,7 +492,11 @@ class BuildingBase(ABC):
         ops.integrator('LoadControl', 0.1)
         ops.algorithm('Newton')
         ops.analysis('Static')
-        ops.analyze(10)
+        ok = ops.analyze(10)
+        if ok != 0:
+            raise RuntimeError(
+                "Gravity analysis did not converge; the model state is "
+                "invalid for subsequent analyses.")
         ops.loadConst('-time', 0.0)
         ops.wipeAnalysis()
 
@@ -1352,7 +1360,11 @@ class BuildingBase(ABC):
         content.append("ops.integrator('LoadControl', 0.1)")
         content.append("ops.algorithm('Newton')")
         content.append("ops.analysis('Static')")
-        content.append("ops.analyze(10)")
+        content.append("ok = ops.analyze(10)")
+        content.append("if ok != 0:")
+        content.append("    raise RuntimeError('Gravity analysis did not "
+                       "converge; the model state is invalid for subsequent "
+                       "analyses.')")
         content.append("ops.loadConst('-time', 0.0)")
         content.append("ops.wipeAnalysis()")
         content.append("")
@@ -1981,7 +1993,10 @@ class BuildingBase(ABC):
         content.append("integrator LoadControl 0.1")
         content.append("algorithm Newton")
         content.append("analysis Static")
-        content.append("analyze 10")
+        content.append("if {[analyze 10] != 0} {")
+        content.append("    error \"Gravity analysis did not converge; the "
+                       "model state is invalid for subsequent analyses.\"")
+        content.append("}")
         content.append("loadConst -time 0.0")
         content.append("wipeAnalysis")
         content.append("")

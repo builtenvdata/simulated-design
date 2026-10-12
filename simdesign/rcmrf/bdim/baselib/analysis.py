@@ -321,7 +321,7 @@ class ElasticModelBase(ABC):
             elif beam.direction == 'y':
                 transf_tag = TRANSF_TAG_Y
             else:
-                raise ValueError("Something is wrong")
+                raise ValueError("Something is wrong with beam direction")
             # Create elastic section
             ops.section('Elastic', sec, Ec, Ag, Iz, Iy, Gc, Jxx, FACTY, FACTZ)
             # Create beam integration object

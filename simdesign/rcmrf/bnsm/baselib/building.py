@@ -751,10 +751,11 @@ class BuildingBase(ABC):
             ]
             current_base_shear = abs(sum(current_reactions))
 
+            # Check the base shear limits
+            within_limits = (current_base_shear < shear_lim and
+                             current_base_shear >= 0.6 * max(base_shear))
             # Set continue flag
-            cont = (current_ctrl_disp < max_disp and
-                    current_base_shear < shear_lim and
-                    current_base_shear >= 0.6 * max(base_shear))
+            cont = within_limits and current_ctrl_disp < max_disp
 
             # # Update the flag based on slope
             # if (
@@ -774,8 +775,8 @@ class BuildingBase(ABC):
             #         # Slope should generally decrease for increasing shear
             #         cont = (slope_cur < 2 * slope_prev) and cont
 
-            # Append the results
-            if ok == 0 and cont:
+            # Append the results, including the step reaching max_disp
+            if ok == 0 and within_limits:
                 ctrl_disp.append(current_ctrl_disp)
                 base_shear.append(current_base_shear)
                 storey_displacements.append(
@@ -1614,11 +1615,14 @@ class BuildingBase(ABC):
         content.append("    current_disp = ops.nodeDisp(ctrl_node, ctrl_dof)")
         content.append("    current_shear = abs(sum([ops.nodeReaction(node, "
                        "ctrl_dof) for node in supports]))")
+        content.append("    # Check the base shear limit")
+        content.append("    within_limits = current_shear >= "
+                       "0.6 * max(base_shear)")
         content.append("    # Set continue flag")
-        content.append("    cont = current_disp < max_disp and"
-                       " current_shear >= 0.6 * max(base_shear)")
-        content.append("    # Append base shear and control node displacement")
-        content.append("    if ok == 0 and cont:")
+        content.append("    cont = within_limits and current_disp < max_disp")
+        content.append("    # Append base shear and control node displacement,"
+                       " including the step reaching max_disp")
+        content.append("    if ok == 0 and within_limits:")
         content.append("        base_shear.append(current_shear)")
         content.append("        ctrl_disp.append(current_disp)")
         # Add lines for wiping the model
@@ -2258,27 +2262,34 @@ class BuildingBase(ABC):
         content.append("    # Get the base shear force")
         content.append("    reactions")
         content.append("    set current_disp [nodeDisp $ctrl_node $ctrl_dof]")
-        content.append("    set current_shear 0")
+        content.append("    set sum_reactions 0")
         content.append("    foreach foundation_node $supports {")
         content.append(
             "        set reaction [nodeReaction $foundation_node $ctrl_dof]")
         content.append(
-            "        set current_shear [expr $current_shear + abs($reaction)]")
+            "        set sum_reactions [expr {$sum_reactions + $reaction}]")
         content.append("    }")
-        content.append("    # Calculate the maximum encountered shear value")
+        content.append("    set current_shear [expr {abs($sum_reactions)}]")
+        content.append("    # Check the base shear limit")
         content.append(
             "    "
-            "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
-        )
+            "set within_limits [expr {$current_shear >= "
+            "0.6 * $max_base_shear}]")
         content.append("    # Set continue flag")
         content.append(
             "    "
-            "set cont [expr {($current_disp < $max_disp) && "
-            "($current_shear >= 0.6 * $max_base_shear)}]")
-        content.append("    # Append base shear and control node displacement")
-        content.append("    if { $ok == 0 && $cont == 1 } {")
+            "set cont [expr {$within_limits && "
+            "($current_disp < $max_disp)}]")
+        content.append("    # Append base shear and control node displacement,"
+                       " including the step reaching max_disp")
+        content.append("    if { $ok == 0 && $within_limits } {")
         content.append("        lappend base_shear $current_shear")
         content.append("        lappend ctrl_disp $current_disp")
+        content.append("        # Update the maximum recorded shear value")
+        content.append(
+            "        "
+            "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
+        )
         content.append("    }")
         content.append("}")
         # Add lines for wiping the model

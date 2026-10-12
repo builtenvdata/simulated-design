@@ -690,7 +690,7 @@ class BuildingBase(ABC):
         self, ctrl_dof: Literal[1, 2],
         out_dir: Optional[str | Path] = None,
         use_recorder: bool = False
-    ) -> Tuple[List[float], List[float]]:
+    ) -> Tuple[List[float], List[float], int]:
         """Performs nonlinear static pushover analysis (NSPA).
 
         Parameters
@@ -712,7 +712,23 @@ class BuildingBase(ABC):
         base_shear : List[float]
             Base shear value obtained as sum of the reaction forces.
         ok : int
-            Final analysis return code.
+            0 if the analysis ends at the target displacement
+            (``max_drift``) or after a loss of strength, i.e., a converged
+            step with a base shear below 60% of the maximum (recorded).
+            Negative if it stops earlier (see Notes).
+
+        Notes
+        -----
+        A step that fails is repeated with alternative algorithms, smaller
+        displacement increments and, as a last resort, relaxed tolerances.
+        The analysis stops before the target displacement, with ``ok``
+        negative, if no step converges, if a step is out of equilibrium
+        (base shear differing from the applied load by more than
+        ``NSPA_EQUILIBRIUM_TOL``), if the tangent stiffness of a step
+        exceeds ``NSPA_MAX_STIFFNESS_RATIO`` times the initial stiffness,
+        or if the base shear reaches 1.5 times the seismic weight. The
+        exported ``nspa.py`` and ``nspa.tcl`` do not include the
+        equilibrium and stiffness checks.
         """
         # # Check if capacity design is followed for shear
         # if self.design.OVERSTRENGTH_FACTOR_COLUMN_SHEAR:

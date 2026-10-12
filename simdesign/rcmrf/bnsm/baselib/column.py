@@ -1003,7 +1003,7 @@ class ColumnBase(ABC):
         k = 0.29  # Assuming low ductility based on Fig. 7
         Vc = k * ((fc_mpa**0.5) * MPa) * Ae  # Eqn. 27
         # Axial-load component based on Priestley et al. (1994)
-        Vp = P * (h - c) / (2 * Ls)  # Eqn. 28
+        Vp = P * max(h - c, 0.0) / (2 * Ls)  # Eqn. 28 (c > h: no axial term)
         # Truss-mechanism componentbased on Priestley et al. (1994)
         theta = 45.0  # Assumed based on observations from Zimos et al. 2015
         cot_th = 1 / np.tan(np.deg2rad(theta))

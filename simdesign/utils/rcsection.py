@@ -3,8 +3,8 @@ such as moment-curvature analysis and confined concrete parameter calculations.
 """
 # Imports from installed packages
 import numpy as np
-from typing import Tuple, Sequence, Callable, List, Dict
-from scipy.optimize import root_scalar
+from typing import Tuple, Sequence, List, Dict, Optional
+from scipy.optimize import root_scalar, minimize_scalar
 from dataclasses import dataclass
 
 from .units import MPa
@@ -22,21 +22,17 @@ class SectionState:
     ----------
     c : float
         Neutral axis depth from the **top** fiber.
+    phi : float
+        Curvature.
     Fint : float
         Internal axial resultant. Positive sign is compression.
-    Fc : float
-        Concrete compressive resultant from the assumed stress block.
-    Fs : np.ndarray
-        Steel forces for each reinforcement layer.
-    b1 : float
-        Stress-block centroid factor (dimensionless) used to locate the
-        concrete compressive resultant within the compression zone.
+    M : float
+        Internal bending moment about the section centroid.
     """
     c: float
+    phi: float
     Fint: float
-    Fc: float
-    Fs: np.ndarray
-    b1: float
+    M: float
 
 
 def get_moments(
@@ -58,6 +54,13 @@ def get_moments(
       via transformed section; cracking occurs when bottom fiber concrete
       stress reaches fcr.
     - First-yield moment My: curvature fixed at phi_y (Priestley et al. 2007).
+      If the extreme compression fiber would be crushed at phi_y (high axial
+      load), the yield point is taken at the largest curvature at which the
+      axial force can be carried without crushing it.
+    - Concrete follows the parabolic stress-strain relationship of Collins &
+      Mitchell (1997), integrated exactly over the compressed depth, with no
+      stress beyond the crushing strain. The whole section may be in
+      compression.
     - Reinforcement is provided directly as steel area per layer at specified
       depths from the top fiber. Any number of layers is supported.
 
@@ -85,11 +88,10 @@ def get_moments(
         Depth of each reinforcement layer from the top fiber (m), ordered
         top -> bottom. Must be strictly increasing and same length as
         As_layers.
-    pflag : bool, optional
+    pflag : int, optional
         Print/debug flag:
         - 0: no output
         - 1: print final moments
-        - Use an int >= 2 to print iteration progress.
 
     Returns
     -------
@@ -101,10 +103,17 @@ def get_moments(
         Neutral axis depth at cracking (m) from top fiber (centroidal NA).
     My : float
         Yield bending moment (kNm).
-    phi_cr : float
+    phi_y : float
         Yield curvature (rad/m).
     cy : float
-        Neutral axis depth at first yield (m).
+        Neutral axis depth at first yield (m). It exceeds ``h`` if the whole
+        section is in compression.
+
+    Raises
+    ------
+    ValueError
+        If the axial force exceeds the axial capacity of the section in
+        compression or in tension.
 
     References
     ----------
@@ -147,155 +156,141 @@ def get_moments(
         if np.any(As < 0.0):
             raise ValueError("As_layers cannot contain negative values.")
 
-    def solve_c(
-        section_state: Callable[[float], SectionState],
-        label: str,
-    ) -> Tuple[SectionState, float]:
+    # Parabolic concrete stress-strain relationship, f = fc (2r - r^2) with
+    # r = e / e_c, in Collins & Mitchell 1997
+    n_c = 0.8 + fc / (17.0 * MPa)  # Eqn 3-4
+    e_c = (fc / Ec) * (n_c / (n_c - 1.0))  # Eqn 3-5
+    e_lim = 2.0 * e_c  # Strain at which the stress drops to zero (crushing)
+
+    def conc_force(e: float) -> float:
+        """Integral of the concrete stress over strain, from 0 to ``e``."""
+        return fc * (e**2 / e_c - e**3 / (3.0 * e_c**2))
+
+    def conc_moment(e: float) -> float:
+        """Integral of the concrete stress times strain, from 0 to ``e``."""
+        return fc * (2.0 * e**3 / (3.0 * e_c) - e**4 / (4.0 * e_c**2))
+
+    def section_state(c: float, phi: float) -> SectionState:
         """
-        Solve for neutral axis depth ``c`` using axial-force compatibility.
+        Build the section force state for a given neutral axis depth and
+        curvature.
 
-        Finds ``c`` such that:
-            ``section_state(c).Pint - Pext = 0``
-
-        The routine first searches for a sign change on a grid in (0, h),
-        then uses Brent's method on the first bracket found. If no bracket is
-        found, it falls back to the grid point with smallest residual.
+        Strains follow from compatibility, ``eps = (c - depth) * phi``.
+        Steel stresses are bilinear with perfect plasticity via clipping to
+        ``[-fyL, fyL]``. Concrete in compression follows the parabolic
+        stress-strain relationship, integrated exactly over the section
+        depth. The concrete carries no tension, and no stress beyond the
+        crushing strain ``2 e_c``. The neutral axis may lie below the section
+        (``c > h``), i.e., the whole section may be in compression.
 
         Parameters
         ----------
-        section_state : Callable[[float], SectionState]
-            Function returning section resultants for a given ``c``.
-        label : str
-            Label used in debug printing.
+        c : float
+            Neutral axis depth from the top fiber (m).
+        phi : float
+            Curvature (rad/m).
 
         Returns
         -------
-        st : SectionState
-            Section state at the selected/converged ``c``.
-        c : float
-            Neutral axis depth from top fiber.
+        SectionState
+            Internal axial force and moment about the section centroid.
+        """
+        # Reinforcing steel strains, stresses and forces
+        e_s = (c - y) * phi
+        Fs = np.clip(e_s * Es, -fyL, fyL) * As
+        # Concrete strains at the top and bottom of the compressed part
+        e_top = min(c * phi, e_lim)
+        e_bot = max((c - h) * phi, 0.0)
+        if e_top > e_bot:
+            dF = conc_force(e_top) - conc_force(e_bot)
+            dG = conc_moment(e_top) - conc_moment(e_bot)
+            # Depth of a fiber is c - e/phi, and its lever arm about the
+            # centroid is h/2 - (c - e/phi)
+            Fc = b * dF / phi
+            Mc = b * ((0.5 * h - c) * dF + dG / phi) / phi
+        else:
+            Fc = Mc = 0.0
+        Fint = Fc + float(Fs.sum())
+        M = Mc + float((Fs * (0.5 * h - y)).sum())
+        return SectionState(c=c, phi=phi, Fint=Fint, M=M)
+
+    def get_max_force(phi: float) -> Tuple[float, float]:
+        """
+        Maximum internal axial force at a given curvature, without crushing
+        the extreme compression fiber.
+
+        Parameters
+        ----------
+        phi : float
+            Curvature (rad/m).
+
+        Returns
+        -------
+        c_max : float
+            Neutral axis depth at the maximum axial force (m).
+        F_max : float
+            Maximum internal axial force (kN).
+        """
+        c_lim = e_lim / phi  # Neutral axis depth at crushing
+        c_grid = np.linspace(1.0e-6 * c_lim, c_lim, 200)
+        F_grid = np.array([section_state(ci, phi).Fint for ci in c_grid])
+        j = int(np.argmax(F_grid))
+        if 0 < j < len(c_grid) - 1:  # refine an interior maximum
+            sol = minimize_scalar(
+                lambda ci: -section_state(ci, phi).Fint,
+                bounds=(c_grid[j - 1], c_grid[j + 1]), method="bounded",
+                options={"xatol": 1.0e-10 * c_lim})
+            if -sol.fun > F_grid[j]:
+                return float(sol.x), float(-sol.fun)
+        return float(c_grid[j]), float(F_grid[j])
+
+    def solve_c(phi: float, c_max: float) -> Optional[SectionState]:
+        """
+        Solve for the neutral axis depth ``c`` using axial-force
+        compatibility at a given curvature.
+
+        Finds ``c`` in ``(0, c_max]`` such that
+        ``section_state(c, phi).Fint - Pext = 0``. The routine first searches
+        for a sign change on a grid, then uses Brent's method on the first
+        bracket found.
+
+        Parameters
+        ----------
+        phi : float
+            Curvature (rad/m).
+        c_max : float
+            Upper bound of the neutral axis depth (m).
+
+        Returns
+        -------
+        SectionState | None
+            Section state at the converged ``c``, or None if no sign change
+            is found on the grid.
         """
         def g(c: float) -> float:
-            """Axial force residual: internal minus external.
+            """Axial force residual: internal minus external."""
+            return section_state(c, phi).Fint - Pext
 
-            Parameters
-            ----------
-            c : float
-                Neutral axis depth from top fiber.
-
-            Returns
-            -------
-            float
-                Axial force residual: internal minus external.
-            """
-            return section_state(c).Fint - Pext  # Axial force compatibility
-
-        c_grid = np.linspace(1.0e-6, h - 1.0e-6, 120)
+        c_grid = np.linspace(1.0e-6 * c_max, c_max, 120)
         g_vals = np.array([g(ci) for ci in c_grid], dtype=float)
         idx = np.where(np.sign(g_vals[:-1]) * np.sign(g_vals[1:]) <= 0.0)[0]
-
         if len(idx) == 0:
-            j = int(np.argmin(np.abs(g_vals)))
-            c = float(c_grid[j])
-            st = section_state(c)
-            if pflag:
-                print(
-                    f"[{label}] No root bracket found. Using least-residual "
-                    f"c={st.c:.6g} m, Pint={st.Fint:.6g} kN, "
-                    f"Pext={Pext:.6g} kN."
-                )
-            return st, c
-
-        a = float(c_grid[idx[0]])
-        bnd = float(c_grid[idx[0] + 1])
+            return None
         sol = root_scalar(
             g,
-            bracket=(a, bnd),
+            bracket=(float(c_grid[idx[0]]), float(c_grid[idx[0] + 1])),
             method="brentq",
             xtol=1.0e-10,
             rtol=1.0e-10,
             maxiter=200,
         )
-        c = float(sol.root)
-        st = section_state(c)
-
-        if pflag >= 2:
-            print(f"[{label}] Converged: c={st.c:.6g} m, "
-                  f"Pint={st.Fint:.6g} kN.")
-
-        return st, c
-
-    def get_my(st: SectionState) -> float:
-        """
-        Compute section moment about the centroid for a given SectionState.
-
-        The concrete compressive resultant is assumed to act at the centroid of
-        the equivalent stress block. Steel forces act at their layer locations.
-
-        Parameters
-        ----------
-        st : SectionState
-            Section state containing concrete and steel resultants.
-
-        Returns
-        -------
-        M : float
-            Bending moment about the section centroid.
-        """
-        ys = 0.5 * h - y
-        M_steel = float((st.Fs * ys).sum())
-        y_bar = st.c - 0.5 * st.b1 * st.c  # Eqn 5-8
-        yc = 0.5 * h - (st.c - y_bar)  # lever arm
-        M_conc = st.Fc * yc
-
-        return M_conc + M_steel
+        return section_state(float(sol.root), phi)
 
     As = np.asarray(As_layers, dtype=float)
     y = np.asarray(y_layers, dtype=float)
     validate_inputs(hh=h, As=As, y=y)
     # Yield curvature in Priestley et al. 2007
     phi_y = 2.1 * fyL / (Es * h)  # Eqn 4.57b
-
-    def state_yield(c: float) -> SectionState:
-        """
-        Build the section force state at first yield curvature for a given
-        ``c``.
-
-        Assumes a fixed curvature ``phi_y`` and enforces strain compatibility:
-            ``eps_s = (c - y) * phi_y``
-
-        Steel stresses are bilinear with perfect plasticity via clipping to
-        ``[-fyL, fyL]``. Concrete compression is represented using the
-        parabolic stress-strain relationship and resulting equivalent stress
-        block parameters per Collins & Mitchell (1997).
-
-        Parameters
-        ----------
-        c : float
-            Neutral axis depth from the top fiber (m).
-
-        Returns
-        -------
-        SectionState
-            Internal force state (axial resultants and stress-block factor).
-        """
-        # Steel fiber strains & stresses from compatibility
-        e_s = (c - y) * phi_y  # Reinforcing steel strains
-        f_s = np.clip(e_s * Es, -fyL, fyL)  # Reinforcing steel stresses
-        Fs = f_s * As  # Reinforcing steel forces
-
-        # Stress block forces using the parabolic stress-strain
-        # relationship in Collins & Mitchell 1997
-        n_c = 0.8 + fc / (17.0 * MPa)  # Eqn 3-4
-        e_c = (fc / Ec) * (n_c / (n_c - 1.0))  # Eqn 3-5
-        e_top = c * phi_y  # Top concrete fiber strain
-        r = e_top / e_c
-        a1b1 = r - (r * r) / 3.0  # Eqn 5-7
-        b1 = (4.0 - r) / (6.0 - 2.0 * r)  # Eqn 5-9
-        Fc = a1b1 * c * fc * b
-
-        Pint = Fc + float(Fs.sum())
-        return SectionState(c=c, Fint=Pint, Fc=Fc, Fs=Fs, b1=b1)
 
     def get_mcr() -> Tuple[float, float]:
         """
@@ -341,8 +336,40 @@ def get_moments(
 
     Mcr, phi_cr, ccr = get_mcr()
 
-    st_y, cy = solve_c(state_yield, label="yield")
-    My = get_my(st_y)
+    if Pext < -fyL * float(As.sum()):
+        raise ValueError(
+            f"No axial equilibrium: the axial force {Pext:.6g} kN exceeds "
+            "the tensile capacity of the section.")
+    # Yield at the curvature phi_y, without crushing the extreme compression
+    # fiber (c <= e_lim / phi_y)
+    st_y = solve_c(phi_y, e_lim / phi_y)
+    if st_y is None:
+        c_max, F_max = get_max_force(phi_y)
+        if Pext <= F_max:  # Maximum between the grid points
+            st_y = solve_c(phi_y, c_max) or section_state(c_max, phi_y)
+    if st_y is None:
+        # The extreme compression fiber would be crushed at phi_y. The yield
+        # point is taken at the largest curvature at which the axial force
+        # can be carried without crushing it.
+        phi_min = 1.0e-4 * phi_y
+        if get_max_force(phi_min)[1] < Pext:
+            raise ValueError(
+                f"No axial equilibrium: the axial force {Pext:.6g} kN "
+                "exceeds the axial capacity of the section.")
+        sol = root_scalar(
+            lambda phi: get_max_force(phi)[1] - Pext,
+            bracket=(phi_min, phi_y),
+            method="brentq",
+            xtol=1.0e-10 * phi_y,
+            rtol=1.0e-10,
+            maxiter=200,
+        )
+        phi_y = float(sol.root)
+        st_y = section_state(get_max_force(phi_y)[0], phi_y)
+        if pflag:
+            print(f"Crushing governs the yield point: phi_y = {phi_y:.6g}.")
+    My = st_y.M
+    cy = st_y.c
 
     if pflag:
         print(f"Mcr: {Mcr:.6f} kNm, ccr: {ccr:.6f} m")

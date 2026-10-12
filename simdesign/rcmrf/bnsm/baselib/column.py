@@ -316,6 +316,11 @@ class ColumnBase(ABC):
         return int(str(self.design.line.tag) + '992')
 
     @property
+    def interior_sec_tag(self) -> int:
+        """Section tag for the interior section with shear springs."""
+        return int(str(self.design.line.tag) + '993')
+
+    @property
     def int_tag(self) -> int:
         """Beam integration tag used by OpenSees."""
         return self.design.line.tag
@@ -389,6 +394,8 @@ class ColumnBase(ABC):
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
         ops.section(*self._get_inelastic_sec_inputs())
+        if not self.capacity_design:  # Interior section with shear springs
+            ops.section(*self._get_interior_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -467,6 +474,12 @@ class ColumnBase(ABC):
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in self._get_interior_sec_inputs()
+            )
+            content.append(f"ops.section({interior_sec_inputs})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -535,6 +548,10 @@ class ColumnBase(ABC):
             f"{item}" for item in self._get_inelastic_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ' '.join(
+                f"{item}" for item in self._get_interior_sec_inputs())
+            content.append(f"section {interior_sec_inputs}")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -666,6 +683,32 @@ class ColumnBase(ABC):
 
         return sec_inputs
 
+    def _get_interior_sec_inputs(self) -> List[str | int]:
+        """Retrieves inputs for the interior section with shear springs.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for the aggregated interior section, i.e., the
+            elastic section aggregated with the shear force - shear strain
+            materials (Vy and Vz).
+
+        Notes
+        -----
+        The shear materials define shear force vs. average shear strain of
+        the member (Mergos and Kappos, 2012; Zimos et al., 2015). Including
+        them in the interior section integrates the shear strains along the
+        whole member length rather than only over the plastic hinge lengths.
+        """
+        sec_inputs = [
+            'Aggregator', self.interior_sec_tag,
+            self.vy_mat_tag, 'Vy',
+            self.vz_mat_tag, 'Vz',
+            '-section', self.elastic_sec_tag
+        ]
+
+        return sec_inputs
+
     def _get_int_inputs(self) -> List[str | float | int]:
         """Retrieves column integration inputs.
 
@@ -684,10 +727,15 @@ class ColumnBase(ABC):
         # Plastic hinge length based on Priestley et al. 2007
         Lp = self._get_plastic_hinge_length()
         # Beam integration inputs
+        # Interior section, including the shear springs if they are used
+        if self.capacity_design:
+            interior_sec_tag = self.elastic_sec_tag
+        else:
+            interior_sec_tag = self.interior_sec_tag
         int_inputs = [
             'HingeRadau', self.int_tag,
             self.inelastic_sec_tag, Lp, self.inelastic_sec_tag, Lp,
-            self.elastic_sec_tag
+            interior_sec_tag
         ]
 
         return int_inputs

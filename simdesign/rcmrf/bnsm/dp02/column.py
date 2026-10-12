@@ -124,6 +124,8 @@ class Column(ColumnBase):
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
         ops.section(*self._get_inelastic_sec_inputs())
+        if not self.capacity_design:  # Interior section with shear springs
+            ops.section(*self._get_interior_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -213,6 +215,12 @@ class Column(ColumnBase):
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in self._get_interior_sec_inputs()
+            )
+            content.append(f"ops.section({interior_sec_inputs})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -285,6 +293,10 @@ class Column(ColumnBase):
             f"{item}" for item in self._get_inelastic_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
+        if not self.capacity_design:  # Interior section with shear springs
+            interior_sec_inputs = ' '.join(
+                f"{item}" for item in self._get_interior_sec_inputs())
+            content.append(f"section {interior_sec_inputs}")
 
         # Create beam integration
         content.append('# Create integration scheme')

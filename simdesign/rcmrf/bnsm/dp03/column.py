@@ -120,6 +120,8 @@ class Column(ColumnBase):
         section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         if self.interior_section == 'Elastic':  # use elastic interior
             ops.section(*self._get_elastic_sec_inputs())
+            if not self.capacity_design:  # with shear springs
+                ops.section(*self._get_interior_sec_inputs())
         # Fiber section
         ops.section(*section)
         for fiber in fibers:
@@ -214,6 +216,12 @@ class Column(ColumnBase):
                 for item in self._get_elastic_sec_inputs()
             )
             content.append(f"ops.section({elastic_sec_inputs})")
+            if not self.capacity_design:  # with shear springs
+                interior_sec_inputs = ', '.join(
+                    repr(item) if isinstance(item, str) else str(item)
+                    for item in self._get_interior_sec_inputs()
+                )
+                content.append(f"ops.section({interior_sec_inputs})")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ', '.join(
@@ -318,6 +326,10 @@ class Column(ColumnBase):
             elastic_sec_inputs = ' '.join(
                 f"{item}" for item in self._get_elastic_sec_inputs())
             content.append(f"section {elastic_sec_inputs}")
+            if not self.capacity_design:  # with shear springs
+                interior_sec_inputs = ' '.join(
+                    f"{item}" for item in self._get_interior_sec_inputs())
+                content.append(f"section {interior_sec_inputs}")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ' '.join(f"{item}" for item in fb_section)

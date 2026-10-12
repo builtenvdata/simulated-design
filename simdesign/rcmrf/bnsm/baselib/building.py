@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Imports from bnsm library
 from .constants import (RIGID_MAT, BIG_VALUE, GRAV_TS_TAG, GRAV_P_TAG,
-                        NSPA_TS_TAG, NSPA_P_TAG)
+                        NSPA_TS_TAG, NSPA_P_TAG, MIN_EIGEN_MODES)
 from .foundation import FoundationBase
 from .joint import StairsJointBase, FloorJointBase
 from .floor import FloorDiaphragmBase
@@ -567,7 +567,16 @@ class BuildingBase(ABC):
         Returns
         -------
         Dict[str, List[float]]
-            Dictionary containing modal properties.
+            Dictionary containing modal properties. The per-mode entries
+            (``eigen*`` and ``parti*``) are given for the first `num_modes`
+            modes.
+
+        Notes
+        -----
+        At least ``MIN_EIGEN_MODES`` modes are solved for, because the
+        default ARPACK solver is unreliable for a single eigenvalue (it may
+        return meaningless periods such as 1e157 s or 0.009 s). The modal
+        properties file written to `out_dir` contains all solved modes.
 
         TODO
         ----
@@ -576,12 +585,13 @@ class BuildingBase(ABC):
         # Build the model
         self.build()
 
-        # Perform eigen value analysis
+        # Perform eigen value analysis, with at least MIN_EIGEN_MODES modes
+        num_solve = max(num_modes, MIN_EIGEN_MODES)
         list_solvers = ['-genBandArpack', '-fullGenLapack', '-symmBandLapack']
         ok = False
         for s in list_solvers:
             try:
-                eigen_values = ops.eigen(s, num_modes)
+                eigen_values = ops.eigen(s, num_solve)
                 # All the eigenvalues must be positive and finite
                 ok = all(0.0 < value < 1e+300 for value in eigen_values)
                 if ok:
@@ -629,6 +639,10 @@ class BuildingBase(ABC):
 
         # Perform modal analysis
         modal_properties = ops.modalProperties(*args)
+        # Keep the requested modes in the per-mode properties
+        for key, values in modal_properties.items():
+            if key.startswith(('eigen', 'parti')):
+                modal_properties[key] = values[:num_modes]
 
         return modal_properties
 
@@ -1469,8 +1483,11 @@ class BuildingBase(ABC):
         content.append("build_model()")
         # Add lines for performing eigenvalue analysis
         content.append("")
-        content.append("# Perform eigen value analysis")
-        content.append("eigen_values = ops.eigen(num_modes)")
+        content.append("# Perform eigen value analysis, with at least "
+                       f"{MIN_EIGEN_MODES} modes (ARPACK is unreliable for a "
+                       "single eigenvalue)")
+        content.append(f"eigen_values = ops.eigen(max(num_modes, "
+                       f"{MIN_EIGEN_MODES}))")
         content.append("if not all(0.0 < value < 1e+300 for value in "
                        "eigen_values):")
         content.append("    raise RuntimeError(f'Invalid eigenvalues: "
@@ -1498,6 +1515,10 @@ class BuildingBase(ABC):
                        "'ModalProperties.txt').as_posix()")
         content.append("results = ops.modalProperties('-print', '-return', "
                        "'-file', report_file_path, '-unorm')")
+        content.append("# Keep the requested modes in the per-mode properties")
+        content.append("for key, values in results.items():")
+        content.append("    if key.startswith(('eigen', 'parti')):")
+        content.append("        results[key] = values[:num_modes]")
         content.append("")
         # Add return statement
         content.append("return results")
@@ -2098,8 +2119,11 @@ class BuildingBase(ABC):
         content.append("source model.tcl")
         # Add lines for performing eigenvalue analysis
         content.append("")
-        content.append("# Perform eigenvalue analysis")
-        content.append("set eigenVals [eigen $numModes]")
+        content.append(f"# Perform eigenvalue analysis, with at least "
+                       f"{MIN_EIGEN_MODES} modes (ARPACK is unreliable for a "
+                       "single eigenvalue)")
+        content.append(f"set eigenVals [eigen [expr {{max($numModes, "
+                       f"{MIN_EIGEN_MODES})}}]]")
         content.append("foreach lambda $eigenVals {")
         content.append("    if {$lambda <= 0.0 || $lambda > 1e+300} {")
         content.append('        error "Invalid eigenvalues: $eigenVals"')

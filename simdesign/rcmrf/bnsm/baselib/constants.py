@@ -33,3 +33,8 @@ and nspa loads."""
 NSPA_P_TAG = 2
 """Tag for load pattern which associates nspa time-series with the
 nspa point loads."""
+MIN_EIGEN_MODES = 3
+"""Minimum number of modes solved for in the eigenvalue analysis. The
+default ARPACK solver is unreliable for a single eigenvalue (it may return
+meaningless periods), so at least this number of modes is computed, and
+only the requested ones are reported."""

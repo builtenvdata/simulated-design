@@ -189,9 +189,15 @@ def dot(a: List[float], b: List[float]) -> float:
     -------
     float
         Dot product
+
+    Raises
+    ------
+    ValueError
+        If the lists have different lengths.
     """
     if len(a) != len(b):
-        return 0.0
+        raise ValueError(
+            f"dot: lists have different lengths ({len(a)} != {len(b)}).")
 
     return sum(i[0] * i[1] for i in zip(a, b))
 

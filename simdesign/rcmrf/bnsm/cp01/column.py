@@ -305,6 +305,22 @@ class Column(ColumnBase):
 
         return rot_mat_inputs
 
+    def _get_yield_rotation(self, axis: Literal['x', 'y']) -> float:
+        """Gets the yield rotation of the flexural plastic hinge.
+
+        Parameters
+        ----------
+        axis : Literal['x', 'y']
+            The local axis considered for the calculations.
+
+        Returns
+        -------
+        float
+            Yield rotation of the flexural hinge around `axis`, used also to
+            define the drift limits of the shear failure curve.
+        """
+        return self._get_rot_hinge_props(axis)[4]
+
     def _get_shear_hinge_mat_inputs(
         self, axis: Literal['x', 'y'],
     ) -> Tuple[List[int | float | str], List[int | float | str]]:
@@ -348,7 +364,7 @@ class Column(ColumnBase):
         """
         if axis == 'y':
             # theta_y is about local-x (-z in ops)
-            theta_y = self._get_rot_hinge_props('x')[4]
+            theta_y = self._get_yield_rotation('x')
             # Section height
             h = self.design.by  # along y
             # Number of horizontal bars (stirrup legs)
@@ -360,7 +376,7 @@ class Column(ColumnBase):
             shear_mat_tag = self.vy_mat_tag
         elif axis == 'x':
             # theta_y is about local-y
-            theta_y = self._get_rot_hinge_props('y')[4]
+            theta_y = self._get_yield_rotation('y')
             # Section height
             h = self.design.bx  # along x
             # Number of horizontal bars (stirrup legs)

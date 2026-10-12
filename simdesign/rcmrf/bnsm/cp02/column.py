@@ -26,6 +26,48 @@ class Column(ColumnCP01):
         CP01 column model definition extended by this class.
     """
 
+    def _get_yield_rotation(self, axis: Literal['x', 'y']) -> float:
+        """Gets the yield rotation of the flexural plastic hinge.
+
+        Parameters
+        ----------
+        axis : Literal['x', 'y']
+            The local axis considered for the calculations.
+
+        Returns
+        -------
+        float
+            Yield rotation ``My·Ls/(3·EIy)`` around `axis`, with the
+            effective stiffness ratio of Hasanoglu and O'Reilly. It is used
+            also to define the drift limits of the shear failure curve.
+
+        References
+        ----------
+        Hasanoglu, S. and O'Reilly G. J. (2027). Calibration of cyclic
+        backbone parameters for numerical modelling and hysteretic energy
+        capacity of ductile reinforced concrete members.
+        """
+        if axis == 'x':
+            h = self.design.by  # Section height, along y
+            EI_gross = self.Ecm_q * self.design.Ix
+        elif axis == 'y':
+            h = self.design.bx  # Section height, along x
+            EI_gross = self.Ecm_q * self.design.Iy
+        # Axial load ratio, compressive axial load (+)
+        Nu = max(-self.axial_force, 0)
+        niu = Nu / (self.design.Ag * self.design.fc_q)
+        # Shear span to effective depth ratio
+        dd = (h - self.design.cover_q - self.design.dbh_q
+              - 0.5 * self.design.dbl_cor_q)
+        Ls = self.design.H / 2
+        rSsD = Ls / dd
+        # Yield moment
+        My = self._get_rot_hinge_props(axis)[1]
+        # Effective flexural rigidity at yield
+        EI_ratio = np.clip(0.08 * (1.25 ** (10*niu)) * (1.2 ** rSsD), 0.2, 0.8)
+        EIy = EI_gross * EI_ratio
+        return My * Ls / (3 * EIy)
+
     def _get_rot_hinge_mat_inputs(self, axis: Literal['x', 'y']
                                   ) -> List[int | float | str]:
         """Gets the plastic hinge material inputs for given axis.
@@ -55,8 +97,6 @@ class Column(ColumnCP01):
             h = self.design.by  # along y
             # Transverse reinforcement ratio
             rhoh = self.rhoh_y_q  # Stirrups are along -y axis
-            # Gross flexural rigidity of column section
-            EI_gross = self.Ecm_q * self.design.Ix
         elif axis == 'y':
             # The integer tag for the material describing flexure behaviour
             # around local -y axis (corresponds to y in ops)
@@ -65,8 +105,6 @@ class Column(ColumnCP01):
             h = self.design.bx  # along x
             # Transverse reinforcement ratio
             rhoh = self.rhoh_x_q  # Stirrups are along -x axis
-            # Gross flexural rigidity of column section
-            EI_gross = self.Ecm_q * self.design.Iy
 
         # Concrete compressive strength in base units
         fc = self.design.fc_q
@@ -107,9 +145,7 @@ class Column(ColumnCP01):
         Mu = Mu_Mc * Mc
 
         # Yield rotation capacity
-        EI_ratio = np.clip(0.08 * (1.25 ** (10*niu)) * (1.2 ** rSsD), 0.2, 0.8)
-        EIy = EI_gross * EI_ratio
-        theta_y = My * Ls / (3 * EIy)
+        theta_y = self._get_yield_rotation(axis)
 
         # Plastic rotation capacity
         theta_cap_pl = 0.009 * (0.25 ** (0.01*fc_mpa)) * (0.23 ** niu) * \

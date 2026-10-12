@@ -24,6 +24,7 @@ from .dp01 import DP01
 from .dp02 import DP02
 from .dp03 import DP03
 from .dp04 import DP04
+from .dp05 import DP05
 from ...utils.misc import filter_args
 
 
@@ -34,7 +35,8 @@ MODELLERS = {
     "DP01": DP01,
     "DP02": DP02,
     "DP03": DP03,
-    "DP04": DP04
+    "DP04": DP04,
+    "DP05": DP05
 }
 """Registry of available BNSM implementations or numerical model constructors.
 """
@@ -64,8 +66,10 @@ class BNSM:
         Distributed plasticity model variant 02.
     :class:`DP03 <simdesign.rcmrf.bnsm.dp03.building.Building>`
         Distributed plasticity model variant 03.
-    :class:`DP04 <simdesign.rcmrf.bnsm.dp02.building.Building>`
+    :class:`DP04 <simdesign.rcmrf.bnsm.dp04.building.Building>`
         Distributed plasticity model variant 04.
+    :class:`DP05 <simdesign.rcmrf.bnsm.dp05.building.Building>`
+        Distributed plasticity model variant 05.
     """
 
     def __new__(cls, **kwargs) -> BuildingBase:
@@ -102,7 +106,8 @@ class BNSM:
         :class:`~simdesign.rcmrf.bnsm.dp01.DP01`,
         :class:`~simdesign.rcmrf.bnsm.dp02.DP02`,
         :class:`~simdesign.rcmrf.bnsm.dp03.DP03`,
-        :class:`~simdesign.rcmrf.bnsm.dp04.DP04`
+        :class:`~simdesign.rcmrf.bnsm.dp04.DP04`,
+        :class:`~simdesign.rcmrf.bnsm.dp05.DP05`
 
             BNSM implementations whose constructor parameters define the
             accepted ``**kwargs`` for the corresponding ``model`` value.

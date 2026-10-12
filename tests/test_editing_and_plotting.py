@@ -1,5 +1,7 @@
 """Tests for geometry editing, the mesh shapes, the modal analysis fallbacks
 and the plots (skipped where off-screen rendering is not available)."""
+import os
+import subprocess
 import sys
 from pathlib import Path
 import numpy as np
@@ -170,17 +172,28 @@ def test_do_modal_raises_without_a_valid_spectrum(designs, monkeypatch):
 # ---------------------------------------------------------------------------
 # Plots (off-screen rendering with pyvista)
 # ---------------------------------------------------------------------------
+RENDER_PROBE = (
+    "import pyvista as pv; p = pv.Plotter(off_screen=True); "
+    "p.add_mesh(pv.Sphere()); p.screenshot(return_img=True); p.close()"
+)
+
+
 def rendering_available() -> bool:
-    """True if pyvista can render off screen on this machine."""
-    try:
-        import pyvista as pv
-        plotter = pv.Plotter(off_screen=True)
-        plotter.add_mesh(pv.Sphere())
-        plotter.screenshot(return_img=True)
-        plotter.close()
-        return True
-    except Exception:
+    """True if pyvista can render off screen on this machine.
+
+    The plots are skipped on CI runners, which have no OpenGL. Elsewhere, a
+    test render runs in a separate process, because VTK aborts the whole
+    process (no Python exception) when off-screen rendering is not
+    available.
+    """
+    if os.environ.get('CI'):
         return False
+    try:
+        result = subprocess.run([sys.executable, '-c', RENDER_PROBE],
+                                capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
 
 
 needs_rendering = pytest.mark.skipif(

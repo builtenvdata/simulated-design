@@ -21,6 +21,15 @@ class Beam(BeamBase):
     formulation and lumped plasticity end hinges following the modelling
     strategy in O'Reilly (2016).
 
+    The hinge sections have elastic materials in the degrees of freedom
+    without a hinge (axial, torsion and flexure about local-y), with the
+    properties of the elastic section, instead of rigid ones. With
+    ``HingeRadau`` integration, the hinge sections carry the elastic
+    flexibility over the plastic hinge lengths, which rigid materials would
+    leave out. The moment-curvature hinges do not include shear deformation,
+    so all sections have an elastic shear material (see
+    ``_get_shear_mat_inputs``).
+
     See Also
     --------
     :class:`~simdesign.rcmrf.bnsm.baselib.beam.BeamBase`
@@ -76,6 +85,18 @@ class Beam(BeamBase):
         """MinMax Material tag for the *J-end* hinge about local-z (Mz)."""
         return sub_tag(self.design.line.tag, 93)
 
+    @property
+    def shear_mat_tag(self) -> int:
+        """Elastic material tag for the shear response (Vy and Vz) of the
+        sections."""
+        return sub_tag(self.design.line.tag, 97)
+
+    @property
+    def interior_sec_tag(self) -> int:
+        """Section tag for the elastic interior section aggregated with the
+        shear material."""
+        return sub_tag(self.design.line.tag, 93)
+
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain
         (i.e, elastic beam element and nodes).
@@ -90,10 +111,16 @@ class Beam(BeamBase):
         ops.uniaxialMaterial(*mz_minmax_i)
         ops.uniaxialMaterial(*mz_minmax_j)
 
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
+        ops.uniaxialMaterial(*self._get_shear_mat_inputs())
+
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
         ops.section(*self._get_inelastic_sec_i_inputs())
         ops.section(*self._get_inelastic_sec_j_inputs())
+        ops.section(*self._get_interior_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -143,6 +170,19 @@ class Beam(BeamBase):
         content.append(f"ops.uniaxialMaterial({mz_minmax_mat_inputs_i})")
         content.append(f"ops.uniaxialMaterial({mz_minmax_mat_inputs_j})")
 
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in mat_inputs
+            )
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
+        shear_mat = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_shear_mat_inputs()
+        )
+        content.append(f"ops.uniaxialMaterial({shear_mat})")
+
         # Create sections
         content.append('# Create element sections')
         elastic_sec_inputs = ', '.join(
@@ -160,6 +200,11 @@ class Beam(BeamBase):
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_i_inputs})")
         content.append(f"ops.section({inelastic_sec_j_inputs})")
+        interior_sec_inputs = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_interior_sec_inputs()
+        )
+        content.append(f"ops.section({interior_sec_inputs})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -207,6 +252,14 @@ class Beam(BeamBase):
         content.append(f"uniaxialMaterial {mz_minmax_mat_inputs_i}")
         content.append(f"uniaxialMaterial {mz_minmax_mat_inputs_j}")
 
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
+        shear_mat = ' '.join(
+            f"{item}" for item in self._get_shear_mat_inputs())
+        content.append(f"uniaxialMaterial {shear_mat}")
+
         # Create sections
         content.append('# Create element sections')
         elastic_sec_inputs = ' '.join(
@@ -218,6 +271,9 @@ class Beam(BeamBase):
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_i_inputs}")
         content.append(f"section {inelastic_sec_j_inputs}")
+        interior_sec_inputs = ' '.join(
+            f"{item}" for item in self._get_interior_sec_inputs())
+        content.append(f"section {interior_sec_inputs}")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -232,6 +288,85 @@ class Beam(BeamBase):
         content.append(f"element {ele_inputs}")
 
         return content
+
+    def _get_inelastic_sec_i_inputs(self) -> List[str | int]:
+        """Retrieves inputs for inelastic beam section at ith end.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for inelastic beam section at ith end, with
+            elastic Vy, My, Vz, P and T materials.
+        """
+        sec_inputs = super()._get_inelastic_sec_i_inputs()
+        sec_inputs[6], sec_inputs[10], sec_inputs[12] = \
+            self.my_mat_tag, self.p_mat_tag, self.t_mat_tag
+        sec_inputs[4], sec_inputs[8] = self.shear_mat_tag, self.shear_mat_tag
+
+        return sec_inputs
+
+    def _get_inelastic_sec_j_inputs(self) -> List[str | int]:
+        """Retrieves inputs for inelastic beam section at jth end.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for inelastic beam section at jth end, with
+            elastic Vy, My, Vz, P and T materials.
+        """
+        sec_inputs = super()._get_inelastic_sec_j_inputs()
+        sec_inputs[6], sec_inputs[10], sec_inputs[12] = \
+            self.my_mat_tag, self.p_mat_tag, self.t_mat_tag
+        sec_inputs[4], sec_inputs[8] = self.shear_mat_tag, self.shear_mat_tag
+
+        return sec_inputs
+
+    def _get_shear_mat_inputs(self) -> List[str | float | int]:
+        """Retrieves the inputs of the elastic shear material of the
+        sections.
+
+        Returns
+        -------
+        List[str | float | int]
+            Inputs of an ``Elastic`` material with the gross shear stiffness,
+            ``G (5/6) A``, used for both Vy and Vz.
+
+        Notes
+        -----
+        The moment-curvature hinges and the elastic section do not include
+        shear deformation. Without the shear material, the beams would have
+        no shear flexibility.
+        """
+        GAv = self.Gcm_q * (5 / 6) * self.design.Ag
+        return round_list(['Elastic', self.shear_mat_tag, GAv])
+
+    def _get_interior_sec_inputs(self) -> List[str | int]:
+        """Retrieves the inputs of the elastic interior section aggregated
+        with the shear material.
+
+        Returns
+        -------
+        List[str | int]
+            Inputs of the ``Aggregator`` section with the shear material in
+            Vy and Vz and the elastic section.
+        """
+        return ['Aggregator', self.interior_sec_tag,
+                self.shear_mat_tag, 'Vy', self.shear_mat_tag, 'Vz',
+                '-section', self.elastic_sec_tag]
+
+    def _get_int_inputs(self) -> List[str | int | float]:
+        """Retrieves beam integration inputs.
+
+        Returns
+        -------
+        List[str | int | float]
+            List of beam integration inputs, with the interior section
+            aggregated with the shear material.
+        """
+        int_inputs = super()._get_int_inputs()
+        int_inputs[-1] = self.interior_sec_tag
+
+        return int_inputs
 
     def _get_ele_inputs(self) -> List[str | int | float]:
         """Retrieves beam element inputs.

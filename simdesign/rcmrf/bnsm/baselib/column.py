@@ -328,6 +328,17 @@ class ColumnBase(ABC):
         return sub_tag(self.design.line.tag, 97)
 
     @property
+    def p_mat_tag(self) -> int:
+        """Elastic material tag for the axial response (P) of the hinges."""
+        return sub_tag(self.design.line.tag, 98)
+
+    @property
+    def t_mat_tag(self) -> int:
+        """Elastic material tag for the torsional response (T) of the
+        hinges."""
+        return sub_tag(self.design.line.tag, 99)
+
+    @property
     def elastic_sec_tag(self) -> int:
         """Section tag for the elastic (interior) section."""
         return sub_tag(self.design.line.tag, 90)
@@ -699,6 +710,52 @@ class ColumnBase(ABC):
         ])
 
         return sec_inputs
+
+    def _get_hinge_elastic_mat_inputs(
+        self
+    ) -> List[List[str | float | int]]:
+        """Retrieves the elastic material inputs of the hinge sections.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the elastic axial (EA) and torsional (GJ) materials,
+            i.e., the properties of the elastic section in the degrees of
+            freedom without a hinge.
+        """
+        return [
+            round_list(['Elastic', self.p_mat_tag,
+                        self.Ecm_q * self.design.Ag]),
+            round_list(['Elastic', self.t_mat_tag,
+                        self.Gcm_q * self.design.J])
+        ]
+
+    def _get_shear_mat_inputs(self) -> List[List[str | float | int]]:
+        """Retrieves the inputs of the shear materials (Vy and Vz) aggregated
+        into the element sections.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the Pinching4 and MinMax materials of the shear springs
+            (Zimos et al., 2015) for columns without capacity design for
+            shear, and of elastic materials with the gross shear stiffness,
+            ``G (5/6) A``, for columns with capacity design for shear.
+
+        Notes
+        -----
+        Used by the models whose hinges do not include the shear deformation
+        (fiber sections in DP03-DP05 and the moment-curvature hinges of DP02).
+        Without the elastic shear materials, columns with capacity design for
+        shear would have no shear flexibility.
+        """
+        if self.capacity_design:
+            GAv = self.Gcm_q * (5 / 6) * self.design.Ag
+            return [round_list(['Elastic', self.vy_mat_tag, GAv]),
+                    round_list(['Elastic', self.vz_mat_tag, GAv])]
+        vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
+        vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
+        return [vy_mat, vz_mat, minmax_vy, minmax_vz]
 
     def _get_inelastic_sec_inputs(self) -> List[str | int]:
         """Retrieves inputs for inelastic aggregated column section.

@@ -33,7 +33,9 @@ class Column(ColumnBase):
     response is obtained by integrating stresses over the fibers, enabling
     axial force-bending moment interaction to be captured. The interior region
     is modeled as elastic using cracked section properties. The shear response
-    is represented as in the base class.
+    is represented as in the base class, and with elastic shear materials
+    (gross shear stiffness) for columns with capacity design for shear (see
+    ``_get_shear_mat_inputs``).
 
     Attributes
     ----------
@@ -120,28 +122,22 @@ class Column(ColumnBase):
         ops.uniaxialMaterial(*self._get_steel_minmax_mat_inputs())
         ops.uniaxialMaterial(*self._get_unconfined_concrete_mat_inputs())
         ops.uniaxialMaterial(*self._get_confined_concrete_mat_inputs())
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            ops.uniaxialMaterial(*vy_mat)
-            ops.uniaxialMaterial(*vz_mat)
-            ops.uniaxialMaterial(*minmax_vy)
-            ops.uniaxialMaterial(*minmax_vz)
+        for mat_inputs in self._get_shear_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
 
         # Create element sections
         section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         if self.interior_section == 'Elastic':  # use elastic interior
             ops.section(*self._get_elastic_sec_inputs())
-            if not self.capacity_design:  # with shear springs
-                ops.section(*self._get_interior_sec_inputs())
+            ops.section(*self._get_interior_sec_inputs())
         # Fiber section
         ops.section(*section)
         for fiber in fibers:
             ops.fiber(*fiber)
         for patch in patches:
             ops.patch(*patch)
-        if not self.capacity_design:  # Aggregated section
-            ops.section(*self._get_inelastic_aggregated_sec_inputs())
+        # Aggregated section (fiber section and shear materials)
+        ops.section(*self._get_inelastic_aggregated_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -195,29 +191,12 @@ class Column(ColumnBase):
         content.append(f"ops.uniaxialMaterial({unconc})")
         content.append(f"ops.uniaxialMaterial({conc})")
         # Uniaxial shear materials
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            vy_mat_inputs = ', '.join(
+        for mat_inputs in self._get_shear_mat_inputs():
+            mat_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
-                for item in vy_mat
+                for item in mat_inputs
             )
-            vz_mat_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in vz_mat
-            )
-            minmax_vy_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in minmax_vy
-            )
-            minmax_vz_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in minmax_vz
-            )
-            content.append(f"ops.uniaxialMaterial({vy_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({vz_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({minmax_vy_inputs})")
-            content.append(f"ops.uniaxialMaterial({minmax_vz_inputs})")
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
 
         # Create sections
         content.append('# Create element sections')
@@ -228,12 +207,11 @@ class Column(ColumnBase):
                 for item in self._get_elastic_sec_inputs()
             )
             content.append(f"ops.section({elastic_sec_inputs})")
-            if not self.capacity_design:  # with shear springs
-                interior_sec_inputs = ', '.join(
-                    repr(item) if isinstance(item, str) else str(item)
-                    for item in self._get_interior_sec_inputs()
-                )
-                content.append(f"ops.section({interior_sec_inputs})")
+            interior_sec_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in self._get_interior_sec_inputs()
+            )
+            content.append(f"ops.section({interior_sec_inputs})")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ', '.join(
@@ -254,12 +232,11 @@ class Column(ColumnBase):
             )
             content.append(f"ops.patch({patch})")
         # End Sections - Aggregate(Fiber + Uniaxial shear)
-        if not self.capacity_design:
-            agg_section = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_inelastic_aggregated_sec_inputs()
-            )
-            content.append(f"ops.section({agg_section})")
+        agg_section = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_inelastic_aggregated_sec_inputs()
+        )
+        content.append(f"ops.section({agg_section})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -319,17 +296,9 @@ class Column(ColumnBase):
         content.append(f"uniaxialMaterial {unconc}")
         content.append(f"uniaxialMaterial {conc}")
         # Uniaxial shear materials
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            vy_mat_inputs = ' '.join(f"{item}" for item in vy_mat)
-            vz_mat_inputs = ' '.join(f"{item}" for item in vz_mat)
-            minmax_vy_inputs = ' '.join(f"{item}" for item in minmax_vy)
-            minmax_vz_inputs = ' '.join(f"{item}" for item in minmax_vz)
-            content.append(f"uniaxialMaterial {vy_mat_inputs}")
-            content.append(f"uniaxialMaterial {vz_mat_inputs}")
-            content.append(f"uniaxialMaterial {minmax_vy_inputs}")
-            content.append(f"uniaxialMaterial {minmax_vz_inputs}")
+        for mat_inputs in self._get_shear_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
 
         # Create sections
         content.append('# Create element sections')
@@ -338,10 +307,9 @@ class Column(ColumnBase):
             elastic_sec_inputs = ' '.join(
                 f"{item}" for item in self._get_elastic_sec_inputs())
             content.append(f"section {elastic_sec_inputs}")
-            if not self.capacity_design:  # with shear springs
-                interior_sec_inputs = ' '.join(
-                    f"{item}" for item in self._get_interior_sec_inputs())
-                content.append(f"section {interior_sec_inputs}")
+            interior_sec_inputs = ' '.join(
+                f"{item}" for item in self._get_interior_sec_inputs())
+            content.append(f"section {interior_sec_inputs}")
         # End Sections - Fiber
         fb_section, fibers, patches = self._get_inelastic_fiber_sec_inputs()
         fb_section = ' '.join(f"{item}" for item in fb_section)
@@ -354,12 +322,11 @@ class Column(ColumnBase):
             content.append(f"    patch {patch}")
         content.append("}")
         # End Sections - Aggregate(Fiber + Uniaxial shear)
-        if not self.capacity_design:
-            agg_section = ' '.join(
-                f"{item}" for item in
-                self._get_inelastic_aggregated_sec_inputs()
-            )
-            content.append(f"section {agg_section}")
+        agg_section = ' '.join(
+            f"{item}" for item in
+            self._get_inelastic_aggregated_sec_inputs()
+        )
+        content.append(f"section {agg_section}")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -474,16 +441,13 @@ class Column(ColumnBase):
         List[str | float | int]
             List of column integration inputs.
         """
-        # Inputs for aggregated section with elastic interior
+        # Aggregated sections (with the shear materials) at the ends
         int_inputs = super()._get_int_inputs()
-
-        if self.capacity_design:
-            # Use fiber section
-            int_inputs[2], int_inputs[4] = (self.inelastic_fiber_sec_tag,) * 2
-            if self.interior_section == 'Inelastic':  # use inelastic interior
-                int_inputs[-1] = self.inelastic_fiber_sec_tag
-        elif self.interior_section == 'Inelastic':  # use inelastic interior
+        # Interior section, also with the shear materials
+        if self.interior_section == 'Inelastic':  # use inelastic interior
             int_inputs[-1] = self.inelastic_sec_tag
+        else:  # use elastic interior
+            int_inputs[-1] = self.interior_sec_tag
 
         return int_inputs
 

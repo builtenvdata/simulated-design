@@ -31,7 +31,9 @@ class Beam(BeamBase):
     each fiber is associated with a uniaxial material model. The section
     response is obtained by integrating stresses over the fibers, enabling
     axial force-bending moment interaction to be captured. The interior region
-    is modeled as elastic using cracked section properties.
+    is modeled as elastic using cracked section properties. All sections are
+    aggregated with an elastic shear material (gross shear stiffness) in Vy
+    and Vz (see ``_get_shear_mat_inputs``).
 
     Attributes
     ----------
@@ -113,6 +115,30 @@ class Beam(BeamBase):
         """Section tag for the inelastic middle (interior) section."""
         return sub_tag(self.design.line.tag, 93)
 
+    @property
+    def shear_mat_tag(self) -> int:
+        """Elastic material tag for the shear response (Vy and Vz) of the
+        sections."""
+        return sub_tag(self.design.line.tag, 98)
+
+    @property
+    def aggregated_sec_i_tag(self) -> int:
+        """Section tag for the *i-end* section aggregated with the shear
+        material."""
+        return sub_tag(self.design.line.tag, 94)
+
+    @property
+    def aggregated_sec_j_tag(self) -> int:
+        """Section tag for the *j-end* section aggregated with the shear
+        material."""
+        return sub_tag(self.design.line.tag, 95)
+
+    @property
+    def aggregated_sec_m_tag(self) -> int:
+        """Section tag for the interior section aggregated with the shear
+        material."""
+        return sub_tag(self.design.line.tag, 96)
+
     def add_to_ops(self) -> None:
         """Adds beam components to the OpenSees domain
         (i.e, elastic beam element and nodes).
@@ -154,6 +180,10 @@ class Beam(BeamBase):
                 ops.patch(*patch)
         elif self.interior_section == 'Elastic':  # use Elastic interior
             ops.section(*self._get_elastic_sec_inputs())
+        # Sections aggregated with the shear material
+        ops.uniaxialMaterial(*self._get_shear_mat_inputs())
+        for sec_inputs in self._get_aggregated_sec_inputs():
+            ops.section(*sec_inputs)
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -280,6 +310,19 @@ class Beam(BeamBase):
             )
             content.append(f"ops.section({elastic_sec_inputs})")
 
+        # Sections aggregated with the shear material
+        shear_mat = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_shear_mat_inputs()
+        )
+        content.append(f"ops.uniaxialMaterial({shear_mat})")
+        for sec_inputs in self._get_aggregated_sec_inputs():
+            sec_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in sec_inputs
+            )
+            content.append(f"ops.section({sec_inputs})")
+
         # Create beam integration
         content.append('# Create integration scheme')
         int_inputs = ', '.join(
@@ -384,6 +427,14 @@ class Beam(BeamBase):
                 f"{item}" for item in self._get_elastic_sec_inputs()
             )
             content.append(f"section {elastic_sec_inputs}")
+        # Sections aggregated with the shear material
+        shear_mat = ' '.join(
+            f"{item}" for item in self._get_shear_mat_inputs())
+        content.append(f"uniaxialMaterial {shear_mat}")
+        for sec_inputs in self._get_aggregated_sec_inputs():
+            sec_inputs = ' '.join(f"{item}" for item in sec_inputs)
+            content.append(f"section {sec_inputs}")
+
         # Create beam integration
         content.append('# Create integration scheme')
         int_inputs = ' '.join(
@@ -534,10 +585,55 @@ class Beam(BeamBase):
             List of beam integration inputs.
         """
         int_inputs = super()._get_int_inputs()
-        if self.interior_section == 'Inelastic':
-            int_inputs[-1] = self.inelastic_sec_m_tag
+        # Sections aggregated with the shear material
+        int_inputs[2] = self.aggregated_sec_i_tag
+        int_inputs[4] = self.aggregated_sec_j_tag
+        int_inputs[-1] = self.aggregated_sec_m_tag
 
         return int_inputs
+
+    def _get_shear_mat_inputs(self) -> List[str | float | int]:
+        """Retrieves the inputs of the elastic shear material of the
+        sections.
+
+        Returns
+        -------
+        List[str | float | int]
+            Inputs of an ``Elastic`` material with the gross shear stiffness,
+            ``G (5/6) A``, used for both Vy and Vz.
+
+        Notes
+        -----
+        The fiber sections carry the flexural and axial response only.
+        Without the shear material, the beams would have no shear
+        flexibility.
+        """
+        GAv = self.Gcm_q * (5 / 6) * self.design.Ag
+        return round_list(['Elastic', self.shear_mat_tag, GAv])
+
+    def _get_aggregated_sec_inputs(self) -> List[List[str | int]]:
+        """Retrieves the inputs of the sections aggregated with the shear
+        material.
+
+        Returns
+        -------
+        List[List[str | int]]
+            Inputs of the ``Aggregator`` sections at the *i-end*, *j-end* and
+            interior, i.e., the fiber sections (and the elastic interior
+            section, if used) with the shear material in Vy and Vz.
+        """
+        if self.interior_section == 'Inelastic':
+            interior_sec_tag = self.inelastic_sec_m_tag
+        else:
+            interior_sec_tag = self.elastic_sec_tag
+        return [
+            ['Aggregator', agg_tag, self.shear_mat_tag, 'Vy',
+             self.shear_mat_tag, 'Vz', '-section', sec_tag]
+            for agg_tag, sec_tag in (
+                (self.aggregated_sec_i_tag, self.inelastic_sec_i_tag),
+                (self.aggregated_sec_j_tag, self.inelastic_sec_j_tag),
+                (self.aggregated_sec_m_tag, interior_sec_tag))
+        ]
 
     def _get_confined_concrete_mat_inputs(self, section: Literal['i', 'm', 'j']
                                           ) -> List[str | float | int]:

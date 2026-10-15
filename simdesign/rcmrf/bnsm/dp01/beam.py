@@ -3,6 +3,7 @@ the BNSM layer.
 """
 # Imports from installed packages
 import numpy as np
+import openseespy.opensees as ops
 from typing import List
 
 # Imports from bnsm base library
@@ -16,13 +17,101 @@ class Beam(BeamBase):
     """Beam implementation for the ``DP01`` model.
 
     This class directly uses the behaviour defined in ``BeamBase``, except
-    for the cracked elastic section (see ``_get_elastic_sec_inputs``).
+    for the cracked elastic section (see ``_get_elastic_sec_inputs``) and the
+    elastic materials of the hinge sections.
+
+    The hinge sections have elastic materials in the degrees of freedom
+    without a hinge (axial, torsion and flexure about local-y), with the
+    properties of the elastic section, instead of rigid ones. With
+    ``HingeRadau`` integration, the hinge sections carry the elastic
+    flexibility over the plastic hinge lengths, which rigid materials would
+    leave out.
 
     See Also
     --------
     :class:`~simdesign.rcmrf.bnsm.baselib.beam.BeamBase`
         Base class defining the core behaviour and configuration.
     """
+
+    def add_to_ops(self) -> None:
+        """Adds beam components to the OpenSees domain
+        (i.e, beam element and nodes).
+        """
+        # Create the elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
+        super().add_to_ops()
+
+    def to_py(self) -> List[str]:
+        """Gets the Python commands to construct beam components in OpenSees
+        domain (i.e, beam element and nodes).
+
+        Returns
+        -------
+        List[str]
+            List of Python commands for constructing the components of beam
+            object in OpenSees.
+        """
+        content = super().to_py()
+        # Create the elastic materials of the hinge sections
+        idx = content.index('# Create element sections')
+        for mat_inputs in reversed(self._get_hinge_elastic_mat_inputs()):
+            mat_inputs = ', '.join(
+                repr(item) if isinstance(item, str) else str(item)
+                for item in mat_inputs
+            )
+            content.insert(idx, f"ops.uniaxialMaterial({mat_inputs})")
+
+        return content
+
+    def to_tcl(self) -> List[str]:
+        """Gets the Tcl commands to construct beam components in OpenSees
+        domain (i.e, beam element and nodes).
+
+        Returns
+        -------
+        List[str]
+            List of Tcl commands for constructing the components of beam
+            object in OpenSees.
+        """
+        content = super().to_tcl()
+        # Create the elastic materials of the hinge sections
+        idx = content.index('# Create element sections')
+        for mat_inputs in reversed(self._get_hinge_elastic_mat_inputs()):
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.insert(idx, f"uniaxialMaterial {mat_inputs}")
+
+        return content
+
+    def _get_inelastic_sec_i_inputs(self) -> List[str | int]:
+        """Retrieves inputs for inelastic beam section at ith end.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for inelastic beam section at ith end, with
+            elastic My, P and T materials.
+        """
+        sec_inputs = super()._get_inelastic_sec_i_inputs()
+        sec_inputs[6], sec_inputs[10], sec_inputs[12] = \
+            self.my_mat_tag, self.p_mat_tag, self.t_mat_tag
+
+        return sec_inputs
+
+    def _get_inelastic_sec_j_inputs(self) -> List[str | int]:
+        """Retrieves inputs for inelastic beam section at jth end.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for inelastic beam section at jth end, with
+            elastic My, P and T materials.
+        """
+        sec_inputs = super()._get_inelastic_sec_j_inputs()
+        sec_inputs[6], sec_inputs[10], sec_inputs[12] = \
+            self.my_mat_tag, self.p_mat_tag, self.t_mat_tag
+
+        return sec_inputs
 
     def _get_elastic_sec_inputs(self) -> List[str | int | float]:
         """Retrieves elastic beam section inputs.

@@ -370,6 +370,23 @@ class BeamBase(ABC):
         return sub_tag(self.design.line.tag, 91)
 
     @property
+    def p_mat_tag(self) -> int:
+        """Elastic material tag for the axial response (P) of the hinges."""
+        return sub_tag(self.design.line.tag, 94)
+
+    @property
+    def my_mat_tag(self) -> int:
+        """Elastic material tag for the flexural response about local-y (My)
+        of the hinges."""
+        return sub_tag(self.design.line.tag, 95)
+
+    @property
+    def t_mat_tag(self) -> int:
+        """Elastic material tag for the torsional response (T) of the
+        hinges."""
+        return sub_tag(self.design.line.tag, 96)
+
+    @property
     def elastic_sec_tag(self) -> int:
         """Section tag for the elastic (interior) section."""
         return sub_tag(self.design.line.tag, 90)
@@ -744,6 +761,27 @@ class BeamBase(ABC):
         sec_inputs = round_list(sec_inputs)
 
         return sec_inputs
+
+    def _get_hinge_elastic_mat_inputs(
+        self
+    ) -> List[List[str | float | int]]:
+        """Retrieves the elastic material inputs of the hinge sections.
+
+        Returns
+        -------
+        List[List[str | float | int]]
+            Inputs of the elastic axial (EA), flexural about local-y (EIy) and
+            torsional (GJ) materials, i.e., the properties of the elastic
+            section in the degrees of freedom without a hinge.
+        """
+        return [
+            round_list(['Elastic', self.p_mat_tag,
+                        self.Ecm_q * self.design.Ag]),
+            round_list(['Elastic', self.my_mat_tag,
+                        self.Ecm_q * self.design.Iy]),
+            round_list(['Elastic', self.t_mat_tag,
+                        self.Gcm_q * self.design.J])
+        ]
 
     def _get_inelastic_sec_i_inputs(self) -> List[str | int]:
         """Retrieves inputs for inelastic beam section at ith end.

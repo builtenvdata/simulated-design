@@ -21,6 +21,15 @@ class Column(ColumnBase):
     formulation and lumped plasticity end hinges following the modelling
     strategy in O'Reilly (2016).
 
+    The hinge sections have elastic materials in the degrees of freedom
+    without a hinge (axial and torsion), with the properties of the elastic
+    section, instead of rigid ones. With ``HingeRadau`` integration, the
+    hinge sections carry the elastic flexibility over the plastic hinge
+    lengths, which rigid materials would leave out. The moment-curvature
+    hinges do not include shear deformation, so columns with capacity design
+    for shear have elastic shear materials along the whole member (see
+    ``_get_shear_mat_inputs``).
+
     See Also
     --------
     :class:`~simdesign.rcmrf.bnsm.baselib.column.ColumnBase`
@@ -82,19 +91,17 @@ class Column(ColumnBase):
         ops.uniaxialMaterial(*my_mat)
         ops.uniaxialMaterial(*minmax_mz)
         ops.uniaxialMaterial(*minmax_my)
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            ops.uniaxialMaterial(*vy_mat)
-            ops.uniaxialMaterial(*vz_mat)
-            ops.uniaxialMaterial(*minmax_vy)
-            ops.uniaxialMaterial(*minmax_vz)
+        for mat_inputs in self._get_shear_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
+
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            ops.uniaxialMaterial(*mat_inputs)
 
         # Create element sections
         ops.section(*self._get_elastic_sec_inputs())
         ops.section(*self._get_inelastic_sec_inputs())
-        if not self.capacity_design:  # Interior section with shear springs
-            ops.section(*self._get_interior_sec_inputs())
+        ops.section(*self._get_interior_sec_inputs())
 
         # Create beam integration
         ops.beamIntegration(*self._get_int_inputs())
@@ -148,29 +155,20 @@ class Column(ColumnBase):
         content.append(f"ops.uniaxialMaterial({minmax_mz})")
         content.append(f"ops.uniaxialMaterial({pinching_my})")
         content.append(f"ops.uniaxialMaterial({minmax_my})")
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            vy_mat_inputs = ', '.join(
+        for mat_inputs in self._get_shear_mat_inputs():
+            mat_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
-                for item in vy_mat
+                for item in mat_inputs
             )
-            vz_mat_inputs = ', '.join(
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
+
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ', '.join(
                 repr(item) if isinstance(item, str) else str(item)
-                for item in vz_mat
+                for item in mat_inputs
             )
-            minmax_vy_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in minmax_vy
-            )
-            minmax_vz_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in minmax_vz
-            )
-            content.append(f"ops.uniaxialMaterial({vy_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({vz_mat_inputs})")
-            content.append(f"ops.uniaxialMaterial({minmax_vy_inputs})")
-            content.append(f"ops.uniaxialMaterial({minmax_vz_inputs})")
+            content.append(f"ops.uniaxialMaterial({mat_inputs})")
 
         # Create sections
         content.append('# Create element sections')
@@ -184,12 +182,11 @@ class Column(ColumnBase):
         )
         content.append(f"ops.section({elastic_sec_inputs})")
         content.append(f"ops.section({inelastic_sec_inputs})")
-        if not self.capacity_design:  # Interior section with shear springs
-            interior_sec_inputs = ', '.join(
-                repr(item) if isinstance(item, str) else str(item)
-                for item in self._get_interior_sec_inputs()
-            )
-            content.append(f"ops.section({interior_sec_inputs})")
+        interior_sec_inputs = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_interior_sec_inputs()
+        )
+        content.append(f"ops.section({interior_sec_inputs})")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -242,17 +239,14 @@ class Column(ColumnBase):
         content.append(f"uniaxialMaterial {pinching_my}")
         content.append(f"uniaxialMaterial {minmax_my}")
 
-        if not self.capacity_design:
-            vy_mat, minmax_vy = self._get_shear_hinge_mat_inputs('y')
-            vz_mat, minmax_vz = self._get_shear_hinge_mat_inputs('x')
-            vy_mat_inputs = ' '.join(f"{item}" for item in vy_mat)
-            vz_mat_inputs = ' '.join(f"{item}" for item in vz_mat)
-            minmax_vy_inputs = ' '.join(f"{item}" for item in minmax_vy)
-            minmax_vz_inputs = ' '.join(f"{item}" for item in minmax_vz)
-            content.append(f"uniaxialMaterial {vy_mat_inputs}")
-            content.append(f"uniaxialMaterial {vz_mat_inputs}")
-            content.append(f"uniaxialMaterial {minmax_vy_inputs}")
-            content.append(f"uniaxialMaterial {minmax_vz_inputs}")
+        for mat_inputs in self._get_shear_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
+
+        # Elastic materials of the hinge sections
+        for mat_inputs in self._get_hinge_elastic_mat_inputs():
+            mat_inputs = ' '.join(f"{item}" for item in mat_inputs)
+            content.append(f"uniaxialMaterial {mat_inputs}")
 
         # Create sections
         content.append('# Create element sections')
@@ -262,10 +256,9 @@ class Column(ColumnBase):
             f"{item}" for item in self._get_inelastic_sec_inputs())
         content.append(f"section {elastic_sec_inputs}")
         content.append(f"section {inelastic_sec_inputs}")
-        if not self.capacity_design:  # Interior section with shear springs
-            interior_sec_inputs = ' '.join(
-                f"{item}" for item in self._get_interior_sec_inputs())
-            content.append(f"section {interior_sec_inputs}")
+        interior_sec_inputs = ' '.join(
+            f"{item}" for item in self._get_interior_sec_inputs())
+        content.append(f"section {interior_sec_inputs}")
 
         # Create beam integration
         content.append('# Create integration scheme')
@@ -280,6 +273,37 @@ class Column(ColumnBase):
         content.append(f"element {ele_inputs}")
 
         return content
+
+    def _get_inelastic_sec_inputs(self) -> List[str | int]:
+        """Retrieves inputs for inelastic aggregated column section.
+
+        Returns
+        -------
+        List[str | int]
+            List of inputs for inelastic aggregated column section, with
+            elastic P and T materials, and the shear materials (see
+            ``_get_shear_mat_inputs``) also with capacity design for shear.
+        """
+        sec_inputs = super()._get_inelastic_sec_inputs()
+        sec_inputs[2], sec_inputs[12] = self.p_mat_tag, self.t_mat_tag
+        sec_inputs[6], sec_inputs[10] = self.vy_mat_tag, self.vz_mat_tag
+
+        return sec_inputs
+
+    def _get_int_inputs(self) -> List[str | float | int]:
+        """Retrieves column integration inputs.
+
+        Returns
+        -------
+        List[str | float | int]
+            List of column integration inputs, with the interior section
+            aggregated with the shear materials, also with capacity design
+            for shear.
+        """
+        int_inputs = super()._get_int_inputs()
+        int_inputs[-1] = self.interior_sec_tag
+
+        return int_inputs
 
     def _get_rot_hinge_mat_inputs(
         self, axis=Literal['x', 'y']

@@ -8,10 +8,11 @@ from typing import List, Optional
 # Imports from bnsm library
 from ..dp03.beam import Beam as BeamDP03
 from ..baselib.node import Node
-from ..baselib.constants import RIGID_MAT
+from ..baselib.constants import RIGID_MAT, AXIAL_RELEASE_STIFFNESS_RATIO
 
 # Imports from utils library
-from ....utils.tags import node_tag, TYPE_UNIT
+from ....utils.misc import round_list
+from ....utils.tags import node_tag, sub_tag, TYPE_UNIT
 
 
 class Beam(BeamDP03):
@@ -20,11 +21,11 @@ class Beam(BeamDP03):
     This class extends the ``DP03`` beam (fiber end sections) with an axial
     release at the end section (*j-end*). The beam element frames into an
     auxiliary node, ``ele_node_j``, which is connected to the beam-side joint
-    node, ``release_node``, by a ``zeroLength`` element. The release is free
-    along the beam axis and rigid in the transverse translations and in the
-    rotations, so the beam can elongate as its fiber sections crack and
-    yield, although the joint nodes are constrained by the rigid floor
-    diaphragm. The beam then carries no axial force.
+    node, ``release_node``, by a ``zeroLength`` element. The release is
+    nearly free along the beam axis and rigid in the transverse translations
+    and in the rotations, so the beam can elongate as its fiber sections
+    crack and yield, although the joint nodes are constrained by the rigid
+    floor diaphragm. The beam then carries practically no axial force.
 
     The mid-storey stairs beams have no release (see
     :meth:`~simdesign.rcmrf.bnsm.dp05.building.Building._initialize_beams`).
@@ -54,6 +55,11 @@ class Beam(BeamDP03):
         """
         return self.ele_node_j.tag
 
+    @property
+    def release_mat_tag(self) -> int:
+        """Tag of the elastic material of the axial release."""
+        return sub_tag(self.design.line.tag, 97)
+
     def set_axial_release(self) -> None:
         """Moves the *j-end* of the beam element to an auxiliary node at the
         location of the joint node, which becomes the ``release_node``.
@@ -74,6 +80,7 @@ class Beam(BeamDP03):
         """
         if self.release_node is not None:
             self.ele_node_j.add_to_ops()
+            ops.uniaxialMaterial(*self._get_release_mat_inputs())
             ops.element(*self._get_release_ele_inputs())
         super().add_to_ops()
 
@@ -90,12 +97,17 @@ class Beam(BeamDP03):
         """
         if self.release_node is None:
             return super().to_py()
+        mat_inputs = ', '.join(
+            repr(item) if isinstance(item, str) else str(item)
+            for item in self._get_release_mat_inputs()
+        )
         release_inputs = ', '.join(
             repr(item) if isinstance(item, str) else str(item)
             for item in self._get_release_ele_inputs()
         )
         content = ['# Create the auxiliary node and the axial release']
         content.append(self.ele_node_j.to_py())
+        content.append(f"ops.uniaxialMaterial({mat_inputs})")
         content.append(f"ops.element({release_inputs})")
         return content + super().to_py()
 
@@ -112,12 +124,38 @@ class Beam(BeamDP03):
         """
         if self.release_node is None:
             return super().to_tcl()
+        mat_inputs = ' '.join(
+            f'{item}' for item in self._get_release_mat_inputs())
         release_inputs = ' '.join(
             f'{item}' for item in self._get_release_ele_inputs())
         content = ['# Create the auxiliary node and the axial release']
         content.append(self.ele_node_j.to_tcl())
+        content.append(f"uniaxialMaterial {mat_inputs}")
         content.append(f"element {release_inputs}")
         return content + super().to_tcl()
+
+    def _get_release_mat_inputs(self) -> List[str | float | int]:
+        """Retrieves the inputs of the elastic material of the axial
+        release.
+
+        Returns
+        -------
+        List[str | float | int]
+            Inputs of an ``Elastic`` material with a small fraction,
+            ``AXIAL_RELEASE_STIFFNESS_RATIO``, of the axial stiffness of the
+            beam, EA/L.
+
+        Notes
+        -----
+        Without any axial stiffness at the release, the auxiliary node is
+        held along the beam axis only by the beam itself. The axial stiffness
+        of a softening fiber section (crushed concrete, fractured bars) can
+        vanish, and the stiffness matrix becomes singular.
+        """
+        k_axial = self.Ecm_q * self.design.Ag / self.clear_length
+        mat_inputs = ['Elastic', self.release_mat_tag,
+                      AXIAL_RELEASE_STIFFNESS_RATIO * k_axial]
+        return round_list(mat_inputs)
 
     def _get_release_ele_inputs(self) -> List[str | float | int]:
         """Retrieves the inputs of the axial release (zero-length element).
@@ -126,9 +164,10 @@ class Beam(BeamDP03):
         -------
         List[str | float | int]
             Inputs of the ``zeroLength`` element between the joint node and
-            the auxiliary node. No material is assigned along the beam axis
-            (local direction 1), and rigid materials are assigned to the
-            transverse translations and the rotations (directions 2-6).
+            the auxiliary node. A soft elastic material is assigned along the
+            beam axis (local direction 1), and rigid materials are assigned
+            to the transverse translations and the rotations (directions
+            2-6).
         """
         nodes = [self.release_node.tag, self.ele_node_j.tag]
         if self.design.direction == 'x':
@@ -139,6 +178,7 @@ class Beam(BeamDP03):
             vecyp = [1.0, 0.0, 0.0]
         return [
             'zeroLength', self.release_ele_tag, *nodes,
-            '-mat', *[RIGID_MAT] * 5, '-dir', 2, 3, 4, 5, 6,
+            '-mat', self.release_mat_tag, *[RIGID_MAT] * 5,
+            '-dir', 1, 2, 3, 4, 5, 6,
             '-orient', *vecx, *vecyp
         ]

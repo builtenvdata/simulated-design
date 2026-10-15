@@ -14,14 +14,15 @@ face). With the diaphragm, this elongation is restrained and the beams
 develop fictitious axial compression, which increases their flexural
 strength and stiffness. In DP05, the beam frames into an auxiliary node at
 its end section (*j-end*), connected to the joint by a ``zeroLength``
-element that is free along the beam axis and rigid in the other degrees of
-freedom (an axial buffer element), so the beams can elongate freely.
+element that is nearly free along the beam axis (a soft elastic spring) and
+rigid in the other degrees of freedom (an axial buffer element), so the beams
+can elongate practically freely.
 
 **Model Characteristics**
 
 - Beam:
   As DP03 (force-based elements with fiber end sections), with an axial
-  release at the *j-end*. The beams carry no axial force.
+  release at the *j-end*. The beams carry practically no axial force.
 
 - Column, Joints, Infill, Floor Diaphragm, Foundation:
   Identical to DP03.

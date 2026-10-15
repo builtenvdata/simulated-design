@@ -21,6 +21,11 @@ RIGID_SEC = 99999
 """Tag of the rigid-like section defined in OpenSees."""
 BIG_VALUE = 1e9
 """A big value used to define stiffness of rigid materials."""
+AXIAL_RELEASE_STIFFNESS_RATIO = 1e-3
+"""Ratio of the stiffness of the axial beam releases (DP05) to the axial
+stiffness of the beam, EA/L. The small stiffness keeps the stiffness matrix
+regular when the axial stiffness of a softening beam vanishes, and the beam
+is still practically free to elongate."""
 GRAV_TS_TAG = 1
 """Tag for time-series which defines the relationship between time-domain
 and gravity loads."""

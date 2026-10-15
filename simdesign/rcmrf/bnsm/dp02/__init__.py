@@ -16,14 +16,18 @@ the base implementation.
 
 - Beam:
   Distributed plasticity formulation using forceBeamColumn elements
-  with Pinching4-based flexural hinge behaviour at both ends
-  following O’Reilly (2016).
+  with Pinching4-based moment-curvature hinges at both ends following
+  O’Reilly (2016). The hinge sections have elastic axial, torsional and
+  weak-axis flexural materials, and all sections an elastic shear
+  material with the gross shear stiffness.
 
 - Column:
   Distributed plasticity formulation using forceBeamColumn elements
-  with Pinching4-based flexural hinge behaviour at both ends
-  following O’Reilly (2016). Optional degrading shear behaviour is
-  inherited from the base implementation.
+  with Pinching4-based moment-curvature hinges about both axes following
+  O’Reilly (2016), and elastic axial and torsional materials. Shear
+  materials act along the whole member: degrading shear springs (Zimos et
+  al., 2015) for columns without capacity design for shear, elastic
+  materials with the gross shear stiffness otherwise.
 
 - Joints:
   Rigid, elastic, or inelastic rotational spring models

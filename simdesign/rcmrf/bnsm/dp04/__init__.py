@@ -6,32 +6,20 @@ modelling strategy within the Building Nonlinear Structural Model (BNSM),
 suitable for nonlinear seismic assessment of reinforced concrete (RC)
 moment-resisting frame buildings.
 
-DP04 is a DP03-derived variant that retains the distributed-plasticity
-framework and fiber-hinge column formulation, while adopting an elastic
-interior section for columns. Beam modelling follows the base beam
-implementation, and the remaining components are inherited without
-modification.
+DP04 combines the DP01 beams with the DP03 fiber-section columns, which
+have an elastic interior section by default. The remaining components are
+inherited without modification.
 
 **Model Characteristics**
 
 - Beam:
   Distributed plasticity formulation using forceBeamColumn elements
-  with plastic hinge integration and aggregated section behaviour
-  (identical to the base implementation).
+  with Hysteretic moment-curvature hinges (identical to DP01).
 
 - Column:
   Distributed plasticity formulation using forceBeamColumn elements
-  with fiber-discretized hinge sections inherited from DP03.
-  The interior section is set to 'Elastic' by default, while optional
-  degrading shear behaviour is retained from the base implementation.
-
-- Beam:
-  Distributed-plasticity beam formulation inherited directly from the
-  base implementation (identical to the base implementation).
-
-- Column:
-  Fiber-hinge distributed-plasticity column formulation inherited from
-  DP03, with the interior section set to 'Elastic' by default.
+  with fiber-discretized hinge sections and shear materials (identical to
+  DP03), with the interior section set to 'Elastic' by default.
 
 - Joints:
   Rigid, elastic, or inelastic rotational spring models

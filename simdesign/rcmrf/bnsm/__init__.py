@@ -8,8 +8,8 @@ modelling strategy (e.g., CP01, DP03) based on the selected model type.
 
 Example
 -------
->>> from bnsm import BNSM
->>> model = BNSM(model="CP03", ...)
+>>> from simdesign.rcmrf import BNSM
+>>> model = BNSM(design=bdim, model="CP01")
 """
 
 from .factory import BNSM

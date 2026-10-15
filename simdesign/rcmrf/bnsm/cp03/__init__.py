@@ -17,14 +17,15 @@ providing instantiable component implementations.
 
 - Beam:
   Concentrated plasticity (CP) with explicit zeroLength end hinges
-  placed in series with an elastic interior beam element.
+  placed in series with an interior beam element that is nearly rigid in
+  flexure, so the hinges carry the whole flexural flexibility.
   Hinge moment-rotation behaviour follows CP01.
 
 - Column:
   Concentrated plasticity with explicit zeroLengthSection end hinges
-  and an elastic interior column element.
-  Flexural hinge behaviour follows CP01, with optional
-  degrading shear hinges supported through the inherited CP01 Column.
+  and a nearly rigid interior column element, as for the beams.
+  Flexural hinge behaviour follows CP01, with degrading shear springs for
+  columns without capacity design for shear, as in CP01.
 
 - Joints:
   Rigid joint offsets are modelled explicitly using rigid-like

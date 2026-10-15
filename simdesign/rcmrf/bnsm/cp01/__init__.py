@@ -12,12 +12,18 @@ provided by `bnsm.baselib`.
 
 - Beam:
   Concentrated plasticity (CP) with end hinges (Haselton et al., 2008)
-  defined using Hysteretic moment-rotation behaviour.
+  defined using Hysteretic moment-rotation behaviour, in forceBeamColumn
+  elements with ConcentratedPlasticity integration. The interior is nearly
+  rigid in flexure, so the hinges, calibrated to the chord rotation of the
+  member, carry the whole flexural flexibility. The hinge sections have
+  elastic axial, torsional and weak-axis flexural materials.
 
 - Column:
-  Concentrated plasticity (Haselton et al., 2008) with optional degrading
-  shear behaviour (Elwood & Moehle, 2003) using LimitState material
-  coupled with ThreePoint limit curves.
+  Concentrated plasticity (Haselton et al., 2008) about both axes, as for
+  the beams. Columns without capacity design for shear have degrading
+  shear springs: LimitState materials coupled with ThreePoint limit curves
+  (Elwood & Moehle, 2003), with the ASCE 41-17 shear strength and the
+  post-failure slope of Shoraka & Elwood (2013).
 
 - Joints:
   Rigid, elastic, or inelastic rotational spring models
@@ -51,6 +57,13 @@ of reinforced concrete frames.
 PEER Report 2003/01.
 Pacific Earthquake Engineering Research Center,
 University of California, Berkeley.
+
+ASCE/SEI 41-17. (2017). Seismic rehabilitation of existing buildings.
+American Society of Civil Engineers.
+
+Shoraka, M. B., & Elwood, K. J. (2013). Mechanical model for non ductile
+reinforced concrete columns. Journal of Earthquake Engineering, 17(7),
+937-957.
 
 O'Reilly, G. J. (2016).
 Performance-based seismic assessment and retrofit of existing

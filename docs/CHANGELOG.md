@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- DP01 and DP02 hinge sections have elastic axial and torsional materials (and elastic weak-axis flexure in beams) instead of rigid ones.
+- Beams and capacity-designed columns of DP02-DP05 have elastic shear materials with the gross shear stiffness.
+
+### Fixed
+
+- DP05 axial beam releases had no axial stiffness, which made the pushovers fail to converge when a beam hinge softened.
+
 ## [1.2.0] - 2026-10-12
 
 ### Added

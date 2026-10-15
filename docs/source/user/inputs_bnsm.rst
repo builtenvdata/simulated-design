@@ -171,8 +171,9 @@ components with calibrated alternatives.
      therefore develop fictitious axial compression that raises their flexural
      strength and stiffness. In DP05, the end section of each beam frames into
      an auxiliary node connected to the joint by a ``zeroLength`` element that
-     is free along the beam axis and rigid otherwise (OpenSees Wiki, Rigid
-     Diaphragm Consequences), so the beams carry no axial force. Columns,
+     is nearly free along the beam axis (0.1% of the beam's EA/L) and rigid
+     otherwise (OpenSees Wiki, Rigid Diaphragm Consequences), so the beams
+     carry practically no axial force. Columns,
      joints, infills, diaphragms and foundations are as in DP03.
 
 **opensees** (``"py"`` or ``"tcl"``, default: ``"py"``)

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-21
+
 ### Changed
 
 - DP01 and DP02 hinge sections have elastic axial and torsional materials (and elastic weak-axis flexure in beams) instead of rigid ones.
@@ -183,7 +185,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   randomization, BDIM simulated design for European and Turkish design codes,
   and BNSM nonlinear model generation for OpenSees.
 
-[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/builtenvdata/simulated-design/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/builtenvdata/simulated-design/compare/v.1.1.0...v1.2.0
 [1.1.0]: https://github.com/builtenvdata/simulated-design/compare/v1.0.1...v.1.1.0
 [1.0.1]: https://github.com/builtenvdata/simulated-design/compare/v1.0.0-beta...v1.0.1

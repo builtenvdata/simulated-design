@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `beta_v` is described as the design vertical seismic load factor; for `tr_post18_*` it is documented as the short-period design spectral acceleration coefficient SDS of TBEC-2018, with the references of the vertical seismic load effect (TBEC-2018 Sections 4.4.3.2 and 4.4.4.1, Eqs. 4.11 and 4.12).
+
 ## [1.2.1] - 2026-10-21
 
 ### Changed

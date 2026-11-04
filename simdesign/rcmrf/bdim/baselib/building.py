@@ -70,7 +70,7 @@ class TaxonomyData:
     design_class : str
         Building design class selected.
     beta_v : float, optional
-        Vertical load factor. By default None.
+        Design vertical seismic load factor. By default None.
     staircase_slab_depth : float, optional
         Depth of the staircase slabs. By default None.
     slab_thickness : float, optional

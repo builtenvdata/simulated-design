@@ -314,7 +314,7 @@ class BCIM:
     beta : List[float]
         Design lateral load factor.
     beta_v : List[float | None]
-        Vertical load factor.
+        Design vertical seismic load factor.
     num_storeys : List[int]
         Number of storeys.
     design_class : List[str]

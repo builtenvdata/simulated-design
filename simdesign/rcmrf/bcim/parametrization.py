@@ -235,7 +235,7 @@ class InputData(BaseModel):
     beta : float
         Design lateral load factor.
     beta_v : float | None
-        Vertical load factor.
+        Design vertical seismic load factor.
     num_storeys : int
         Number of storeys in the building.
     design_class : str

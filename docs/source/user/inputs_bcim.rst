@@ -169,9 +169,16 @@ the primary taxonomy attributes of the building portfolio.
      enhanced seismic performance.
 
 **beta_v** (float, optional)
-   Design vertical load factor, used by the ``"tr_post18_dcm"`` and
+   Design vertical seismic load factor, used by the ``"tr_post18_dcm"`` and
    ``"tr_post18_dch"`` design classes only. If not given, 0.0 is used, i.e.,
    the vertical seismic load effect is neglected.
+
+   For these design classes, ``beta_v`` is the short-period design spectral
+   acceleration coefficient (``SDS``) of **TBEC-2018**. Following Sections
+   4.4.3.2 and 4.4.4.1 of TBEC-2018 (Eqs. 4.11 and 4.12), the permanent load
+   factor of the seismic load combinations becomes ``1.0 + 0.2·SDS`` and
+   ``0.9 - 0.2·SDS``, i.e., 30% of the vertical seismic load
+   ``(2/3)·SDS·G``.
 
 Sampling Parameters
 ^^^^^^^^^^^^^^^^^^^^

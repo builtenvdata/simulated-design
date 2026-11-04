@@ -115,13 +115,19 @@ class Loads(LoadsBase):
         beta_v : float | None
             Vertical seismic coefficient. If None, it is taken as 0.0, i.e.,
             the vertical load effect is neglected.
+
+        Notes
+        -----
+        Seismic loading is added in vertical direction based on Sections
+        4.4.3.2 and 4.4.4.1 of TBEC-2018. Here, ``beta_v`` refers to the
+        short-period design spectral acceleration coefficient (SDS).
         """
         if beta_v is None:
             beta_v = 0.0
         seismic_strs = ["E+X", "E-X", "E+Y", "E-Y"]
         for combo in self.combinations:
             if any(item in seismic_strs for item in combo.loads.keys()):
-                if combo.loads.get("G") == 1.0:
+                if combo.loads.get("G") == 1.0:  # Eqn. 4.11
                     combo.loads["G"] = round(1.0 + 0.3 * (2/3) * beta_v, 2)
-                elif combo.loads.get("G") == 0.9:
+                elif combo.loads.get("G") == 0.9:  # Eqn. 4.12
                     combo.loads["G"] = round(0.9 - 0.3 * (2/3) * beta_v, 2)

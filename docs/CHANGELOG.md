@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-11-06
+
 ### Changed
 
 - `beta_v` is described as the design vertical seismic load factor; for `tr_post18_*` it is documented as the short-period design spectral acceleration coefficient SDS of TBEC-2018, with the references of the vertical seismic load effect (TBEC-2018 Sections 4.4.3.2 and 4.4.4.1, Eqs. 4.11 and 4.12).
@@ -202,7 +204,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   randomization, BDIM simulated design for European and Turkish design codes,
   and BNSM nonlinear model generation for OpenSees.
 
-[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/builtenvdata/simulated-design/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/builtenvdata/simulated-design/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/builtenvdata/simulated-design/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/builtenvdata/simulated-design/compare/v.1.1.0...v1.2.0
 [1.1.0]: https://github.com/builtenvdata/simulated-design/compare/v1.0.1...v.1.1.0

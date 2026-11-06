@@ -69,7 +69,7 @@ def random_truncated_lognormal(size: int, mu: np.ndarray, sigma: np.ndarray,
 
 def truncated_lognormal_cdf_inv(
     cdf: np.ndarray, mu: np.ndarray, sigma: np.ndarray,
-    lower: np.ndarray, upper: float
+    lower: np.ndarray, upper: np.ndarray
 ) -> np.ndarray:
     """Inverts the truncated (lower-upper) log-normal CDF.
 
@@ -78,9 +78,10 @@ def truncated_lognormal_cdf_inv(
     cdf : np.ndarray
         The value of the cumulative distribution.
     mu : np.ndarray
-        Mean of the log-normal PDF.
+        Mean of the log-normal distribution in log-space, i.e., of ln(X).
     sigma : np.ndarray
-        Standard deviation of the log-normal PDF.
+        Standard deviation of the log-normal distribution in log-space,
+        i.e., of ln(X).
     lower : np.ndarray
         Lower truncation limit.
     upper : np.ndarray
@@ -265,8 +266,10 @@ def random_multivariate_truncated_lognormal(
     size : int
         Number of samples to generate.
     rho : np.ndarray
-        Correlation matrix (n x n) describing the relationships between
-        variables.
+        Correlation matrix (n x n) of the standard normal variables from
+        which the samples are obtained (Gaussian copula). Because of the
+        truncation, the correlations between the samples themselves are
+        close to, but not equal to, these values.
     lower_bound : np.ndarray
         Lower bounds for the truncated log-normal distributions.
     upper_bound : np.ndarray
@@ -292,7 +295,7 @@ def random_multivariate_truncated_lognormal(
     if not (rho.shape == (n, n)):
         raise ValueError("Correlation matrix must be square and match the "
                          "dimension of the input parameters.")
-    if not (len(lower_bound) == len(upper_bound) == n):
+    if not (len(lower_bound) == len(upper_bound) == len(std_ln) == n):
         raise ValueError(
             "Bounds, theta, and std_ln must all have the same length.")
 

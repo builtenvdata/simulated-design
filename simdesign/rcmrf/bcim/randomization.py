@@ -125,15 +125,20 @@ class Sampler:
         """Set staircase span lengths.
 
         Staircase span lengths are represented by uniform distribution.
+        The samples are rounded to 0.05 m.
 
         Parameters
         ----------
         lower_bound : float
             Lower boundary of the output interval.
-            All values generated will be greater than or equal to lower bound.
         upper_bound : float
             Upper boundary of the output interval.
-            All values generated will be less than or equal to upper bound.
+
+        Notes
+        -----
+        The samples are drawn from [lower_bound, upper_bound) and then
+        rounded to 0.05 m, so they may fall slightly outside the bounds
+        when these are not multiples of 0.05 m.
 
         Returns
         -------
@@ -162,21 +167,24 @@ class Sampler:
         Typical span lengths are represented with truncated log-normal
         distribution. It is assumed that span lengths are correlated.
         The samples are generated from multivariate truncated lognormal
-        distribution.
+        distribution, and rounded to 0.05 m.
 
         Parameters
         ----------
         corr_coeff : float
-            Correlation coefficient (between span lengths x and y).
+            Correlation coefficient between the standard normal variables
+            from which the span lengths in x and y are obtained (Gaussian
+            copula). Because of the truncation, the correlation between
+            the span lengths themselves is close to, but not equal to, it.
         lower_bound : Tuple[float]
             Lower bound for truncated log-normal distribution (x, y).
         upper_bound : Tuple[float]
             Upper bound for truncated log-normal distribution (x, y).
         theta : Tuple[float]
-            Median of log-normal distribution.
+            Median of the log-normal distribution before truncation (x, y).
         std_ln : Tuple[float]
             Logarithmic standard deviation of the log-normal
-            distribution (x, y).
+            distribution before truncation (x, y).
 
         Notes
         -----
@@ -248,14 +256,17 @@ class Sampler:
         """Set typical storey heights.
 
         Typical storey heights are represented with truncated log-normal
-        distribution.
+        distribution. The samples are rounded to 0.05 m.
 
         Parameters
         ----------
         cv : float
-            Coefficient of variation, s/mu.
+            Coefficient of variation (standard deviation / mean) of the
+            log-normal distribution before truncation.
         mu : float
-            Mean of normal distribution.
+            Mean (arithmetic, not logarithmic) of the log-normal
+            distribution before truncation. The mean of the samples
+            differs from it because of the truncation.
         lower_bound : float
             Lower bound of truncated log-normal distribution.
         upper_bound : float
@@ -310,8 +321,9 @@ class Sampler:
 
         Notes
         -----
-        1. `ground_storey_height = min(factor * typical_storey_heights,
-        max_height)`
+        1. `ground_storey_height = min(round_005(factor *
+        typical_storey_heights), max_height)`, where `round_005` rounds to
+        0.05 m.
         2. Factors have different probabilities.
 
         Examples
@@ -370,7 +382,7 @@ class Sampler:
         Composite slabs with pre-fabricated joists and ceramic blocks (3: HS).
         2. Slab type is assigned as HS, if minimum span length is greater than
         the upper limit for minimum solid slab span length
-        (minimum span length <= `max_ss_short_span`).
+        (minimum span length > `max_ss_short_span`).
         3. Otherwise, if the ratio of maximum to minimum span lengths is
         greater or equal to `max_ss2_aspect_ratio`, slab type is
         randomly as SS1 or HS based on `ss1_prob_given_ss1_or_hs`.

@@ -200,28 +200,47 @@ describing the geometric characteristics of the buildings.
 
 **typical_storey_height (dict)**  
    Parameters for typical storey heights represented by a truncated
-   log-normal distribution.
+   log-normal distribution. The sampled heights are rounded to 0.05 m.
 
-   - ``mu`` (float): mean storey height
-   - ``cv`` (float): coefficient of variation
+   - ``mu`` (float): mean (arithmetic, not logarithmic) of the log-normal
+     distribution before truncation
+   - ``cv`` (float): coefficient of variation (standard deviation / mean) of
+     the log-normal distribution before truncation
    - ``lower_bound`` (float): lower bound value
    - ``upper_bound`` (float): upper bound value
 
-**standard_bay_width (dict)**  
-   Parameters of a truncated log-normal distribution for standard bay widths.
+   *Note:* because of the truncation, the mean and the scatter of the
+   sampled heights differ from ``mu`` and ``cv``.
 
-   - ``corr_coeff_xy`` (float): correlation coefficient between x and y bay widths
+**standard_bay_width (dict)**  
+   Parameters of the correlated truncated log-normal distributions for
+   standard bay widths in x and y. The sampled widths are rounded to 0.05 m.
+
+   - ``corr_coeff_xy`` (float): correlation coefficient between the standard
+     normal variables from which the x and y bay widths are obtained
+     (Gaussian copula); because of the truncation, the correlation between
+     the bay widths themselves is close to, but not equal to, it
    - ``lower_bound_x`` (float): lower bound for bay width in x direction
    - ``upper_bound_x`` (float): upper bound for bay width in x direction
-   - ``theta_x`` (float): median (x)
-   - ``sigma_x`` (float): logarithmic standard deviation (x)
+   - ``theta_x`` (float): median of the log-normal distribution before
+     truncation (x)
+   - ``sigma_x`` (float): logarithmic standard deviation of the log-normal
+     distribution before truncation (x)
    - ``lower_bound_y`` (float): lower bound for bay width in y direction
    - ``upper_bound_y`` (float): upper bound for bay width in y direction
-   - ``theta_y`` (float): median (y)
-   - ``sigma_y`` (float): logarithmic standard deviation (y)
+   - ``theta_y`` (float): median of the log-normal distribution before
+     truncation (y)
+   - ``sigma_y`` (float): logarithmic standard deviation of the log-normal
+     distribution before truncation (y)
+
+   *Note:* ``theta`` and ``sigma`` are the median and the logarithmic
+   standard deviation, unlike ``mu`` and ``cv`` of the typical storey height.
 
 **staircase_bay_width (dict)**  
-   Parameters of a uniform distribution for staircase bay width.
+   Parameters of a uniform distribution for the staircase bay width along x.
+   The sampled widths are rounded to 0.05 m, so they may fall slightly
+   outside bounds that are not multiples of 0.05 m. Along y, the staircase
+   bay has the standard bay width.
 
    - ``lower_bound`` (float): lower bound value
    - ``upper_bound`` (float): upper bound value
@@ -231,8 +250,8 @@ describing the geometric characteristics of the buildings.
 
    Sampled typical storey heights are multiplied by factors sampled
    from ``factor`` according to the corresponding ``probability``
-   values. If the resulting value exceeds ``maximum``, it is capped
-   at this limit.
+   values, and rounded to 0.05 m. If the resulting value exceeds
+   ``maximum``, it is capped at this limit.
 
    - ``maximum`` (float): maximum possible ground storey height
    - ``factor`` (list[float]): factors applied to typical storey heights
@@ -273,6 +292,7 @@ describing the geometric characteristics of the buildings.
    Layout IDs considered for building generation.
 
    Use ``"all"`` to include all layouts or provide a list of layout tags.
+   Each building gets one of the given layouts, with equal probability.
    Layouts are defined in the internal layout database.
 
 .. list-table:: Available floor layouts
@@ -383,8 +403,8 @@ describing initial conceptual design choices for the buildings.
 **slab_typology (dict)**
    Parameters required for slab typology sampling / decision tree.
 
-   - ``ss1_prob_given_ss1_or_hs`` (float): probability of having SS1 type slab given that the slab type is either SS1 or HS
-   - ``ss2_prob_given_ss2_or_hs`` (float): probability of having SS2 type slab given that the slab type is either SS2 or HS
+   - ``ss1_prob_given_ss1_or_hs`` (float): probability of having SS1 type slab given that the slab type is either SS1 or HS, i.e., when the short span is at most ``max_ss_short_span`` and the aspect ratio is at least ``max_ss2_aspect_ratio``
+   - ``ss2_prob_given_ss2_or_hs`` (float): probability of having SS2 type slab given that the slab type is either SS2 or HS, i.e., when the short span is at most ``max_ss_short_span`` and the aspect ratio is below ``max_ss2_aspect_ratio``
    - ``max_ss_short_span`` (float, default: ``6.0``): upper limit for the short span length in solid slabs (SS1, SS2)
    - ``max_ss2_aspect_ratio`` (float, default: ``2.0``): upper limit for the ratio of maximum to minimum span lengths (aspect ratio) in SS2 slabs
    - ``staircase_slab_depth`` (float, optional): depth of the staircase slabs; if not provided (``null``), computed during the design process
@@ -394,6 +414,11 @@ describing initial conceptual design choices for the buildings.
         1. SS2 refers to solid two-way cast-in-situ slabs
         2. SS1 refers to solid one-way cast-in-situ slabs
         3. HS refers to composite slabs with pre-fabricated joists and ceramic blocks.
+
+    *Decision tree (per building, on its standard bay widths):*
+        1. If the short span is longer than ``max_ss_short_span``, the slabs are HS.
+        2. Otherwise, if the aspect ratio is at least ``max_ss2_aspect_ratio``, the slabs are SS1 or HS, with ``ss1_prob_given_ss1_or_hs``.
+        3. Otherwise, the slabs are SS2 or HS, with ``ss2_prob_given_ss2_or_hs``.
 
 **wb_prob_given_hs** (float)
    Probability of having wide beams (WB) given slab type is HS.

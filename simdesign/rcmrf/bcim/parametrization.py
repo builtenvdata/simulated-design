@@ -117,9 +117,12 @@ class TypicalStoreyHeight(BaseModel):
     Attributes
     ----------
     cv : float
-        Coefficient of variation (sigma/mu).
+        Coefficient of variation (standard deviation / mean) of the
+        log-normal distribution before truncation.
     mu : float
-        Mean value for the typical storey heights.
+        Mean (arithmetic) of the log-normal distribution before truncation.
+        The mean of the sampled typical storey heights differs from it
+        because of the truncation.
     lower_bound : float
         Lower bound value.
     upper_bound : float
@@ -153,24 +156,29 @@ class StandardBayWidth(BaseModel):
     Attributes
     ----------
     corr_coeff_xy : float
-        Correlation coefficient between bay widths in two principal
-        horizontal directions (-X and -Y).
+        Correlation coefficient between the standard normal variables from
+        which the bay widths in the two principal horizontal directions
+        (-X and -Y) are obtained (Gaussian copula). Because of the
+        truncation, the correlation between the bay widths themselves is
+        close to, but not equal to, it.
     lower_bound_x : float
         Lower bound of truncated log-normal distribution (-X).
     upper_bound_x : float
         Upper bound of truncated log-normal distribution (-X).
     theta_x : float
-        Median of log-normal distribution (-X).
+        Median of log-normal distribution before truncation (-X).
     sigma_x : float
-        Logarithmic standard deviation of the lognormal distribution (-X).
+        Logarithmic standard deviation of the lognormal distribution before
+        truncation (-X).
     lower_bound_y : float
         Lower bound of truncated log-normal distribution (-Y).
     upper_bound_y : float
         Upper bound of truncated log-normal distribution (-Y).
     theta_y : float
-        Median of log-normal distribution (-Y).
+        Median of log-normal distribution before truncation (-Y).
     sigma_y : float
-        Logarithmic standard deviation of the lognormal distribution (-Y).
+        Logarithmic standard deviation of the lognormal distribution before
+        truncation (-Y).
     """
     corr_coeff_xy: float
     lower_bound_x: float

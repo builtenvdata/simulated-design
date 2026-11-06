@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `beta_v` is described as the design vertical seismic load factor; for `tr_post18_*` it is documented as the short-period design spectral acceleration coefficient SDS of TBEC-2018, with the references of the vertical seismic load effect (TBEC-2018 Sections 4.4.3.2 and 4.4.4.1, Eqs. 4.11 and 4.12).
 
+### Fixed
+
+- `random_multivariate_truncated_lognormal` also checks the length of `std_ln` against the number of variables.
+- Type hint of `upper` in `truncated_lognormal_cdf_inv` is `np.ndarray`, as for `lower`.
+- Docstrings and BCIM input docs of the sampling parameters describe what the code does:
+  - `mu` and `cv` of the typical storey height are the mean and coefficient of variation of the log-normal distribution before truncation (not of a normal distribution).
+  - `theta` and `sigma` of the standard bay width are the median and logarithmic standard deviation before truncation.
+  - `corr_coeff_xy` is the correlation of the underlying standard normal variables (Gaussian copula), not of the bay widths themselves.
+  - `mu` and `sigma` of `truncated_lognormal_cdf_inv` are in log-space.
+  - Sampled storey heights and bay widths are rounded to 0.05 m, so staircase bay widths may fall slightly outside their bounds; the ground storey height is rounded before it is capped.
+  - Layouts are sampled with equal probability.
+  - The slab type decision tree of `set_slab_type` gives the HS condition (short span > `max_ss_short_span`).
+
 ## [1.2.1] - 2026-10-21
 
 ### Changed
